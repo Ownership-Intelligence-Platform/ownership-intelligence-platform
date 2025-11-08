@@ -17,7 +17,6 @@
   <p class="muted">A tiny static UI that shows client-side mock data and can populate the Neo4j DB with sample data.</p>
 
   <div>
-    <button id="refresh">Refresh Mock Data</button>
     <button id="populate">Populate DB with Mock Data</button>
     <button id="clearDb" style="color:#a00">Clear Imported Data (DB)</button>
     <span id="status"></span>
@@ -44,8 +43,6 @@
   </div>
   <div id="penetrationChart"></div>
 
-  <h2>Mock Data (client-side)</h2>
-  <pre id="mockJson">Loading...</pre>
 
   <h2>Notes</h2>
   <ul>
@@ -161,16 +158,7 @@
       }
     }
 
-    async function loadMock() {
-      document.getElementById('status').textContent = '';
-      const res = await fetch('/mock-data');
-      if (!res.ok) {
-        document.getElementById('mockJson').textContent = 'Failed to load mock data';
-        return;
-      }
-      const data = await res.json();
-      document.getElementById('mockJson').textContent = JSON.stringify(data, null, 2);
-    }
+    
 
     async function populateMock() {
       document.getElementById('status').textContent = 'Populating...';
@@ -296,7 +284,6 @@
       }
     }
 
-    document.getElementById('refresh').addEventListener('click', loadMock);
     document.getElementById('populate').addEventListener('click', populateMock);
     document.getElementById('clearDb').addEventListener('click', clearDb);
     document.getElementById('loadLayers').addEventListener('click', loadLayers);

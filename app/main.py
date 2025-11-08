@@ -63,22 +63,6 @@ def api_get_layers(entity_id: str, depth: int = 2):
 # shutdown handled by lifespan context manager above
 
 
-@app.get("/mock-data")
-def api_mock_data():
-    """Return client-side mock data (does not touch the DB)."""
-    data = {
-        "entities": [
-            {"id": "E1", "name": "Alpha", "type": "Company"},
-            {"id": "E2", "name": "Beta", "type": "Company"},
-            {"id": "E3", "name": "Gamma", "type": "Holding"},
-        ],
-        "ownerships": [
-            {"owner_id": "E1", "owned_id": "E2", "stake": 60.0},
-            {"owner_id": "E2", "owned_id": "E3", "stake": 40.0},
-        ],
-    }
-    return data
-
 
 @app.post("/populate-mock", status_code=201)
 def api_populate_mock():
