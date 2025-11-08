@@ -1,5 +1,98 @@
 // News loading
 
+/**
+ * Minimal HTML sanitizer for news summaries.
+ * Allows a safe subset of tags/attributes and fixes <a> targets.
+ */
+function sanitizeSummary(html) {
+  if (!html) return "";
+  const allowedTags = new Set([
+    "A",
+    "B",
+    "STRONG",
+    "EM",
+    "I",
+    "U",
+    "BR",
+    "P",
+    "SPAN",
+    "FONT",
+  ]);
+  const allowedAttrs = {
+    A: new Set(["href", "target", "rel"]),
+    FONT: new Set(["color"]),
+    SPAN: new Set([]),
+    DEFAULT: new Set([]),
+  };
+
+  const wrapper = document.createElement("div");
+  // Assigning to innerHTML will create a DOM we can traverse and sanitize.
+  wrapper.innerHTML = String(html);
+
+  const walk = (node) => {
+    switch (node.nodeType) {
+      case Node.ELEMENT_NODE: {
+        // Drop disallowed elements but keep their text/children (unwrap)
+        if (!allowedTags.has(node.tagName)) {
+          const parent = node.parentNode;
+          if (parent) {
+            while (node.firstChild) parent.insertBefore(node.firstChild, node);
+            parent.removeChild(node);
+          }
+          return;
+        }
+
+        // Strip non-allowed attributes
+        const allowed = allowedAttrs[node.tagName] || allowedAttrs.DEFAULT;
+        // Clone array because attributes is live
+        Array.from(node.attributes).forEach((attr) => {
+          const name = attr.name.toLowerCase();
+          if (!allowed.has(name)) node.removeAttribute(attr.name);
+        });
+
+        // Additional hardening for anchors
+        if (node.tagName === "A") {
+          let href = node.getAttribute("href") || "#";
+          try {
+            const u = new URL(href, window.location.href);
+            if (!/^https?:$/.test(u.protocol)) href = "#";
+          } catch (_) {
+            href = "#";
+          }
+          node.setAttribute("href", href);
+          node.setAttribute("target", "_blank");
+          node.setAttribute("rel", "noopener noreferrer");
+        }
+
+        // Limit FONT color to simple hex or named colors
+        if (node.tagName === "FONT") {
+          const color = node.getAttribute("color");
+          if (
+            color &&
+            !/^#[0-9a-fA-F]{3,6}$/.test(color) &&
+            !/^[a-zA-Z]+$/.test(color)
+          ) {
+            node.removeAttribute("color");
+          }
+        }
+        break;
+      }
+      case Node.COMMENT_NODE: {
+        node.remove();
+        return;
+      }
+      default:
+        break;
+    }
+
+    // Recurse children (snapshot to avoid live collection issues)
+    Array.from(node.childNodes).forEach(walk);
+  };
+
+  Array.from(wrapper.childNodes).forEach(walk);
+  return wrapper.innerHTML;
+}
+
 /** Fetch and render news for an entity. */
 export async function loadNews(entityId) {
   const el = document.getElementById("newsList");
@@ -53,7 +146,8 @@ export async function loadNews(entityId) {
         const d = document.createElement("div");
         d.className = "muted";
         d.style.marginTop = "2px";
-        d.textContent = n.summary;
+        // Render limited, sanitized HTML so source-provided links are clickable
+        d.innerHTML = sanitizeSummary(n.summary);
         li.appendChild(d);
       }
       if (n.stored) {
