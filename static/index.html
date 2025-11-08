@@ -37,6 +37,9 @@
 
   <div id="layersTree">Enter a root entity and click "Load Layers".</div>
 
+  <h2>Legal Representatives</h2>
+  <div id="repsList" class="muted">Load a company to see its legal representatives.</div>
+
   <h2>Equity Penetration (D3)</h2>
   <div style="margin-bottom:10px">
     <button id="loadPenetration">Load Equity Penetration</button>
@@ -151,10 +154,40 @@
         } else {
           renderTree(treeEl, tree, data?.root?.id);
         }
+        // Also load legal representatives for this company id
+        await loadRepresentatives(rootId);
       } catch (e) {
         treeEl.textContent = `Error: ${e}`;
       } finally {
         setTimeout(()=>statusEl.textContent='', 1500);
+      }
+    }
+    async function loadRepresentatives(companyId) {
+      const el = document.getElementById('repsList');
+      el.textContent = 'Loading representatives…';
+      try {
+        const res = await fetch(`/representatives/${encodeURIComponent(companyId)}`);
+        if (!res.ok) {
+          el.textContent = 'No representatives found.';
+          return;
+        }
+        const data = await res.json();
+        const reps = (data && data.representatives) || [];
+        if (!reps.length) {
+          el.textContent = 'No representatives found.';
+          return;
+        }
+        const ul = document.createElement('ul');
+        reps.forEach(r => {
+          const li = document.createElement('li');
+          const label = `${r.name || '(no name)'} [${r.id}]${r.type ? ' · ' + r.type : ''}${r.role ? ' — ' + r.role : ''}`;
+          li.textContent = label;
+          ul.appendChild(li);
+        });
+        el.innerHTML = '';
+        el.appendChild(ul);
+      } catch (e) {
+        el.textContent = `Error loading representatives: ${e}`;
       }
     }
 

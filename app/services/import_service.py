@@ -1,6 +1,6 @@
 import csv
 import os
-from typing import Callable, Dict, Tuple, Set
+from typing import Callable, Dict, Tuple, Set, Optional
 
 from app.services.graph_service import create_entity, create_ownership
 
@@ -113,4 +113,63 @@ def import_graph_from_csv(
             "processed_rows": ownerships_processed,
             "unique_imported": len(ownership_pairs),
         },
+    }
+
+
+def import_legal_reps_from_csv(
+    legal_reps_csv: str,
+    *,
+    project_root: str,
+    create_entity_fn: Callable[[str, Optional[str], Optional[str]], Dict] = create_entity,
+    create_legal_rep_fn: Callable[[str, str, Optional[str]], Dict] = None,
+) -> Dict:
+    """Import legal representatives from a CSV (columns: company_id, person_id, role).
+
+    Returns a summary dict with processed and unique counts. Ensures nodes exist.
+    """
+    if create_legal_rep_fn is None:
+        # late import to avoid circulars if used externally
+        from app.services.graph_service import create_legal_rep as _clr
+
+        create_legal_rep_fn = _clr
+
+    pr = os.path.abspath(project_root)
+    path = _resolve_path(legal_reps_csv, pr)
+    if not os.path.isfile(path):
+        raise FileNotFoundError(f"Legal reps CSV not found: {path}")
+
+    required = {"company_id", "person_id", "role"}
+    processed = 0
+    unique = 0
+    seen: Set[Tuple[str, str, Optional[str]]] = set()
+
+    with open(path, newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        headers = {h.strip() for h in (reader.fieldnames or [])}
+        if not required.issubset(headers):
+            missing = required - headers
+            raise ValueError(f"Legal reps CSV missing required columns: {', '.join(sorted(missing))}")
+        for row in reader:
+            processed += 1
+            company_id = (row.get("company_id") or "").strip()
+            person_id = (row.get("person_id") or "").strip()
+            role = (row.get("role") or "").strip() or None
+            if not company_id or not person_id:
+                continue
+            key = (company_id, person_id, role)
+            if key in seen:
+                continue
+            seen.add(key)
+
+            # Ensure nodes exist
+            create_entity_fn(company_id, None, None)
+            create_entity_fn(person_id, None, None)
+            create_legal_rep_fn(company_id, person_id, role)
+            unique += 1
+
+    return {
+        "legal_representatives": {
+            "processed_rows": processed,
+            "unique_imported": unique,
+        }
     }

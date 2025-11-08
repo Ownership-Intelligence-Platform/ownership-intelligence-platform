@@ -4,8 +4,16 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
-from app.models.ownership import EntityCreate, OwnershipCreate, LayerResponse
-from app.services.graph_service import create_entity, create_ownership, get_layers, get_equity_penetration, clear_database
+from app.models.ownership import EntityCreate, OwnershipCreate, LayerResponse, RepresentativeCreate
+from app.services.graph_service import (
+    create_entity,
+    create_ownership,
+    get_layers,
+    get_equity_penetration,
+    clear_database,
+    create_legal_rep,
+    get_representatives,
+)
 from app.services.import_service import import_graph_from_csv
 from app.db.neo4j_connector import close_driver
 
@@ -80,6 +88,16 @@ def api_populate_mock():
 
     try:
         summary = import_graph_from_csv(entities_csv, ownerships_csv, project_root=project_root)
+        # Optionally import legal reps if LEGAL_REPS_CSV_PATH is set or default file exists
+        legal_reps_csv = os.getenv("LEGAL_REPS_CSV_PATH", os.path.join("data", "legal_reps.csv"))
+        try:
+            from app.services.import_service import import_legal_reps_from_csv
+
+            reps_summary = import_legal_reps_from_csv(legal_reps_csv, project_root=project_root)
+            summary.update(reps_summary)
+        except FileNotFoundError:
+            # If file not found, skip silently (it's optional)
+            pass
         return {"status": "ok", "message": "CSV data imported (writes to Neo4j).", **summary}
     except FileNotFoundError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
@@ -94,6 +112,29 @@ def api_get_penetration(entity_id: str, depth: int = 3):
     res = get_equity_penetration(entity_id, depth)
     if not res:
         raise HTTPException(status_code=404, detail="Entity not found")
+    return res
+
+
+@app.post("/representatives", status_code=201)
+def api_create_representative(payload: RepresentativeCreate):
+    """Create a legal representative relationship (person -> company).
+
+    Ensures the company and person exist as Entity nodes, then MERGE a LEGAL_REP edge.
+    """
+    # Ensure both nodes exist (create as bare if needed)
+    create_entity(payload.company_id)
+    create_entity(payload.person_id)
+    res = create_legal_rep(payload.company_id, payload.person_id, payload.role)
+    if not res:
+        raise HTTPException(status_code=500, detail="Failed to create representative")
+    return res
+
+
+@app.get("/representatives/{company_id}")
+def api_get_representatives(company_id: str):
+    res = get_representatives(company_id)
+    if not res:
+        raise HTTPException(status_code=404, detail="Company not found or no representatives")
     return res
 
 

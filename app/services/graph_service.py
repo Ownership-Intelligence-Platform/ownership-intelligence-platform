@@ -1,4 +1,4 @@
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from app.db.neo4j_connector import run_cypher
 
 
@@ -123,3 +123,37 @@ def clear_database() -> Dict[str, Any]:
     run_cypher("MATCH (n) DETACH DELETE n")
 
     return {"deleted_nodes": nodes_before, "deleted_relationships": rels_before}
+
+
+def create_legal_rep(company_id: str, person_id: str, role: Optional[str] = None) -> Dict[str, Any]:
+    """Create or update a LEGAL_REP relationship from a Person to a Company.
+
+    We don't strictly enforce labels beyond :Entity; role is optional text.
+    """
+    query = (
+        "MATCH (c:Entity {id: $company}), (p:Entity {id: $person}) "
+        "MERGE (p)-[r:LEGAL_REP]->(c) "
+        "SET r.role = $role "
+        "RETURN p.id AS person_id, c.id AS company_id, r.role AS role"
+    )
+    res = run_cypher(query, {"company": company_id, "person": person_id, "role": role})
+    return res[0] if res else {}
+
+
+def get_representatives(company_id: str) -> Dict[str, Any]:
+    """Return company basic info and its legal representatives (if any)."""
+    query = (
+        "MATCH (c:Entity {id: $id}) "
+        "OPTIONAL MATCH (p:Entity)-[r:LEGAL_REP]->(c) "
+        "RETURN c.id AS id, c.name AS name, c.type AS type, "
+        "collect({id: p.id, name: p.name, type: p.type, role: r.role}) AS representatives"
+    )
+    res = run_cypher(query, {"id": company_id})
+    if not res:
+        return {}
+    row = res[0]
+    reps = [x for x in (row.get("representatives") or []) if x.get("id")]
+    return {
+        "company": {"id": row.get("id"), "name": row.get("name"), "type": row.get("type")},
+        "representatives": reps,
+    }

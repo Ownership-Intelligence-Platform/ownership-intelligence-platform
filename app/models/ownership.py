@@ -35,3 +35,12 @@ class LayerNode(BaseModel):
 class LayerResponse(BaseModel):
     root: LayerNode
     layers: List[Dict[str, Any]]
+
+
+class RepresentativeCreate(BaseModel):
+    company_id: str
+    person_id: str
+    role: Optional[str] = Field(
+        default="Corporate Legal Representative",
+        description="Role/title of the representative",
+    )
