@@ -13,7 +13,9 @@ from app.services.graph_service import (
     clear_database,
     create_legal_rep,
     get_representatives,
+    get_entity,
 )
+from app.services.news_service import get_company_news
 from app.services.import_service import import_graph_from_csv
 from app.db.neo4j_connector import close_driver
 
@@ -136,6 +138,27 @@ def api_get_representatives(company_id: str):
     if not res:
         raise HTTPException(status_code=404, detail="Company not found or no representatives")
     return res
+
+
+@app.get("/entities/{entity_id}/news")
+def api_get_entity_news(entity_id: str, limit: int = 10):
+    """Return recent news for the given entity id.
+
+    Resolution flow:
+    1. Lookup entity node to obtain its name (falls back to id if name absent).
+    2. Query external news source (NewsAPI.org if API key present; else Google News RSS).
+    3. Return normalized list of items.
+    """
+    entity = get_entity(entity_id)
+    if not entity:
+        raise HTTPException(status_code=404, detail="Entity not found")
+    query_name = entity.get("name") or entity_id
+    items = get_company_news(query_name, limit=limit)
+    return {
+        "entity": {"id": entity_id, "name": entity.get("name"), "type": entity.get("type")},
+        "count": len(items),
+        "items": items,
+    }
 
 
 @app.post("/clear-db")

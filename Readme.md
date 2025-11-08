@@ -13,6 +13,7 @@ What I added:
   - `app/services/graph_service.py` - graph operations (create entity, create ownership, get layers)
     - `app/services/import_service.py` - CSV import of entities and ownerships
     - Legal representatives: LEGAL_REP edges and endpoints
+    - `app/services/news_service.py` - fetch recent news for a company (NewsAPI or Google News RSS fallback)
 - `tests/test_models.py` - minimal pytest tests for models
   - `tests/test_import.py` - unit test for CSV import service
 
@@ -42,6 +43,12 @@ The compose file sets Neo4j auth to `neo4j/testpassword`. If your environment di
 uvicorn app.main:app --reload
 ```
 
+Optional: set a News API key if you have one (uses NewsAPI.org when set; otherwise falls back to Google News RSS):
+
+```powershell
+$env:NEWSAPI_KEY = "<your_newsapi_key>"
+```
+
 4. Example usage (JSON body):
 
 - Create entity: POST /entities
@@ -49,6 +56,7 @@ uvicorn app.main:app --reload
 - Create ownership: POST /ownerships
   { "owner_id": "E1", "owned_id": "E2", "stake": 51 }
 - Get layers: GET /layers/E1?depth=2
+- Get company news by entity id: GET /entities/E1/news?limit=10
 
 5. Reset (clear) the database quickly for re-import cycles:
 
@@ -83,6 +91,29 @@ Legal representatives
 - List for a company: `GET /representatives/{company_id}`
 
 You can bulk-load legal reps during `POST /populate-mock` by providing a CSV at `data/legal_reps.csv` or setting `$env:LEGAL_REPS_CSV_PATH` to a custom path. If the file is not present, the import silently skips this step.
+
+Company news endpoint
+
+- Endpoint: `GET /entities/{entity_id}/news?limit=10`
+- It resolves the entity name from Neo4j and searches for recent articles.
+- When `NEWSAPI_KEY` (or `NEWS_API_KEY`) is present, it uses NewsAPI.org; otherwise it uses Google News RSS.
+- Response example:
+
+```
+{
+  "entity": {"id": "E1", "name": "ExampleCorp", "type": "Company"},
+  "count": 2,
+  "items": [
+    {
+      "title": "ExampleCorp announces Q3 results",
+      "url": "https://example.com/article1",
+      "source": "Example News",
+      "published_at": "Fri, 01 Nov 2024 12:00:00 GMT",
+      "summary": "Strong revenue growth reported."
+    }
+  ]
+}
+```
 
 Next steps and suggestions
 

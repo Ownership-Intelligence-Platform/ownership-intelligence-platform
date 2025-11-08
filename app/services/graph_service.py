@@ -18,6 +18,12 @@ def create_entity(entity_id: str, name: str = None, type_: str = None) -> Dict[s
     res = run_cypher(query, {"id": entity_id, "name": name, "type": type_})
     return res[0] if res else {}
 
+def get_entity(entity_id: str) -> Dict[str, Any]:
+    """Fetch a single Entity by id. Returns empty dict if not found."""
+    q = "MATCH (e:Entity {id: $id}) RETURN e.id AS id, e.name AS name, e.type AS type"
+    res = run_cypher(q, {"id": entity_id})
+    return res[0] if res else {}
+
 
 def create_ownership(owner_id: str, owned_id: str, stake: float = None) -> Dict[str, Any]:
     query = (

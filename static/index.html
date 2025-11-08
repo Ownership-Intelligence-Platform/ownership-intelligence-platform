@@ -33,12 +33,20 @@
       <input id="depth" type="number" value="2" min="0" max="10" style="width:60px" />
     </label>
     <button id="loadLayers">Load Layers</button>
+    <label style="margin-left:12px">
+      News Limit:
+      <input id="newsLimit" type="number" value="5" min="1" max="50" style="width:60px" />
+    </label>
+    <button id="loadNews">Load News</button>
   </div>
 
   <div id="layersTree">Enter a root entity and click "Load Layers".</div>
 
   <h2>Legal Representatives</h2>
   <div id="repsList" class="muted">Load a company to see its legal representatives.</div>
+
+  <h2>Company News</h2>
+  <div id="newsList" class="muted">Load a company to see recent news.</div>
 
   <h2>Equity Penetration (D3)</h2>
   <div style="margin-bottom:10px">
@@ -157,8 +165,11 @@
         } else {
           renderTree(treeEl, tree, data?.root?.id);
         }
-        // Also load legal representatives for this company id
-        await loadRepresentatives(rootId);
+        // Also load legal representatives and news for this company id
+        await Promise.all([
+          loadRepresentatives(rootId),
+          loadNews(rootId)
+        ]);
       } catch (e) {
         treeEl.textContent = `Error: ${e}`;
       } finally {
@@ -191,6 +202,60 @@
         el.appendChild(ul);
       } catch (e) {
         el.textContent = `Error loading representatives: ${e}`;
+      }
+    }
+
+    async function loadNews(entityId) {
+      const el = document.getElementById('newsList');
+      const limit = Number(document.getElementById('newsLimit').value || 5);
+      el.textContent = 'Loading news…';
+      try {
+        const res = await fetch(`/entities/${encodeURIComponent(entityId)}/news?limit=${limit}`);
+        if (!res.ok) {
+          const txt = await res.text();
+          el.textContent = `Failed to load news: ${res.status} ${txt}`;
+          return;
+        }
+        const data = await res.json();
+        const items = (data && data.items) || [];
+        if (!items.length) {
+          el.textContent = 'No recent news found.';
+          return;
+        }
+        const frag = document.createDocumentFragment();
+        const ul = document.createElement('ul');
+        items.forEach(n => {
+          const li = document.createElement('li');
+          const a = document.createElement('a');
+          a.href = n.url || '#';
+          a.target = '_blank';
+          a.rel = 'noopener noreferrer';
+          a.textContent = n.title || '(untitled)';
+          li.appendChild(a);
+          const meta = [];
+          if (n.source) meta.push(n.source);
+          if (n.published_at) meta.push(String(n.published_at).slice(0, 19));
+          if (meta.length) {
+            const span = document.createElement('span');
+            span.className = 'muted';
+            span.style.marginLeft = '6px';
+            span.textContent = `— ${meta.join(' · ')}`;
+            li.appendChild(span);
+          }
+          if (n.summary) {
+            const d = document.createElement('div');
+            d.className = 'muted';
+            d.style.marginTop = '2px';
+            d.textContent = n.summary;
+            li.appendChild(d);
+          }
+          ul.appendChild(li);
+        });
+        frag.appendChild(ul);
+        el.innerHTML = '';
+        el.appendChild(frag);
+      } catch (e) {
+        el.textContent = `Error loading news: ${e}`;
       }
     }
 
@@ -464,6 +529,11 @@
     document.getElementById('clearDb').addEventListener('click', clearDb);
     document.getElementById('loadLayers').addEventListener('click', loadLayers);
     document.getElementById('loadPenetration').addEventListener('click', loadPenetration);
+    document.getElementById('loadNews').addEventListener('click', () => {
+      const id = document.getElementById('rootId').value.trim();
+      if (!id) { alert('Please enter an entity id'); return; }
+      loadNews(id);
+    });
     // Auto-load default tree if DB already has data
     // loadLayers();
   </script>
