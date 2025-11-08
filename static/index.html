@@ -1,65 +1,143 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="h-full">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Ownership Intelligence — Demo</title>
-  <style>
-    body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; padding: 20px; max-width: 900px; }
-    pre { background:#f4f4f4; padding:10px; border-radius:6px; white-space:pre-wrap; }
-    button { margin-right:8px; }
-    .muted { color:#666; font-size:0.9rem }
-  </style>
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // Tailwind on-the-fly config (optional): enable class-based dark mode
+    tailwind.config = { darkMode: 'class' };
+  </script>
+  <!-- D3 -->
   <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
 </head>
-<body>
-  <h1>Ownership Intelligence — Demo</h1>
-  <p class="muted">A tiny static UI that shows client-side mock data and can populate the Neo4j DB with sample data.</p>
+<body class="min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100 font-sans">
+  <!-- Top Bar -->
+  <header class="sticky top-0 z-30 bg-white/80 dark:bg-gray-900/80 backdrop-blur border-b border-gray-200 dark:border-gray-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-14">
+        <div class="flex items-center gap-3">
+          <div class="h-8 w-8 rounded bg-indigo-600"></div>
+          <h1 class="text-lg sm:text-xl font-semibold tracking-tight">Ownership Intelligence — Demo</h1>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="populate" class="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            Populate DB
+          </button>
+          <button id="clearDb" class="inline-flex items-center gap-2 rounded-md bg-rose-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500">
+            Clear Imported Data
+          </button>
+          <button id="themeToggle" class="inline-flex items-center gap-2 rounded-md border border-gray-300 dark:border-gray-700 px-3 py-2 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800">
+            <span class="hidden sm:inline">Toggle</span> Theme
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
 
-  <div>
-    <button id="populate">Populate DB with Mock Data</button>
-    <button id="clearDb" style="color:#a00">Clear Imported Data (DB)</button>
-    <span id="status"></span>
+  <!-- Status bar -->
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-3">
+    <div class="text-xs sm:text-sm text-gray-600 dark:text-gray-300">
+      <span id="status" class="inline-block rounded bg-gray-100 dark:bg-gray-800 px-2 py-1 align-middle"></span>
+    </div>
   </div>
 
-  <h2>Ownership Layers (from backend)</h2>
-  <div style="margin-bottom:10px">
-    <label>
-      Root Entity ID:
-      <input id="rootId" value="E1" style="width:90px" />
-    </label>
-    <label style="margin-left:8px">
-      Depth:
-      <input id="depth" type="number" value="2" min="0" max="10" style="width:60px" />
-    </label>
-    <button id="loadLayers">Load Layers</button>
-    <label style="margin-left:12px">
-      News Limit:
-      <input id="newsLimit" type="number" value="5" min="1" max="50" style="width:60px" />
-    </label>
-    <button id="loadNews">Load News</button>
-  </div>
+  <!-- Main Content -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <!-- Controls Card -->
+    <section class="mb-6">
+      <div class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm">
+        <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
+          <h2 class="text-base sm:text-lg font-semibold">Ownership Layers (from backend)</h2>
+        </div>
+        <div class="p-4">
+          <div class="flex flex-wrap items-end gap-3">
+            <label class="block">
+              <span class="block text-xs uppercase tracking-wide text-gray-600 dark:text-gray-300">Root Entity ID</span>
+              <input id="rootId" value="E1" class="mt-1 w-28 rounded-md border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            </label>
+            <label class="block">
+              <span class="block text-xs uppercase tracking-wide text-gray-600 dark:text-gray-300">Depth</span>
+              <input id="depth" type="number" value="2" min="0" max="10" class="mt-1 w-20 rounded-md border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            </label>
+            <button id="loadLayers" class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500">Load Layers</button>
 
-  <div id="layersTree">Enter a root entity and click "Load Layers".</div>
+            <label class="block ml-0 sm:ml-3">
+              <span class="block text-xs uppercase tracking-wide text-gray-600 dark:text-gray-300">News Limit</span>
+              <input id="newsLimit" type="number" value="5" min="1" max="50" class="mt-1 w-20 rounded-md border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            </label>
+            <button id="loadNews" class="inline-flex items-center rounded-md bg-slate-700 px-3 py-2 text-sm font-medium text-white shadow hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-500">Load News</button>
+          </div>
+        </div>
+      </div>
+    </section>
 
-  <h2>Legal Representatives</h2>
-  <div id="repsList" class="muted">Load a company to see its legal representatives.</div>
+    <!-- Dashboard Grid -->
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- Layers Tree Card -->
+      <div class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm">
+        <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
+          <h3 class="text-base font-semibold">Ownership Layers</h3>
+        </div>
+        <div id="layersTree" class="p-4 text-sm text-gray-700 dark:text-gray-200">Enter a root entity and click "Load Layers".</div>
+      </div>
 
-  <h2>Company News</h2>
-  <div id="newsList" class="muted">Load a company to see recent news (stored + external).</div>
+      <!-- Representatives Card -->
+      <div class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm">
+        <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
+          <h3 class="text-base font-semibold">Legal Representatives</h3>
+        </div>
+        <div id="repsList" class="p-4 text-sm text-gray-500 dark:text-gray-400">Load a company to see its legal representatives.</div>
+      </div>
 
-  <h2>Equity Penetration (D3)</h2>
-  <div style="margin-bottom:10px">
-    <button id="loadPenetration">Load Equity Penetration Graph</button>
-  </div>
-  <div id="penetrationChart"></div>
-  <div id="legend" class="muted" style="margin-top:8px">
-    <strong>Legend:</strong> Node size/color = Equity Penetration (look-through %). Link width = stake %. Label shows stake and look-through via that edge.
-  </div>
+      <!-- News Card -->
+      <div class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm lg:col-span-2">
+        <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
+          <h3 class="text-base font-semibold">Company News</h3>
+        </div>
+        <div id="newsList" class="p-4 text-sm text-gray-500 dark:text-gray-400">Load a company to see recent news (stored + external).</div>
+      </div>
 
+      <!-- Penetration Card -->
+      <div class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm lg:col-span-2">
+        <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
+          <h3 class="text-base font-semibold">Equity Penetration (D3)</h3>
+          <button id="loadPenetration" class="inline-flex items-center rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500">Load Equity Penetration Graph</button>
+        </div>
+        <div class="p-4">
+          <div id="penetrationChart" class="w-full overflow-hidden rounded border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800"></div>
+          <div id="legend" class="mt-2 text-xs text-gray-600 dark:text-gray-300">
+            <strong>Legend:</strong> Node size/color = Equity Penetration (look-through %). Link width = stake %. Label shows stake and look-through via that edge.
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
 
   <script>
-    function text(str) { return document.createTextNode(str); }
+    // Theme toggle: toggles the 'dark' class on the root element
+    (function() {
+      const root = document.documentElement;
+      const key = 'oi_theme';
+      function applyTheme(val){
+        if (val === 'dark') root.classList.add('dark'); else root.classList.remove('dark');
+      }
+      try {
+        applyTheme(localStorage.getItem(key));
+      } catch {}
+      const btn = document.getElementById('themeToggle');
+      if (btn) btn.addEventListener('click', () => {
+        const next = root.classList.contains('dark') ? 'light' : 'dark';
+        applyTheme(next);
+        try { localStorage.setItem(key, next); } catch {}
+      });
+    })();
+  </script>
+
+  <script>
+  function text(str) { return document.createTextNode(str); }
 
     function renderTree(container, tree, rootId) {
       container.innerHTML = '';
