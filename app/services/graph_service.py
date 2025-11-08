@@ -507,3 +507,53 @@ def create_employment(
     )
     res = run_cypher(query, {"company": company_id, "person": person_id, "role": role})
     return res[0] if res else {}
+
+
+# --- List/Query helpers (Phase 6 additions) ---
+
+def get_accounts(owner_id: str) -> List[Dict[str, Any]]:
+    """Return all Account nodes linked from an owner via HAS_ACCOUNT.
+
+    If the owner has no accounts (or doesn't exist), returns an empty list.
+    """
+    query = (
+        "MATCH (o:Entity {id: $id})-[:HAS_ACCOUNT]->(a:Account) "
+        "RETURN a.account_number AS account_number, a.bank_name AS bank_name, a.balance AS balance "
+        "ORDER BY a.account_number"
+    )
+    rows = run_cypher(query, {"id": owner_id})
+    return rows or []
+
+
+def get_transactions(entity_id: str, direction: str = "out") -> List[Dict[str, Any]]:
+    """Return transactions related to an entity.
+
+    direction semantics:
+    - out: entity INITIATES the transaction (entity -> Transaction -> to)
+    - in:  entity is the TO target (from -> Transaction -> entity)
+    - both: either side (from.id = entity OR to.id = entity)
+
+    Each row includes from_id, to_id, amount, time, type, channel.
+    """
+    direction = (direction or "out").lower()
+    if direction == "in":
+        query = (
+            "MATCH (from:Entity)-[:INITIATES]->(t:Transaction)-[:TO]->(to:Entity {id: $id}) "
+            "RETURN from.id AS from_id, to.id AS to_id, t.amount AS amount, t.time AS time, t.type AS type, t.channel AS channel "
+            "ORDER BY coalesce(t.time, '') DESC"
+        )
+    elif direction == "both":
+        query = (
+            "MATCH (from:Entity)-[:INITIATES]->(t:Transaction)-[:TO]->(to:Entity) "
+            "WHERE from.id = $id OR to.id = $id "
+            "RETURN from.id AS from_id, to.id AS to_id, t.amount AS amount, t.time AS time, t.type AS type, t.channel AS channel "
+            "ORDER BY coalesce(t.time, '') DESC"
+        )
+    else:  # default 'out'
+        query = (
+            "MATCH (from:Entity {id: $id})-[:INITIATES]->(t:Transaction)-[:TO]->(to:Entity) "
+            "RETURN from.id AS from_id, to.id AS to_id, t.amount AS amount, t.time AS time, t.type AS type, t.channel AS channel "
+            "ORDER BY coalesce(t.time, '') DESC"
+        )
+    rows = run_cypher(query, {"id": entity_id})
+    return rows or []

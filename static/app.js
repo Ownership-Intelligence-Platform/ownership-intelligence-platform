@@ -5,6 +5,8 @@ import { loadNews } from "./modules/news.js";
 import { loadPenetration } from "./modules/penetration.js";
 import { populateMock, clearDb } from "./modules/db.js";
 import { initAdmin } from "./modules/admin.js";
+import { loadAccounts } from "./modules/accounts.js";
+import { loadTransactions } from "./modules/transactions.js";
 
 // Initialize theme toggle
 initThemeToggle();
@@ -20,6 +22,17 @@ document.getElementById("loadLayers")?.addEventListener("click", loadLayers);
 document
   .getElementById("loadPenetration")
   ?.addEventListener("click", loadPenetration);
+document.getElementById("loadAccounts")?.addEventListener("click", () => {
+  const id = document.getElementById("rootId").value.trim();
+  if (!id) return alert("Enter Root Entity ID first");
+  loadAccounts(id);
+});
+document.getElementById("loadTransactions")?.addEventListener("click", () => {
+  const id = document.getElementById("rootId").value.trim();
+  if (!id) return alert("Enter Root Entity ID first");
+  const direction = document.getElementById("txDirection").value.trim();
+  loadTransactions(id, direction);
+});
 document.getElementById("loadNews")?.addEventListener("click", () => {
   const id = document.getElementById("rootId").value.trim();
   if (!id) {
@@ -30,4 +43,12 @@ document.getElementById("loadNews")?.addEventListener("click", () => {
 });
 
 // Debug / manual access in browser console
-window.OI = { loadLayers, loadNews, loadPenetration, populateMock, clearDb };
+window.OI = {
+  loadLayers,
+  loadNews,
+  loadPenetration,
+  populateMock,
+  clearDb,
+  loadAccounts,
+  loadTransactions,
+};

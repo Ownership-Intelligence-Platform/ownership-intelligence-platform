@@ -36,6 +36,8 @@ from app.services.graph_service import (
     create_guarantee,
     create_supply_link,
     create_employment,
+    get_accounts,
+    get_transactions,
 )
 from app.services.news_service import get_company_news
 from app.services.import_service import (
@@ -390,6 +392,25 @@ def api_get_entity_news(entity_id: str, limit: int = 10):
         "stored_count": len(stored_items),
         "external_count": len(external_items),
     }
+
+
+@app.get("/entities/{entity_id}/accounts")
+def api_get_entity_accounts(entity_id: str):
+    """List accounts linked to an entity via HAS_ACCOUNT."""
+    # Best-effort: if entity doesn't exist, return empty list to keep UI simple
+    # but we can still check for existence to return 404 if you prefer strict behavior.
+    accounts = get_accounts(entity_id)
+    return {"entity": {"id": entity_id}, "count": len(accounts), "items": accounts}
+
+
+@app.get("/entities/{entity_id}/transactions")
+def api_get_entity_transactions(entity_id: str, direction: str = "out"):
+    """List transactions related to an entity.
+
+    direction: out | in | both
+    """
+    items = get_transactions(entity_id, direction=direction)
+    return {"entity": {"id": entity_id}, "count": len(items), "items": items}
 
 
 @app.post("/clear-db")

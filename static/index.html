@@ -98,6 +98,33 @@
         <div id="repsList" class="p-4 text-sm text-gray-500 dark:text-gray-400">Load a company to see its legal representatives.</div>
       </div>
 
+      <!-- Accounts Card -->
+      <div class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm">
+        <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
+          <h3 class="text-base font-semibold">Accounts</h3>
+          <button id="loadAccounts" class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white shadow hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500">Load Accounts</button>
+        </div>
+        <div id="accountsList" class="p-4 text-sm text-gray-500 dark:text-gray-400">Click "Load Accounts" to list accounts for Root Entity ID.</div>
+      </div>
+
+      <!-- Transactions Card -->
+      <div class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm">
+        <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
+          <h3 class="text-base font-semibold">Transactions</h3>
+          <div class="flex items-center gap-2">
+            <label class="text-xs text-gray-600 dark:text-gray-300">Direction
+              <select id="txDirection" class="ml-1 rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm px-2 py-1">
+                <option value="out" selected>out</option>
+                <option value="in">in</option>
+                <option value="both">both</option>
+              </select>
+            </label>
+            <button id="loadTransactions" class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white shadow hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500">Load Transactions</button>
+          </div>
+        </div>
+        <div id="transactionsList" class="p-4 text-sm text-gray-500 dark:text-gray-400">Choose direction and click "Load Transactions" for Root Entity ID.</div>
+      </div>
+
       <!-- News Card -->
       <div class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm lg:col-span-2">
         <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
