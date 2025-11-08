@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from contextlib import asynccontextmanager
 from app.models.ownership import EntityCreate, OwnershipCreate, LayerResponse
 from app.services.graph_service import create_entity, create_ownership, get_layers, get_equity_penetration, clear_database
+from app.services.import_service import import_graph_from_csv
 from app.db.neo4j_connector import close_driver
 
 
@@ -66,32 +67,26 @@ def api_get_layers(entity_id: str, depth: int = 2):
 
 @app.post("/populate-mock", status_code=201)
 def api_populate_mock():
-    """Populate the database with example entities/ownerships using graph_service.
+    """Populate the database with entities/ownerships from CSV files.
 
-    This endpoint will attempt to create three entities and two ownership relations
-    using the existing service functions. It requires Neo4j to be running and
-    configured via environment variables or defaults.
+    Reads two CSVs (entities and ownerships) and uses the graph service to write into Neo4j.
+    Paths can be provided via environment variables ENTITIES_CSV_PATH and OWNERSHIPS_CSV_PATH.
+    If not set, defaults to "data/entities.csv" and "data/ownerships.csv" at the project root.
     """
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.abspath(os.path.join(base_dir, ".."))
+    entities_csv = os.getenv("ENTITIES_CSV_PATH", os.path.join("data", "entities.csv"))
+    ownerships_csv = os.getenv("OWNERSHIPS_CSV_PATH", os.path.join("data", "ownerships.csv"))
+
     try:
-        # create sample entities (richer graph)
-        create_entity("E1", "Alpha", "Company")
-        create_entity("E2", "Beta", "Company")
-        create_entity("E3", "Gamma", "Holding")
-        create_entity("E4", "Delta", "Subsidiary")
-        create_entity("E5", "Epsilon", "SPV")
-        create_entity("E6", "Zeta", "JV")
-
-        # create sample ownerships
-        create_ownership("E1", "E2", 60.0)
-        create_ownership("E1", "E3", 20.0)
-        create_ownership("E2", "E4", 50.0)
-        create_ownership("E3", "E4", 30.0)  # multiple paths to E4
-        create_ownership("E2", "E5", 100.0)
-        create_ownership("E5", "E6", 25.0)
+        summary = import_graph_from_csv(entities_csv, ownerships_csv, project_root=project_root)
+        return {"status": "ok", "message": "CSV data imported (writes to Neo4j).", **summary}
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Failed to populate mock data: {exc}")
-
-    return {"status": "ok", "message": "Mock data populated (writes to Neo4j)."}
+        raise HTTPException(status_code=500, detail=f"Failed to import CSV data: {exc}")
 
 
 @app.get("/penetration/{entity_id}")

@@ -11,7 +11,9 @@ What I added:
   - `app/db/neo4j_connector.py` - small Neo4j helper using environment variables
   - `app/models/ownership.py` - Pydantic models
   - `app/services/graph_service.py` - graph operations (create entity, create ownership, get layers)
+    - `app/services/import_service.py` - CSV import of entities and ownerships
 - `tests/test_models.py` - minimal pytest tests for models
+  - `tests/test_import.py` - unit test for CSV import service
 
 Quickstart (development)
 
@@ -54,6 +56,23 @@ Invoke-RestMethod -Uri http://127.0.0.1:8000/clear-db -Method POST
 ```
 
 Or click the "Clear Imported Data (DB)" button in the web UI (served at `/`). This will delete ALL nodes and relationships (via `MATCH (n) DETACH DELETE n`). Use only in development.
+
+CSV import (populate mock data)
+
+- Endpoint: `POST /populate-mock`
+- By default it loads from `data/entities.csv` and `data/ownerships.csv` at the project root.
+- You can override paths with environment variables:
+
+```powershell
+$env:ENTITIES_CSV_PATH = "data/entities.csv"; $env:OWNERSHIPS_CSV_PATH = "data/ownerships.csv"
+```
+
+CSV formats:
+
+- entities.csv: `id,name,type`
+- ownerships.csv: `owner_id,owned_id,stake` (stake is percentage 0-100)
+
+The import returns a summary with counts of processed rows and unique items imported. It will also auto-create missing entities referenced by ownerships.
 
 Next steps and suggestions
 

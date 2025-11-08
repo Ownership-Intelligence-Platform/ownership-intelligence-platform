@@ -1,0 +1,7 @@
+owner_id,owned_id,stake
+E1,E2,60
+E1,E3,20
+E2,E4,50
+E3,E4,30
+E2,E5,100
+E5,E6,25
