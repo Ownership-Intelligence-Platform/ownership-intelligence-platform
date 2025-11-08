@@ -1,3 +1,12 @@
 owner_id,account_number,bank_name,balance
+P1,ACC-P1-001,Beijing Bank,250000
+P2,ACC-P2-001,Shanghai Bank,180000
+P3,ACC-P3-001,Shenzhen Bank,120000
+C1,ACC-C1-OPS,Industrial & Comm Bank,950000
+C2,ACC-C2-PAY,Merchants Bank,430000
+C3,ACC-C3-PAY,Merchants Bank,210000
+C4,ACC-C4-TRADE,Export Bank,150000
+C5,ACC-C5-RAW,Supply Chain Bank,90000
+owner_id,account_number,bank_name,balance
 C1,ACC-1001,BankAlpha,150000.50
 P1,ACC-2001,BankBeta,12000.00

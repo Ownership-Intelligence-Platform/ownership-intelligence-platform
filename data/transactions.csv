@@ -1,3 +1,13 @@
 from_id,to_id,amount,time,tx_type,channel
+P1,C1,2000000,2025-05-15T10:30:00Z,Capital Injection,Bank Transfer
+C1,C2,1500000,2025-06-01T09:00:00Z,Intercompany Loan,Internal Transfer
+C1,C3,500000,2025-06-10T12:00:00Z,Trade Advance,Bank Transfer
+C2,C4,800000,2025-06-15T14:20:00Z,Payment for Goods,Bank Transfer
+C3,C5,300000,2025-06-20T16:45:00Z,Supplier Payment,Bank Transfer
+C4,C5,200000,2025-06-22T11:00:00Z,Settlement,Internal Transfer
+C2,C5,100000,2025-07-01T09:30:00Z,Deposit,Bank Transfer
+C1,P2,120000,2025-07-05T08:15:00Z,Dividend,Cash
+C1,P1,300000,2025-07-10T08:15:00Z,Dividend,Bank Transfer
+from_id,to_id,amount,time,tx_type,channel
 C1,C2,25000,2024-11-01T12:00:00Z,transfer,wire
 C2,C1,10000,2024-11-02T09:00:00Z,payment,card

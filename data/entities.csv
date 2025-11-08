@@ -1,4 +1,13 @@
 id,name,type
+P1,Li Wei,Person
+P2,Wang Fang,Person
+P3,Zhang Min,Person
+C1,Acme Holdings Ltd,Company
+C2,Acme Manufacturing Co,Company
+C3,Beta Components Ltd,Company
+C4,Gamma Trading LLC,Company
+C5,Delta Materials Co,Company
+id,name,type
 E1,Alpha,Company
 E2,Beta,Company
 E3,Gamma,Holding

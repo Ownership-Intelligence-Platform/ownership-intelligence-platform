@@ -1,3 +1,12 @@
 entity_id,registered,operating,offshore
 C1,Beijing,Shanghai,Cayman Islands
+C2,Shanghai,Guangzhou,
+C3,Shenzhen,Shenzhen,Singapore
+C4,Guangzhou,Guangzhou,
+C5,Qingdao,Qingdao,Hong Kong
+P1,Beijing,Beijing,
+P2,Shanghai,Shanghai,
+P3,Shenzhen,Shenzhen,
+entity_id,registered,operating,offshore
+C1,Beijing,Shanghai,Cayman Islands
 C2,Shenzhen,Guangzhou,

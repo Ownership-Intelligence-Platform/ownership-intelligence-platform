@@ -1,3 +1,6 @@
 company_id,person_id,role
+C1,P3,Legal Representative
+C2,P2,Legal Representative
+company_id,person_id,role
 E1,P1,Corporate Legal Representative
 E2,P2,Corporate Legal Representative
