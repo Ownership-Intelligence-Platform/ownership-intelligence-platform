@@ -47,6 +47,14 @@ uvicorn app.main:app --reload
   { "owner_id": "E1", "owned_id": "E2", "stake": 51 }
 - Get layers: GET /layers/E1?depth=2
 
+5. Reset (clear) the database quickly for re-import cycles:
+
+```powershell
+Invoke-RestMethod -Uri http://127.0.0.1:8000/clear-db -Method POST
+```
+
+Or click the "Clear Imported Data (DB)" button in the web UI (served at `/`). This will delete ALL nodes and relationships (via `MATCH (n) DETACH DELETE n`). Use only in development.
+
 Next steps and suggestions
 
 - Add more validation and uniqueness rules.

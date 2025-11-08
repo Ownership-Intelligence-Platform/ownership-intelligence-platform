@@ -5,7 +5,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
 from app.models.ownership import EntityCreate, OwnershipCreate, LayerResponse
-from app.services.graph_service import create_entity, create_ownership, get_layers, get_equity_penetration
+from app.services.graph_service import create_entity, create_ownership, get_layers, get_equity_penetration, clear_database
 from app.db.neo4j_connector import close_driver
 
 
@@ -116,3 +116,16 @@ def api_get_penetration(entity_id: str, depth: int = 3):
     if not res:
         raise HTTPException(status_code=404, detail="Entity not found")
     return res
+
+
+@app.post("/clear-db")
+def api_clear_db():
+    """Clear all nodes and relationships from the Neo4j database.
+
+    Intended for quick re-import cycles during development.
+    """
+    try:
+        stats = clear_database()
+        return {"status": "ok", **stats}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to clear database: {exc}")

@@ -19,6 +19,7 @@
   <div>
     <button id="refresh">Refresh Mock Data</button>
     <button id="populate">Populate DB with Mock Data</button>
+    <button id="clearDb" style="color:#a00">Clear Imported Data (DB)</button>
     <span id="status"></span>
   </div>
 
@@ -183,6 +184,24 @@
       setTimeout(()=>document.getElementById('status').textContent='', 3000);
     }
 
+    async function clearDb() {
+      if (!confirm('This will delete ALL nodes and relationships in Neo4j. Continue?')) return;
+      const statusEl = document.getElementById('status');
+      statusEl.textContent = 'Clearing database…';
+      try {
+        const res = await fetch('/clear-db', { method: 'POST' });
+        const data = await res.json().catch(()=>({ message: res.statusText }));
+        statusEl.textContent = typeof data === 'object' ? JSON.stringify(data) : String(data);
+        // Clear UI sections
+        document.getElementById('layersTree').textContent = 'Database cleared. Re-populate to view layers.';
+        document.getElementById('penetrationChart').textContent = '';
+      } catch (e) {
+        statusEl.textContent = `Failed to clear: ${e}`;
+      } finally {
+        setTimeout(()=>statusEl.textContent='', 3000);
+      }
+    }
+
     async function loadPenetration() {
       const rootId = document.getElementById('rootId').value.trim();
       const depth = Number(document.getElementById('depth').value || 3);
@@ -279,6 +298,7 @@
 
     document.getElementById('refresh').addEventListener('click', loadMock);
     document.getElementById('populate').addEventListener('click', populateMock);
+    document.getElementById('clearDb').addEventListener('click', clearDb);
     document.getElementById('loadLayers').addEventListener('click', loadLayers);
     document.getElementById('loadPenetration').addEventListener('click', loadPenetration);
     loadMock();
