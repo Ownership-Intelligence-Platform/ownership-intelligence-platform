@@ -7,6 +7,7 @@ from app.services.graph_service import create_entity, create_ownership
 
 RequiredEntityHeaders = {"id", "name", "type"}
 RequiredOwnershipHeaders = {"owner_id", "owned_id", "stake"}
+RequiredNewsHeaders = {"entity_id", "title", "url", "source", "published_at", "summary"}
 
 
 def _resolve_path(path: str, project_root: str) -> str:
@@ -169,6 +170,63 @@ def import_legal_reps_from_csv(
 
     return {
         "legal_representatives": {
+            "processed_rows": processed,
+            "unique_imported": unique,
+        }
+    }
+
+
+def import_news_from_csv(
+    news_csv: str,
+    *,
+    project_root: str,
+    create_news_fn: Callable[[str, Optional[str], Optional[str], Optional[str], Optional[str], Optional[str]], Dict] = None,
+    ensure_entity_fn: Callable[[str, Optional[str], Optional[str]], Dict] = create_entity,
+) -> Dict:
+    """Import news items from a CSV file.
+
+    Expected headers: entity_id,title,url,source,published_at,summary
+    Each row creates/merges a News node and links (Entity)-[:HAS_NEWS]->(News).
+    """
+    if create_news_fn is None:
+        from app.services.graph_service import create_news_item as _cni
+        create_news_fn = _cni
+
+    pr = os.path.abspath(project_root)
+    path = _resolve_path(news_csv, pr)
+    if not os.path.isfile(path):
+        raise FileNotFoundError(f"News CSV not found: {path}")
+
+    processed = 0
+    unique = 0
+    seen: Set[Tuple[str, Optional[str]]] = set()  # (entity_id, url) dedupe
+    with open(path, newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        headers = {h.strip() for h in (reader.fieldnames or [])}
+        if not RequiredNewsHeaders.issubset(headers):
+            missing = RequiredNewsHeaders - headers
+            raise ValueError(f"News CSV missing required columns: {', '.join(sorted(missing))}")
+        for row in reader:
+            processed += 1
+            entity_id = (row.get("entity_id") or "").strip()
+            if not entity_id:
+                continue
+            title = (row.get("title") or "").strip() or None
+            url = (row.get("url") or "").strip() or None
+            source = (row.get("source") or "").strip() or None
+            published_at = (row.get("published_at") or "").strip() or None
+            summary = (row.get("summary") or "").strip() or None
+            key = (entity_id, url or title)
+            if key in seen:
+                continue
+            seen.add(key)
+            # Ensure entity exists
+            ensure_entity_fn(entity_id, None, None)
+            create_news_fn(entity_id, title, url, source, published_at, summary)
+            unique += 1
+
+    return {
+        "news": {
             "processed_rows": processed,
             "unique_imported": unique,
         }

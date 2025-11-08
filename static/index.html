@@ -46,7 +46,7 @@
   <div id="repsList" class="muted">Load a company to see its legal representatives.</div>
 
   <h2>Company News</h2>
-  <div id="newsList" class="muted">Load a company to see recent news.</div>
+  <div id="newsList" class="muted">Load a company to see recent news (stored + external).</div>
 
   <h2>Equity Penetration (D3)</h2>
   <div style="margin-bottom:10px">
@@ -222,7 +222,13 @@
           el.textContent = 'No recent news found.';
           return;
         }
+        // Show counts breakdown
+        const metaLine = document.createElement('div');
+        metaLine.className = 'muted';
+        metaLine.style.marginBottom = '4px';
+        metaLine.textContent = `Showing ${items.length} (stored: ${data.stored_count || 0}, external: ${data.external_count || 0})`;
         const frag = document.createDocumentFragment();
+        frag.appendChild(metaLine);
         const ul = document.createElement('ul');
         items.forEach(n => {
           const li = document.createElement('li');
@@ -248,6 +254,17 @@
             d.style.marginTop = '2px';
             d.textContent = n.summary;
             li.appendChild(d);
+          }
+          if (n.stored) {
+            const badge = document.createElement('span');
+            badge.textContent = ' stored';
+            badge.style.background = '#ffd54f';
+            badge.style.color = '#553';
+            badge.style.fontSize = '0.7rem';
+            badge.style.padding = '2px 4px';
+            badge.style.borderRadius = '4px';
+            badge.style.marginLeft = '6px';
+            li.appendChild(badge);
           }
           ul.appendChild(li);
         });

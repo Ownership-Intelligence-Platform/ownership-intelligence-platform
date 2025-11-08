@@ -81,6 +81,7 @@ CSV formats:
 - entities.csv: `id,name,type`
 - ownerships.csv: `owner_id,owned_id,stake` (stake is percentage 0-100)
 - legal_reps.csv (optional): `company_id,person_id,role`
+- news.csv (optional): `entity_id,title,url,source,published_at,summary`
 
 The import returns a summary with counts of processed rows and unique items imported. It will also auto-create missing entities referenced by ownerships.
 
@@ -91,6 +92,8 @@ Legal representatives
 - List for a company: `GET /representatives/{company_id}`
 
 You can bulk-load legal reps during `POST /populate-mock` by providing a CSV at `data/legal_reps.csv` or setting `$env:LEGAL_REPS_CSV_PATH` to a custom path. If the file is not present, the import silently skips this step.
+
+You can also bulk-load stored news items with `data/news.csv` or by setting `$env:NEWS_CSV_PATH` to a custom file. Each row creates a `News` node and links it to the entity via `HAS_NEWS`. The `/entities/{id}/news` endpoint merges stored items with external fetched news (deduped by URL or title) and returns a combined list.
 
 Company news endpoint
 
