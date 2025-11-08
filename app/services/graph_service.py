@@ -3,9 +3,16 @@ from app.db.neo4j_connector import run_cypher
 
 
 def create_entity(entity_id: str, name: str = None, type_: str = None) -> Dict[str, Any]:
+    """Create or update an Entity node without clobbering existing properties with nulls.
+
+    Behavior:
+    - If the node doesn't exist, it will be created; provided non-null name/type are set.
+    - If the node exists, only overwrite properties when non-null values are provided.
+    """
     query = (
         "MERGE (e:Entity {id: $id}) "
-        "SET e.name = $name, e.type = $type "
+        "SET e.name = coalesce($name, e.name), "
+        "    e.type = coalesce($type, e.type) "
         "RETURN e.id AS id, e.name AS name, e.type AS type"
     )
     res = run_cypher(query, {"id": entity_id, "name": name, "type": type_})
