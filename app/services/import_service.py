@@ -9,6 +9,14 @@ RequiredEntityHeaders = {"id", "name", "type"}
 RequiredOwnershipHeaders = {"owner_id", "owned_id", "stake"}
 RequiredNewsHeaders = {"entity_id", "title", "url", "source", "published_at", "summary"}
 
+# Phase 2: new required headers for extended imports
+RequiredAccountsHeaders = {"owner_id", "account_number", "bank_name", "balance"}
+RequiredLocationsHeaders = {"entity_id", "registered", "operating", "offshore"}
+RequiredTransactionsHeaders = {"from_id", "to_id", "amount", "time", "tx_type", "channel"}
+RequiredGuaranteesHeaders = {"guarantor_id", "guaranteed_id", "amount"}
+RequiredSupplyChainHeaders = {"supplier_id", "customer_id", "frequency"}
+RequiredEmploymentHeaders = {"company_id", "person_id", "role"}
+
 
 def _resolve_path(path: str, project_root: str) -> str:
     """Resolve a possibly relative path against the project root.
@@ -231,3 +239,279 @@ def import_news_from_csv(
             "unique_imported": unique,
         }
     }
+
+
+# --- Extended imports (Phase 2) ---
+
+def import_accounts_from_csv(
+    accounts_csv: str,
+    *,
+    project_root: str,
+    create_account_fn: Callable[[str, str, str, float], Dict],
+    ensure_entity_fn: Callable[[str, Optional[str], Optional[str]], Dict] = create_entity,
+) -> Dict:
+    """Import accounts and link to owners via HAS_ACCOUNT.
+
+    Expected headers: owner_id,account_number,bank_name,balance
+    """
+    pr = os.path.abspath(project_root)
+    path = _resolve_path(accounts_csv, pr)
+    if not os.path.isfile(path):
+        raise FileNotFoundError(f"Accounts CSV not found: {path}")
+
+    processed = 0
+    unique = 0
+    seen: Set[Tuple[str, str]] = set()  # (owner_id, account_number)
+    with open(path, newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        headers = {h.strip() for h in (reader.fieldnames or [])}
+        if not RequiredAccountsHeaders.issubset(headers):
+            missing = RequiredAccountsHeaders - headers
+            raise ValueError(f"Accounts CSV missing required columns: {', '.join(sorted(missing))}")
+        for row in reader:
+            processed += 1
+            owner_id = (row.get("owner_id") or "").strip()
+            acc_no = (row.get("account_number") or "").strip()
+            bank = (row.get("bank_name") or "").strip() or None
+            bal_str = (row.get("balance") or "").strip()
+            if not owner_id or not acc_no:
+                continue
+            try:
+                bal = float(bal_str) if bal_str != "" else None
+            except ValueError as exc:
+                raise ValueError(f"Invalid balance for account {acc_no}: {bal_str}") from exc
+
+            key = (owner_id, acc_no)
+            if key in seen:
+                continue
+            seen.add(key)
+            ensure_entity_fn(owner_id, None, None)
+            create_account_fn(owner_id, acc_no, bank, bal)
+            unique += 1
+
+    return {"accounts": {"processed_rows": processed, "unique_imported": unique}}
+
+
+def import_locations_from_csv(
+    locations_csv: str,
+    *,
+    project_root: str,
+    create_location_links_fn: Callable[[str, Optional[str], Optional[str], Optional[str]], Dict],
+    ensure_entity_fn: Callable[[str, Optional[str], Optional[str]], Dict] = create_entity,
+) -> Dict:
+    """Import location links for entities.
+
+    Expected headers: entity_id,registered,operating,offshore
+    """
+    pr = os.path.abspath(project_root)
+    path = _resolve_path(locations_csv, pr)
+    if not os.path.isfile(path):
+        raise FileNotFoundError(f"Locations CSV not found: {path}")
+
+    processed = 0
+    updated = 0
+    with open(path, newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        headers = {h.strip() for h in (reader.fieldnames or [])}
+        if not RequiredLocationsHeaders.issubset(headers):
+            missing = RequiredLocationsHeaders - headers
+            raise ValueError(f"Locations CSV missing required columns: {', '.join(sorted(missing))}")
+        for row in reader:
+            processed += 1
+            eid = (row.get("entity_id") or "").strip()
+            if not eid:
+                continue
+            registered = (row.get("registered") or "").strip() or None
+            operating = (row.get("operating") or "").strip() or None
+            offshore = (row.get("offshore") or "").strip() or None
+            ensure_entity_fn(eid, None, None)
+            create_location_links_fn(eid, registered, operating, offshore)
+            updated += 1
+
+    return {"locations": {"processed_rows": processed, "updated": updated}}
+
+
+def import_transactions_from_csv(
+    transactions_csv: str,
+    *,
+    project_root: str,
+    create_transaction_fn: Callable[[str, str, float, Optional[str], Optional[str], Optional[str]], Dict],
+    ensure_entity_fn: Callable[[str, Optional[str], Optional[str]], Dict] = create_entity,
+) -> Dict:
+    """Import transactions as nodes between two entities.
+
+    Expected headers: from_id,to_id,amount,time,tx_type,channel
+    """
+    pr = os.path.abspath(project_root)
+    path = _resolve_path(transactions_csv, pr)
+    if not os.path.isfile(path):
+        raise FileNotFoundError(f"Transactions CSV not found: {path}")
+
+    processed = 0
+    created = 0
+    with open(path, newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        headers = {h.strip() for h in (reader.fieldnames or [])}
+        if not RequiredTransactionsHeaders.issubset(headers):
+            missing = RequiredTransactionsHeaders - headers
+            raise ValueError(f"Transactions CSV missing required columns: {', '.join(sorted(missing))}")
+        for row in reader:
+            processed += 1
+            from_id = (row.get("from_id") or "").strip()
+            to_id = (row.get("to_id") or "").strip()
+            amt_str = (row.get("amount") or "").strip()
+            time = (row.get("time") or "").strip() or None
+            tx_type = (row.get("tx_type") or "").strip() or None
+            channel = (row.get("channel") or "").strip() or None
+            if not from_id or not to_id or amt_str == "":
+                continue
+            try:
+                amount = float(amt_str)
+            except ValueError as exc:
+                raise ValueError(f"Invalid amount for {from_id}->{to_id}: {amt_str}") from exc
+            ensure_entity_fn(from_id, None, None)
+            ensure_entity_fn(to_id, None, None)
+            create_transaction_fn(from_id, to_id, amount, time, tx_type, channel)
+            created += 1
+
+    return {"transactions": {"processed_rows": processed, "created": created}}
+
+
+def import_guarantees_from_csv(
+    guarantees_csv: str,
+    *,
+    project_root: str,
+    create_guarantee_fn: Callable[[str, str, float], Dict],
+    ensure_entity_fn: Callable[[str, Optional[str], Optional[str]], Dict] = create_entity,
+) -> Dict:
+    """Import guarantee relationships.
+
+    Expected headers: guarantor_id,guaranteed_id,amount
+    """
+    pr = os.path.abspath(project_root)
+    path = _resolve_path(guarantees_csv, pr)
+    if not os.path.isfile(path):
+        raise FileNotFoundError(f"Guarantees CSV not found: {path}")
+
+    processed = 0
+    unique = 0
+    seen: Set[Tuple[str, str, float]] = set()
+    with open(path, newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        headers = {h.strip() for h in (reader.fieldnames or [])}
+        if not RequiredGuaranteesHeaders.issubset(headers):
+            missing = RequiredGuaranteesHeaders - headers
+            raise ValueError(f"Guarantees CSV missing required columns: {', '.join(sorted(missing))}")
+        for row in reader:
+            processed += 1
+            guarantor = (row.get("guarantor_id") or "").strip()
+            guaranteed = (row.get("guaranteed_id") or "").strip()
+            amt_str = (row.get("amount") or "").strip()
+            if not guarantor or not guaranteed or amt_str == "":
+                continue
+            try:
+                amount = float(amt_str)
+            except ValueError as exc:
+                raise ValueError(f"Invalid guarantee amount {amt_str}") from exc
+            key = (guarantor, guaranteed, amount)
+            if key in seen:
+                continue
+            seen.add(key)
+            ensure_entity_fn(guarantor, None, None)
+            ensure_entity_fn(guaranteed, None, None)
+            create_guarantee_fn(guarantor, guaranteed, amount)
+            unique += 1
+
+    return {"guarantees": {"processed_rows": processed, "unique_imported": unique}}
+
+
+def import_supply_chain_from_csv(
+    supply_csv: str,
+    *,
+    project_root: str,
+    create_supply_link_fn: Callable[[str, str, Optional[int]], Dict],
+    ensure_entity_fn: Callable[[str, Optional[str], Optional[str]], Dict] = create_entity,
+) -> Dict:
+    """Import supply chain relationships from supplier to customer.
+
+    Expected headers: supplier_id,customer_id,frequency
+    """
+    pr = os.path.abspath(project_root)
+    path = _resolve_path(supply_csv, pr)
+    if not os.path.isfile(path):
+        raise FileNotFoundError(f"Supply chain CSV not found: {path}")
+
+    processed = 0
+    unique = 0
+    seen: Set[Tuple[str, str, Optional[int]]] = set()
+    with open(path, newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        headers = {h.strip() for h in (reader.fieldnames or [])}
+        if not RequiredSupplyChainHeaders.issubset(headers):
+            missing = RequiredSupplyChainHeaders - headers
+            raise ValueError(f"Supply chain CSV missing required columns: {', '.join(sorted(missing))}")
+        for row in reader:
+            processed += 1
+            supplier = (row.get("supplier_id") or "").strip()
+            customer = (row.get("customer_id") or "").strip()
+            freq_str = (row.get("frequency") or "").strip()
+            if not supplier or not customer:
+                continue
+            try:
+                frequency = int(freq_str) if freq_str != "" else None
+            except ValueError as exc:
+                raise ValueError(f"Invalid frequency value: {freq_str}") from exc
+            key = (supplier, customer, frequency)
+            if key in seen:
+                continue
+            seen.add(key)
+            ensure_entity_fn(supplier, None, None)
+            ensure_entity_fn(customer, None, None)
+            create_supply_link_fn(supplier, customer, frequency)
+            unique += 1
+
+    return {"supply_chain": {"processed_rows": processed, "unique_imported": unique}}
+
+
+def import_employment_from_csv(
+    employment_csv: str,
+    *,
+    project_root: str,
+    create_employment_fn: Callable[[str, str, Optional[str]], Dict],
+    ensure_entity_fn: Callable[[str, Optional[str], Optional[str]], Dict] = create_entity,
+) -> Dict:
+    """Import general employment/position relations (person -> company).
+
+    Expected headers: company_id,person_id,role
+    """
+    pr = os.path.abspath(project_root)
+    path = _resolve_path(employment_csv, pr)
+    if not os.path.isfile(path):
+        raise FileNotFoundError(f"Employment CSV not found: {path}")
+
+    processed = 0
+    unique = 0
+    seen: Set[Tuple[str, str, Optional[str]]] = set()
+    with open(path, newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        headers = {h.strip() for h in (reader.fieldnames or [])}
+        if not RequiredEmploymentHeaders.issubset(headers):
+            missing = RequiredEmploymentHeaders - headers
+            raise ValueError(f"Employment CSV missing required columns: {', '.join(sorted(missing))}")
+        for row in reader:
+            processed += 1
+            company_id = (row.get("company_id") or "").strip()
+            person_id = (row.get("person_id") or "").strip()
+            role = (row.get("role") or "").strip() or None
+            if not company_id or not person_id:
+                continue
+            key = (company_id, person_id, role)
+            if key in seen:
+                continue
+            seen.add(key)
+            ensure_entity_fn(company_id, None, None)
+            ensure_entity_fn(person_id, None, None)
+            create_employment_fn(company_id, person_id, role)
+            unique += 1
+
+    return {"employment": {"processed_rows": processed, "unique_imported": unique}}

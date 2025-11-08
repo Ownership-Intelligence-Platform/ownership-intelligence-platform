@@ -445,6 +445,8 @@ export function renderPenetrationGraph(graph, root) {
 export async function loadPenetration() {
   const rootId = document.getElementById("rootId").value.trim();
   const depth = Number(document.getElementById("depth").value || 3);
+  const includePaths = !!document.getElementById("includePaths")?.checked;
+  const maxPaths = Number(document.getElementById("maxPaths")?.value || 3);
   if (!rootId) {
     alert("Please enter a root entity id");
     return;
@@ -453,7 +455,11 @@ export async function loadPenetration() {
   statusEl.textContent = "Loading penetration…";
   try {
     const [penRes, layersRes] = await Promise.all([
-      fetch(`/penetration/${encodeURIComponent(rootId)}?depth=${depth}`),
+      fetch(
+        `/penetration/${encodeURIComponent(
+          rootId
+        )}?depth=${depth}&include_paths=${includePaths}&max_paths=${maxPaths}`
+      ),
       fetch(`/layers/${encodeURIComponent(rootId)}?depth=${depth}`),
     ]);
     if (!penRes.ok) {

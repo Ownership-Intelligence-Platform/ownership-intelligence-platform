@@ -4,19 +4,50 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
-from app.models.ownership import EntityCreate, OwnershipCreate, LayerResponse, RepresentativeCreate
+from app.models.ownership import (
+    EntityCreate,
+    OwnershipCreate,
+    LayerResponse,
+    RepresentativeCreate,
+    PersonCreate,
+    CompanyCreate,
+    AccountCreate,
+    LocationCreate,
+    TransactionCreate,
+    GuaranteeCreate,
+    SupplyLinkCreate,
+    EmploymentCreate,
+)
 from app.services.graph_service import (
     create_entity,
     create_ownership,
     get_layers,
     get_equity_penetration,
+    get_equity_penetration_with_paths,
     clear_database,
     create_legal_rep,
     get_representatives,
     get_entity,
+    create_person,
+    create_company,
+    create_account,
+    create_location_links,
+    create_transaction,
+    create_guarantee,
+    create_supply_link,
+    create_employment,
 )
 from app.services.news_service import get_company_news
-from app.services.import_service import import_graph_from_csv, import_news_from_csv
+from app.services.import_service import (
+    import_graph_from_csv,
+    import_news_from_csv,
+    import_accounts_from_csv,
+    import_locations_from_csv,
+    import_transactions_from_csv,
+    import_guarantees_from_csv,
+    import_supply_chain_from_csv,
+    import_employment_from_csv,
+)
 from app.db.neo4j_connector import close_driver
 
 
@@ -60,6 +91,102 @@ def api_create_ownership(payload: OwnershipCreate):
     res = create_ownership(payload.owner_id, payload.owned_id, payload.stake)
     if not res:
         raise HTTPException(status_code=500, detail="Failed to create ownership")
+    return res
+
+
+# --- Phase 3: extended endpoints ---
+
+@app.post("/persons", status_code=201)
+def api_create_person(payload: PersonCreate):
+    res = create_person(
+        payload.id,
+        payload.name,
+        payload.type,
+        payload.basic_info,
+        payload.id_info,
+        payload.job_info,
+    )
+    if not res:
+        raise HTTPException(status_code=500, detail="Failed to create person")
+    return res
+
+
+@app.post("/companies", status_code=201)
+def api_create_company(payload: CompanyCreate):
+    res = create_company(
+        payload.id,
+        payload.name,
+        payload.type,
+        payload.business_info,
+        payload.status,
+        payload.industry,
+    )
+    if not res:
+        raise HTTPException(status_code=500, detail="Failed to create company")
+    return res
+
+
+@app.post("/accounts", status_code=201)
+def api_create_account(payload: AccountCreate):
+    # Ensure the owner node exists
+    create_entity(payload.owner_id)
+    res = create_account(payload.owner_id, payload.account_number, payload.bank_name, payload.balance)
+    if not res:
+        raise HTTPException(status_code=500, detail="Failed to create account")
+    return res
+
+
+@app.post("/locations", status_code=201)
+def api_create_locations(payload: LocationCreate):
+    # Ensure the entity node exists
+    create_entity(payload.entity_id)
+    res = create_location_links(payload.entity_id, payload.registered, payload.operating, payload.offshore)
+    if not res:
+        raise HTTPException(status_code=500, detail="Failed to link locations")
+    return res
+
+
+@app.post("/transactions", status_code=201)
+def api_create_transaction(payload: TransactionCreate):
+    # Ensure both nodes exist
+    create_entity(payload.from_id)
+    create_entity(payload.to_id)
+    res = create_transaction(payload.from_id, payload.to_id, payload.amount, payload.time, payload.tx_type, payload.channel)
+    if not res:
+        raise HTTPException(status_code=500, detail="Failed to create transaction")
+    return res
+
+
+@app.post("/guarantees", status_code=201)
+def api_create_guarantee(payload: GuaranteeCreate):
+    # Ensure both nodes exist
+    create_entity(payload.guarantor_id)
+    create_entity(payload.guaranteed_id)
+    res = create_guarantee(payload.guarantor_id, payload.guaranteed_id, payload.amount)
+    if not res:
+        raise HTTPException(status_code=500, detail="Failed to create guarantee")
+    return res
+
+
+@app.post("/supply-links", status_code=201)
+def api_create_supply_link(payload: SupplyLinkCreate):
+    # Ensure both nodes exist
+    create_entity(payload.supplier_id)
+    create_entity(payload.customer_id)
+    res = create_supply_link(payload.supplier_id, payload.customer_id, payload.frequency)
+    if not res:
+        raise HTTPException(status_code=500, detail="Failed to create supply link")
+    return res
+
+
+@app.post("/employment", status_code=201)
+def api_create_employment(payload: EmploymentCreate):
+    # Ensure both nodes exist
+    create_entity(payload.company_id)
+    create_entity(payload.person_id)
+    res = create_employment(payload.company_id, payload.person_id, payload.role)
+    if not res:
+        raise HTTPException(status_code=500, detail="Failed to create employment relation")
     return res
 
 
@@ -107,6 +234,86 @@ def api_populate_mock():
             summary.update(news_summary)
         except FileNotFoundError:
             pass
+
+        # Phase 2 optional imports (skip silently if files not present)
+        try:
+            from app.services.graph_service import (
+                create_account,
+                create_location_links,
+                create_transaction,
+                create_guarantee,
+                create_supply_link,
+                create_employment,
+            )
+
+            accounts_csv = os.getenv("ACCOUNTS_CSV_PATH", os.path.join("data", "accounts.csv"))
+            try:
+                acc_summary = import_accounts_from_csv(
+                    accounts_csv,
+                    project_root=project_root,
+                    create_account_fn=create_account,
+                )
+                summary.update(acc_summary)
+            except FileNotFoundError:
+                pass
+
+            locations_csv = os.getenv("LOCATIONS_CSV_PATH", os.path.join("data", "locations.csv"))
+            try:
+                loc_summary = import_locations_from_csv(
+                    locations_csv,
+                    project_root=project_root,
+                    create_location_links_fn=create_location_links,
+                )
+                summary.update(loc_summary)
+            except FileNotFoundError:
+                pass
+
+            transactions_csv = os.getenv("TRANSACTIONS_CSV_PATH", os.path.join("data", "transactions.csv"))
+            try:
+                tx_summary = import_transactions_from_csv(
+                    transactions_csv,
+                    project_root=project_root,
+                    create_transaction_fn=create_transaction,
+                )
+                summary.update(tx_summary)
+            except FileNotFoundError:
+                pass
+
+            guarantees_csv = os.getenv("GUARANTEES_CSV_PATH", os.path.join("data", "guarantees.csv"))
+            try:
+                g_summary = import_guarantees_from_csv(
+                    guarantees_csv,
+                    project_root=project_root,
+                    create_guarantee_fn=create_guarantee,
+                )
+                summary.update(g_summary)
+            except FileNotFoundError:
+                pass
+
+            supply_csv = os.getenv("SUPPLY_CHAIN_CSV_PATH", os.path.join("data", "supply_chain.csv"))
+            try:
+                s_summary = import_supply_chain_from_csv(
+                    supply_csv,
+                    project_root=project_root,
+                    create_supply_link_fn=create_supply_link,
+                )
+                summary.update(s_summary)
+            except FileNotFoundError:
+                pass
+
+            employment_csv = os.getenv("EMPLOYMENT_CSV_PATH", os.path.join("data", "employment.csv"))
+            try:
+                e_summary = import_employment_from_csv(
+                    employment_csv,
+                    project_root=project_root,
+                    create_employment_fn=create_employment,
+                )
+                summary.update(e_summary)
+            except FileNotFoundError:
+                pass
+        except Exception:
+            # Import helpers are best-effort; if anything unexpected happens, continue with base summary
+            pass
         return {"status": "ok", "message": "CSV data imported (writes to Neo4j).", **summary}
     except FileNotFoundError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
@@ -117,8 +324,11 @@ def api_populate_mock():
 
 
 @app.get("/penetration/{entity_id}")
-def api_get_penetration(entity_id: str, depth: int = 3):
-    res = get_equity_penetration(entity_id, depth)
+def api_get_penetration(entity_id: str, depth: int = 3, include_paths: bool = False, max_paths: int = 3):
+    if include_paths:
+        res = get_equity_penetration_with_paths(entity_id, depth, max_paths)
+    else:
+        res = get_equity_penetration(entity_id, depth)
     if not res:
         raise HTTPException(status_code=404, detail="Entity not found")
     return res

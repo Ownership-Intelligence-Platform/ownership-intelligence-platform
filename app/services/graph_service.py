@@ -113,6 +113,72 @@ def get_equity_penetration(root_id: str, depth: int = 3) -> Dict[str, Any]:
     return {"root": {"id": root.get("id"), "name": root.get("name"), "type": root.get("type")}, "items": items}
 
 
+def get_equity_penetration_with_paths(
+    root_id: str, depth: int = 3, max_paths: int = 3
+) -> Dict[str, Any]:
+    """Compute equity penetration and also return explicit investment paths per target.
+
+    For each target node reachable within the given depth via :OWNS, we compute:
+    - penetration: sum over paths of product(stake_i/100)
+    - paths: up to `max_paths` highest-penetration paths, each with nodes/rels and path_penetration
+    """
+    # Confirm root exists
+    root_res = run_cypher(
+        "MATCH (r:Entity {id: $id}) RETURN r.id AS id, r.name AS name, r.type AS type",
+        {"id": root_id},
+    )
+    if not root_res:
+        return {}
+
+    query = (
+        "MATCH (root:Entity {id: $id}) "
+        "OPTIONAL MATCH p = (root)-[:OWNS*1..10]->(n:Entity) "
+        "WHERE length(p) <= $depth "
+        "WITH n, p "
+        "WHERE p IS NOT NULL AND n IS NOT NULL "
+        "WITH n, p, "
+        "  reduce(prod = 1.0, r IN relationships(p) | prod * coalesce(r.stake, 100.0)/100.0) AS pen, "
+        "  [node IN nodes(p) | {id: node.id, name: node.name, type: node.type}] AS nodes_list, "
+        "  [rel IN relationships(p) | {from: startNode(rel).id, to: endNode(rel).id, stake: rel.stake}] AS rels_list "
+        "RETURN n.id AS id, n.name AS name, n.type AS type, "
+        "       sum(pen) AS penetration, "
+        "       collect({nodes: nodes_list, rels: rels_list, path_penetration: pen}) AS paths "
+        "ORDER BY penetration DESC"
+    )
+    rows = run_cypher(query, {"id": root_id, "depth": depth})
+
+    items: List[Dict[str, Any]] = []
+    for r in rows:
+        # Convert total penetration to percentage
+        pen_pct = ((r.get("penetration") or 0.0) * 100.0)
+        # Sort paths by individual path penetration desc and trim
+        paths = r.get("paths") or []
+        paths_sorted = sorted(paths, key=lambda x: (x.get("path_penetration") or 0.0), reverse=True)
+        top_paths = []
+        for p in paths_sorted[: max(0, int(max_paths or 0))]:
+            pp = (p.get("path_penetration") or 0.0) * 100.0
+            top_paths.append({
+                "nodes": p.get("nodes") or [],
+                "rels": p.get("rels") or [],
+                "path_penetration": pp,
+            })
+        items.append(
+            {
+                "id": r.get("id"),
+                "name": r.get("name"),
+                "type": r.get("type"),
+                "penetration": pen_pct,
+                "paths": top_paths,
+            }
+        )
+
+    root = root_res[0]
+    return {
+        "root": {"id": root.get("id"), "name": root.get("name"), "type": root.get("type")},
+        "items": items,
+    }
+
+
 def clear_database() -> Dict[str, Any]:
     """Delete all nodes and relationships from the Neo4j database.
 
@@ -243,3 +309,201 @@ def get_stored_news(entity_id: str) -> List[Dict[str, Any]]:
     # Filter out empties (nodes may be null if none exist)
     cleaned = [i for i in items if any(v for v in i.values())]
     return cleaned
+
+
+# --- Extended graph operations (Phase 1) ---
+
+def create_person(
+    person_id: str,
+    name: Optional[str] = None,
+    type_: Optional[str] = None,
+    basic_info: Optional[Dict[str, Any]] = None,
+    id_info: Optional[Dict[str, Any]] = None,
+    job_info: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Create or update a Person entity.
+
+    Implementation detail: we MERGE by (:Entity {id}) and add the :Person label,
+    so existing nodes created via create_entity() are upgraded without duplication.
+    """
+    query = (
+        "MERGE (e:Entity {id: $id}) "
+        "SET e:Person, "
+        "    e.name = coalesce($name, e.name), "
+        "    e.type = coalesce($type, e.type), "
+        "    e.basic_info = coalesce($basic_info, e.basic_info), "
+        "    e.id_info = coalesce($id_info, e.id_info), "
+        "    e.job_info = coalesce($job_info, e.job_info) "
+        "RETURN e.id AS id, e.name AS name, e.type AS type"
+    )
+    res = run_cypher(
+        query,
+        {
+            "id": person_id,
+            "name": name,
+            "type": type_,
+            "basic_info": basic_info,
+            "id_info": id_info,
+            "job_info": job_info,
+        },
+    )
+    return res[0] if res else {}
+
+
+def create_company(
+    company_id: str,
+    name: Optional[str] = None,
+    type_: Optional[str] = None,
+    business_info: Optional[Dict[str, Any]] = None,
+    status: Optional[str] = None,
+    industry: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Create or update a Company entity with extra attributes."""
+    query = (
+        "MERGE (e:Entity {id: $id}) "
+        "SET e:Company, "
+        "    e.name = coalesce($name, e.name), "
+        "    e.type = coalesce($type, e.type), "
+        "    e.business_info = coalesce($business_info, e.business_info), "
+        "    e.status = coalesce($status, e.status), "
+        "    e.industry = coalesce($industry, e.industry) "
+        "RETURN e.id AS id, e.name AS name, e.type AS type"
+    )
+    res = run_cypher(
+        query,
+        {
+            "id": company_id,
+            "name": name,
+            "type": type_,
+            "business_info": business_info,
+            "status": status,
+            "industry": industry,
+        },
+    )
+    return res[0] if res else {}
+
+
+def create_account(
+    owner_id: str,
+    account_number: str,
+    bank_name: Optional[str] = None,
+    balance: Optional[float] = None,
+) -> Dict[str, Any]:
+    """Create or update an Account node and link it to an owner via HAS_ACCOUNT."""
+    query = (
+        "MERGE (o:Entity {id: $owner}) "
+        "MERGE (a:Account {account_number: $acc}) "
+        "SET a.bank_name = coalesce($bank, a.bank_name), "
+        "    a.balance = coalesce($bal, a.balance) "
+        "MERGE (o)-[:HAS_ACCOUNT]->(a) "
+        "RETURN a.account_number AS account_number, a.bank_name AS bank_name, a.balance AS balance"
+    )
+    res = run_cypher(
+        query, {"owner": owner_id, "acc": account_number, "bank": bank_name, "bal": balance}
+    )
+    return res[0] if res else {}
+
+
+def create_location_links(
+    entity_id: str,
+    registered: Optional[str] = None,
+    operating: Optional[str] = None,
+    offshore: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Attach location nodes to an entity via REGISTERED_IN / OPERATES_IN / OFFSHORE_IN.
+
+    Location nodes are de-duplicated by name.
+    """
+    query = (
+        "MERGE (e:Entity {id: $id}) "
+        # Registered location
+        "FOREACH (_ IN CASE WHEN $registered IS NULL OR $registered = '' THEN [] ELSE [1] END | "
+        "  MERGE (r:Location {name: $registered}) "
+        "  MERGE (e)-[:REGISTERED_IN]->(r) ) "
+        # Operating location
+        "FOREACH (_ IN CASE WHEN $operating IS NULL OR $operating = '' THEN [] ELSE [1] END | "
+        "  MERGE (op:Location {name: $operating}) "
+        "  MERGE (e)-[:OPERATES_IN]->(op) ) "
+        # Offshore location
+        "FOREACH (_ IN CASE WHEN $offshore IS NULL OR $offshore = '' THEN [] ELSE [1] END | "
+        "  MERGE (of:Location {name: $offshore}) "
+        "  MERGE (e)-[:OFFSHORE_IN]->(of) ) "
+        "RETURN e.id AS id"
+    )
+    res = run_cypher(
+        query,
+        {"id": entity_id, "registered": registered, "operating": operating, "offshore": offshore},
+    )
+    return res[0] if res else {}
+
+
+def create_transaction(
+    from_id: str,
+    to_id: str,
+    amount: float,
+    time: Optional[str] = None,
+    tx_type: Optional[str] = None,
+    channel: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Create a Transaction node between two entities.
+
+    Pattern: (from)-[:INITIATES]->(t:Transaction {props})-[:TO]->(to)
+    """
+    query = (
+        "MERGE (a:Entity {id: $from}) "
+        "MERGE (b:Entity {id: $to}) "
+        "CREATE (t:Transaction {amount: $amount, time: $time, type: $type, channel: $channel}) "
+        "MERGE (a)-[:INITIATES]->(t) "
+        "MERGE (t)-[:TO]->(b) "
+        "RETURN t.amount AS amount, t.time AS time, t.type AS type, t.channel AS channel"
+    )
+    res = run_cypher(
+        query,
+        {"from": from_id, "to": to_id, "amount": amount, "time": time, "type": tx_type, "channel": channel},
+    )
+    return res[0] if res else {}
+
+
+def create_guarantee(
+    guarantor_id: str, guaranteed_id: str, amount: float
+) -> Dict[str, Any]:
+    """Create or update a GUARANTEES relationship with amount."""
+    query = (
+        "MERGE (g:Entity {id: $guarantor}) "
+        "MERGE (b:Entity {id: $guaranteed}) "
+        "MERGE (g)-[r:GUARANTEES]->(b) "
+        "SET r.amount = $amount "
+        "RETURN g.id AS guarantor, b.id AS guaranteed, r.amount AS amount"
+    )
+    res = run_cypher(query, {"guarantor": guarantor_id, "guaranteed": guaranteed_id, "amount": amount})
+    return res[0] if res else {}
+
+
+def create_supply_link(
+    supplier_id: str, customer_id: str, frequency: Optional[int] = None
+) -> Dict[str, Any]:
+    """Create or update a SUPPLIES_TO relationship with frequency."""
+    query = (
+        "MERGE (s:Entity {id: $supplier}) "
+        "MERGE (c:Entity {id: $customer}) "
+        "MERGE (s)-[r:SUPPLIES_TO]->(c) "
+        "SET r.frequency = $frequency "
+        "RETURN s.id AS supplier, c.id AS customer, r.frequency AS frequency"
+    )
+    res = run_cypher(query, {"supplier": supplier_id, "customer": customer_id, "frequency": frequency})
+    return res[0] if res else {}
+
+
+def create_employment(
+    company_id: str, person_id: str, role: Optional[str] = None
+) -> Dict[str, Any]:
+    """Create or update a general SERVES_AS employment relation (person -> company)."""
+    query = (
+        "MERGE (c:Entity {id: $company}) "
+        "MERGE (p:Entity {id: $person}) "
+        "MERGE (p)-[r:SERVES_AS]->(c) "
+        "SET r.role = $role "
+        "RETURN p.id AS person_id, c.id AS company_id, r.role AS role"
+    )
+    res = run_cypher(query, {"company": company_id, "person": person_id, "role": role})
+    return res[0] if res else {}

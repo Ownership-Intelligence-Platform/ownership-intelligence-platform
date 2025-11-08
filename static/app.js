@@ -4,9 +4,12 @@ import { loadLayers } from "./modules/layers.js";
 import { loadNews } from "./modules/news.js";
 import { loadPenetration } from "./modules/penetration.js";
 import { populateMock, clearDb } from "./modules/db.js";
+import { initAdmin } from "./modules/admin.js";
 
 // Initialize theme toggle
 initThemeToggle();
+// Initialize data console
+initAdmin();
 
 // Event wiring (DOM exists because script is loaded at end of body)
 document
