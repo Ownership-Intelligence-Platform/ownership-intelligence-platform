@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Ownership Intelligence — Demo</title>
+  <style>
+    body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; padding: 20px; max-width: 900px; }
+    pre { background:#f4f4f4; padding:10px; border-radius:6px; white-space:pre-wrap; }
+    button { margin-right:8px; }
+    .muted { color:#666; font-size:0.9rem }
+  </style>
+</head>
+<body>
+  <h1>Ownership Intelligence — Demo</h1>
+  <p class="muted">A tiny static UI that shows client-side mock data and can populate the Neo4j DB with sample data.</p>
+
+  <div>
+    <button id="refresh">Refresh Mock Data</button>
+    <button id="populate">Populate DB with Mock Data</button>
+    <span id="status"></span>
+  </div>
+
+  <h2>Mock Data (client-side)</h2>
+  <pre id="mockJson">Loading...</pre>
+
+  <h2>Notes</h2>
+  <ul>
+    <li>GET <code>/mock-data</code> — returns client-side mock dataset</li>
+    <li>POST <code>/populate-mock</code> — creates sample entities/ownerships in Neo4j</li>
+    <li>Other API endpoints: <code>/entities</code>, <code>/ownerships</code>, <code>/layers/{id}</code></li>
+  </ul>
+
+  <script>
+    async function loadMock() {
+      document.getElementById('status').textContent = '';
+      const res = await fetch('/mock-data');
+      if (!res.ok) {
+        document.getElementById('mockJson').textContent = 'Failed to load mock data';
+        return;
+      }
+      const data = await res.json();
+      document.getElementById('mockJson').textContent = JSON.stringify(data, null, 2);
+    }
+
+    async function populateMock() {
+      document.getElementById('status').textContent = 'Populating...';
+      const res = await fetch('/populate-mock', { method: 'POST' });
+      const txt = await res.json().catch(()=>({message: res.statusText}));
+      document.getElementById('status').textContent = JSON.stringify(txt);
+      setTimeout(()=>document.getElementById('status').textContent='', 3000);
+    }
+
+    document.getElementById('refresh').addEventListener('click', loadMock);
+    document.getElementById('populate').addEventListener('click', populateMock);
+    loadMock();
+  </script>
+</body>
+</html>

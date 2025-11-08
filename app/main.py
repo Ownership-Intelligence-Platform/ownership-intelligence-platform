@@ -1,5 +1,6 @@
 import os
 from fastapi import FastAPI, HTTPException
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
 from app.models.ownership import EntityCreate, OwnershipCreate, LayerResponse
@@ -22,6 +23,9 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Ownership Intelligence Platform", version="0.1", lifespan=lifespan)
+
+# serve a small static UI from the repo root `static/` directory
+app.mount("/", StaticFiles(directory="static", html=True), name="static")
 
 
 @app.post("/entities", status_code=201)
@@ -52,3 +56,43 @@ def api_get_layers(entity_id: str, depth: int = 2):
 
 
 # shutdown handled by lifespan context manager above
+
+
+@app.get("/mock-data")
+def api_mock_data():
+    """Return client-side mock data (does not touch the DB)."""
+    data = {
+        "entities": [
+            {"id": "E1", "name": "Alpha", "type": "Company"},
+            {"id": "E2", "name": "Beta", "type": "Company"},
+            {"id": "E3", "name": "Gamma", "type": "Holding"},
+        ],
+        "ownerships": [
+            {"owner_id": "E1", "owned_id": "E2", "stake": 60.0},
+            {"owner_id": "E2", "owned_id": "E3", "stake": 40.0},
+        ],
+    }
+    return data
+
+
+@app.post("/populate-mock", status_code=201)
+def api_populate_mock():
+    """Populate the database with example entities/ownerships using graph_service.
+
+    This endpoint will attempt to create three entities and two ownership relations
+    using the existing service functions. It requires Neo4j to be running and
+    configured via environment variables or defaults.
+    """
+    try:
+        # create sample entities
+        create_entity("E1", "Alpha", "Company")
+        create_entity("E2", "Beta", "Company")
+        create_entity("E3", "Gamma", "Holding")
+
+        # create sample ownerships
+        create_ownership("E1", "E2", 60.0)
+        create_ownership("E2", "E3", 40.0)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to populate mock data: {exc}")
+
+    return {"status": "ok", "message": "Mock data populated (writes to Neo4j)."}
