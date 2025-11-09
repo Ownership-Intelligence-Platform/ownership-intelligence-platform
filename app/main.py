@@ -42,6 +42,8 @@ from app.services.graph_service import (
     get_supply_chain,
     get_employment,
     get_locations,
+    find_entities_by_name_exact,
+    resolve_entity_identifier,
 )
 from app.services.news_service import get_company_news
 from app.services.risk_service import analyze_entity_risks
@@ -402,6 +404,27 @@ def api_get_entity_news(entity_id: str, limit: int = 10):
         "stored_count": len(stored_items),
         "external_count": len(external_items),
     }
+
+
+@app.get("/entities/resolve")
+def api_resolve_entity(q: str):
+    """Resolve a user-provided identifier to an entity.
+
+    - If q matches an existing id, returns that entity (by='id').
+    - Else performs case-insensitive exact name match. If exactly one, returns it (by='name').
+    - If multiple name matches, returns 409 with matches list to let the client disambiguate.
+    - If none, returns 404.
+    """
+    try:
+        res = resolve_entity_identifier(q)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to resolve entity: {exc}")
+    if not res:
+        raise HTTPException(status_code=404, detail="Entity not found")
+    if res.get("ambiguous"):
+        # 409 Conflict for ambiguity, include choices
+        return {"ok": False, "ambiguous": True, "matches": res.get("matches") or []}
+    return {"ok": True, "ambiguous": False, "by": res.get("by"), "entity": res.get("resolved")}
 
 @app.get("/entities/{entity_id}/risks")
 def api_get_entity_risks(entity_id: str, news_limit: int = 10):

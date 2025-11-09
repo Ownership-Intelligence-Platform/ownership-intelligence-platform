@@ -25,6 +25,47 @@ def get_entity(entity_id: str) -> Dict[str, Any]:
     return res[0] if res else {}
 
 
+def find_entities_by_name_exact(name: str) -> List[Dict[str, Any]]:
+    """Return entities whose name matches exactly (case-insensitive).
+
+    We match on toLower(e.name) = toLower($name) to avoid case issues, and
+    return a minimal shape used by resolvers/UI.
+    """
+    if not name:
+        return []
+    q = (
+        "MATCH (e:Entity) "
+        "WHERE toLower(e.name) = toLower($name) "
+        "RETURN e.id AS id, e.name AS name, e.type AS type "
+        "ORDER BY coalesce(e.type, ''), e.id"
+    )
+    return run_cypher(q, {"name": name}) or []
+
+
+def resolve_entity_identifier(identifier: str) -> Dict[str, Any]:
+    """Resolve a user-provided identifier to a single entity.
+
+    Resolution strategy:
+    - If an Entity with id == identifier exists, return it (by='id').
+    - Else, match by exact name (case-insensitive). If exactly one match, return it (by='name').
+    - If multiple exact-name matches, return {ambiguous: True, matches: [...]}.
+    - If none, return {}.
+    """
+    if not identifier:
+        return {}
+    # Prefer id match
+    ent = get_entity(identifier)
+    if ent:
+        return {"resolved": ent, "by": "id", "ambiguous": False}
+    # Fallback: exact name (case-insensitive)
+    matches = find_entities_by_name_exact(identifier)
+    if len(matches) == 1:
+        return {"resolved": matches[0], "by": "name", "ambiguous": False}
+    if len(matches) > 1:
+        return {"resolved": None, "by": "name", "ambiguous": True, "matches": matches}
+    return {}
+
+
 def create_ownership(owner_id: str, owned_id: str, stake: float = None) -> Dict[str, Any]:
     query = (
         "MATCH (a:Entity {id: $owner}), (b:Entity {id: $owned}) "

@@ -2,15 +2,19 @@
 import { buildTreeFromPaths, renderTree } from "./tree.js";
 import { loadRepresentatives } from "./representatives.js";
 import { loadNews } from "./news.js";
+import { resolveEntityInput } from "./utils.js";
 
 /** Load ownership layers and then representatives + news for the root. */
 export async function loadLayers() {
-  const rootId = document.getElementById("rootId").value.trim();
+  const raw = document.getElementById("rootId").value.trim();
   const depth = Number(document.getElementById("depth").value || 2);
-  if (!rootId) {
+  if (!raw) {
     alert("Please enter a root entity id");
     return;
   }
+  const rootId = await resolveEntityInput(raw);
+  if (!rootId) return;
+  document.getElementById("rootId").value = rootId;
   const treeEl = document.getElementById("layersTree");
   const statusEl = document.getElementById("status");
   statusEl.textContent = "Loading layers…";

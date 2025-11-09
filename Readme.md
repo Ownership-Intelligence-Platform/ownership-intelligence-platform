@@ -175,4 +175,46 @@ Query/list endpoints:
 
 UI usage on home page:
 
-- Set Root Entity ID at the top, then use each card's Load button to fetch and display corresponding tables.
+- Set Root Entity ID (now accepts either a raw entity id like `E1` or an exact entity name such as `Alpha`). When a name is entered the client resolves it via `/entities/resolve` and normalizes the input field to the canonical id.
+- Use each card's Load button to fetch and display corresponding tables.
+
+### Entity resolution (ID or name)
+
+You can now type an entity's exact name instead of its id in the "Root Entity ID" field. Resolution flow:
+
+1. Try direct id match.
+2. If no id match, perform a case-insensitive exact name match.
+3. If exactly one match, the field is replaced with the resolved id and subsequent requests use that id.
+4. If multiple entities share the same exact name, a dialog lists the matches for manual disambiguation.
+5. If none found, an alert indicates no match.
+
+Endpoint: `GET /entities/resolve?q=<value>` returns:
+
+```json
+{
+  "ok": true,
+  "by": "id",
+  "entity": { "id": "E1", "name": "Alpha", "type": "Company" }
+}
+```
+
+or, for ambiguous names:
+
+```json
+{
+  "ok": false,
+  "ambiguous": true,
+  "matches": [
+    { "id": "C1", "name": "Acme Holdings Ltd" },
+    { "id": "C2", "name": "Acme Holdings Ltd" }
+  ]
+}
+```
+
+or 404 with `{"detail": "Entity not found"}`.
+
+Implementation details:
+
+- Back-end helper `resolve_entity_identifier` first checks id, then exact (case-insensitive) name.
+- Ambiguity is reported with HTTP 200 (client-side disambiguation) but flagged via `ambiguous: true`.
+- Frontend stores the resolved id back into the input for consistency across subsequent loads.

@@ -4,14 +4,19 @@ import { renderPenetrationGraph } from "./graphRenderer.js";
 
 /** High-level loader: fetch penetration + layers, then render graph. */
 export async function loadPenetration() {
-  const rootId = document.getElementById("rootId").value.trim();
+  const raw = document.getElementById("rootId").value.trim();
   const depth = Number(document.getElementById("depth").value || 3);
   const includePaths = !!document.getElementById("includePaths")?.checked;
   const maxPaths = Number(document.getElementById("maxPaths")?.value || 3);
-  if (!rootId) {
+  if (!raw) {
     alert("Please enter a root entity id");
     return;
   }
+  // Lazy import to avoid circular deps at module load time
+  const { resolveEntityInput } = await import("../utils.js");
+  const rootId = await resolveEntityInput(raw);
+  if (!rootId) return;
+  document.getElementById("rootId").value = rootId;
   const statusEl = document.getElementById("status");
   statusEl.textContent = "Loading penetration…";
   try {
