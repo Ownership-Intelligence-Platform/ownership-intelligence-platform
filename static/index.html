@@ -223,6 +223,21 @@
         </div>
       </div>
 
+      <!-- Risk Analysis Card -->
+      <div class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm lg:col-span-2">
+        <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
+          <h3 class="text-base font-semibold">Risk Analysis</h3>
+          <div class="flex items-center gap-3">
+            <label class="block">
+              <span class="block text-xs uppercase tracking-wide text-gray-600 dark:text-gray-300">News Limit</span>
+              <input id="riskNewsLimit" type="number" value="5" min="1" max="50" class="mt-1 w-20 rounded-md border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500" />
+            </label>
+            <button id="analyzeRisks" class="inline-flex items-center rounded-md bg-rose-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500">Analyze Risks</button>
+          </div>
+        </div>
+        <div id="riskResults" class="p-4 text-sm text-gray-500 dark:text-gray-400">Click "Analyze Risks" to compute heuristic risk flags for the Root Entity ID.</div>
+      </div>
+
     </section>
   </main>
 

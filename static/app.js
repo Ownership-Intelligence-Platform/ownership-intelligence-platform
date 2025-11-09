@@ -11,6 +11,7 @@ import { loadGuarantees } from "./modules/guarantees.js";
 import { loadSupplyChain } from "./modules/supplyChain.js";
 import { loadEmployment } from "./modules/employment.js";
 import { loadLocations } from "./modules/locations.js";
+import { analyzeRisks } from "./modules/risks.js";
 
 // Initialize theme toggle
 initThemeToggle();
@@ -70,6 +71,15 @@ document.getElementById("loadNews")?.addEventListener("click", () => {
   }
   loadNews(id);
 });
+document.getElementById("analyzeRisks")?.addEventListener("click", () => {
+  const id = document.getElementById("rootId").value.trim();
+  if (!id) return alert("Enter Root Entity ID first");
+  const newsLimit = parseInt(
+    document.getElementById("riskNewsLimit").value || "5",
+    10
+  );
+  analyzeRisks(id, newsLimit);
+});
 
 // Debug / manual access in browser console
 window.OI = {
@@ -84,4 +94,5 @@ window.OI = {
   loadSupplyChain,
   loadEmployment,
   loadLocations,
+  analyzeRisks,
 };

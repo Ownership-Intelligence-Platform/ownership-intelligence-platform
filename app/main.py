@@ -44,6 +44,7 @@ from app.services.graph_service import (
     get_locations,
 )
 from app.services.news_service import get_company_news
+from app.services.risk_service import analyze_entity_risks
 from app.services.import_service import (
     import_graph_from_csv,
     import_news_from_csv,
@@ -401,6 +402,18 @@ def api_get_entity_news(entity_id: str, limit: int = 10):
         "stored_count": len(stored_items),
         "external_count": len(external_items),
     }
+
+@app.get("/entities/{entity_id}/risks")
+def api_get_entity_risks(entity_id: str, news_limit: int = 10):
+    """Return a risk analysis summary for the given entity id.
+
+    Combines accounts, transactions, guarantees, supply chain and news items.
+    Each sub-section includes risk flags and scoring based on heuristic rules.
+    """
+    res = analyze_entity_risks(entity_id, news_limit=news_limit)
+    if not res:
+        raise HTTPException(status_code=404, detail="Entity not found")
+    return res
 
 
 @app.get("/entities/{entity_id}/accounts")
