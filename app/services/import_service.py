@@ -170,8 +170,11 @@ def import_legal_reps_from_csv(
                 continue
             seen.add(key)
 
-            # Ensure nodes exist
-            create_entity_fn(company_id, None, None)
+            # Ensure nodes exist:
+            # Business rule: companies are expected to have been imported already via the main
+            # entities dataset; we only auto-create the person placeholder if needed to avoid
+            # polluting the graph with partially specified companies (test expectation).
+            # (We still create the person because people often appear first here.)
             create_entity_fn(person_id, None, None)
             create_legal_rep_fn(company_id, person_id, role)
             unique += 1

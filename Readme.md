@@ -32,7 +32,8 @@ What I added:
   - `app/main.py` - FastAPI app with endpoints to create entities, ownerships and fetch layers
   - `app/db/neo4j_connector.py` - small Neo4j helper using environment variables
   - `app/models/ownership.py` - Pydantic models
-  - `app/services/graph_service.py` - graph operations (create entity, create ownership, get layers)
+  - `app/services/graph/` - modular graph operations split into focused files (entities, ownerships, layers, penetration, legal, news, accounts, transactions, guarantees, supply_chain, employment, locations, admin)
+    - Backwards compatibility: `app/services/graph_service.py` now re-exports the public API from the new package, so existing imports keep working.
     - `app/services/import_service.py` - CSV import of entities and ownerships
     - Legal representatives: LEGAL_REP edges and endpoints
     - `app/services/news_service.py` - fetch recent news for a company (NewsAPI or Google News RSS fallback)
