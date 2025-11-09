@@ -75,6 +75,13 @@ export function renderPenetrationGraph(graph, root) {
     chartEl.textContent = "No graph data available.";
     return;
   }
+  // Theme-aware palette
+  const prefersDark = document.documentElement.classList.contains("dark");
+  const bgColor = prefersDark ? "#0f172a" : "#fbfbfc"; // slate-900 vs near-white
+  const borderColor = prefersDark ? "#334155" : "#e5e7eb"; // slate-700 vs gray-200
+  const textPrimary = prefersDark ? "#f3f4f6" : "#1f2937"; // gray-100 vs gray-800
+  const textHalo = prefersDark ? "#0b1220" : "#ffffff"; // near-bg for outline
+  const linkStrokeColor = prefersDark ? "#94a3b8" : "#999"; // slate-400 vs gray-600
   // Ensure chart container is the positioning context for overlays
   d3.select(chartEl).style("position", "relative");
 
@@ -94,8 +101,8 @@ export function renderPenetrationGraph(graph, root) {
     .attr("width", "100%")
     .attr("height", height)
     .attr("viewBox", `0 0 ${width} ${height}`)
-    .style("border", "1px solid #e5e7eb")
-    .style("background", "#fbfbfc")
+    .style("border", `1px solid ${borderColor}`)
+    .style("background", bgColor)
     .style(
       "font-family",
       "system-ui, -apple-system, 'Segoe UI', Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, sans-serif"
@@ -185,11 +192,11 @@ export function renderPenetrationGraph(graph, root) {
     .attr("orient", "auto")
     .append("path")
     .attr("d", "M0,-5L10,0L0,5")
-    .attr("fill", "#999");
+    .attr("fill", linkStrokeColor);
 
   const link = g
     .append("g")
-    .attr("stroke", "#999")
+    .attr("stroke", linkStrokeColor)
     .attr("stroke-opacity", 0.6)
     .selectAll("line")
     .data(graph.links)
@@ -208,10 +215,10 @@ export function renderPenetrationGraph(graph, root) {
   linkLabels
     .append("text")
     .attr("font-size", `${fonts.link}px`)
-    .attr("stroke", "#fff")
+    .attr("stroke", textHalo)
     .attr("stroke-width", 3)
     .attr("stroke-linejoin", "round")
-    .attr("fill", "#fff")
+    .attr("fill", textHalo)
     .attr("opacity", 0.9)
     .text((d) => {
       const stakeTxt = d.stake != null ? `${Number(d.stake).toFixed(1)}%` : "";
@@ -224,7 +231,7 @@ export function renderPenetrationGraph(graph, root) {
   linkLabels
     .append("text")
     .attr("font-size", `${fonts.link}px`)
-    .attr("fill", "#2d2d2d")
+    .attr("fill", textPrimary)
     .text((d) => {
       const stakeTxt = d.stake != null ? `${Number(d.stake).toFixed(1)}%` : "";
       const ltTxt =
@@ -255,7 +262,9 @@ export function renderPenetrationGraph(graph, root) {
     .append("circle")
     .attr("r", (d) => radius(d.penetration || 0))
     .attr("fill", (d) => color(d.penetration || 0))
-    .attr("stroke", (d) => (root && d.id === root.id ? "#111" : "#fff"))
+    .attr("stroke", (d) =>
+      root && d.id === root.id ? textPrimary : borderColor
+    )
     .attr("stroke-width", (d) => (root && d.id === root.id ? 2.2 : 1.5));
 
   node
@@ -268,18 +277,35 @@ export function renderPenetrationGraph(graph, root) {
     );
 
   node
+    // Label halo for readability
     .append("text")
+    .attr("class", "node-label-halo")
     .attr("x", 12)
     .attr("y", 4)
     .attr("font-size", `${fonts.node}px`)
-    .attr("fill", "#2b2b2b")
+    .style("stroke", textHalo, "important")
+    .style("stroke-width", 3)
+    .style("stroke-linejoin", "round")
+    .style("fill", textHalo, "important")
+    .style("opacity", 0.95)
+    .text((d) => {
+      const base = d.name || "(no name)";
+      return `${base} (${(d.penetration || 0).toFixed(1)}%)`;
+    });
+
+  node
+    .append("text")
+    .attr("class", "node-label")
+    .attr("x", 12)
+    .attr("y", 4)
+    .attr("font-size", `${fonts.node}px`)
+    .style("fill", textPrimary, "important")
     .text((d) => {
       const base = d.name || "(no name)";
       return `${base} (${(d.penetration || 0).toFixed(1)}%)`;
     });
 
   // Tooltip (HTML) for richer display
-  const prefersDark = document.documentElement.classList.contains("dark");
   const tooltip = d3
     .select(chartEl)
     .append("div")
@@ -381,6 +407,8 @@ export function renderPenetrationGraph(graph, root) {
     ctx.fillRect(i, 0, 1, legendHeight);
   }
   legend.append(() => canvas).style("border", "1px solid #d1d5db");
+  // Match legend border to theme
+  legend.select("canvas").style("border", `1px solid ${borderColor}`);
   legend
     .append("div")
     .style("display", "flex")
