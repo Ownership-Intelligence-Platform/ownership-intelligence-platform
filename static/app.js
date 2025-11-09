@@ -13,9 +13,12 @@ import { loadEmployment } from "./modules/employment.js";
 import { loadLocations } from "./modules/locations.js";
 import { analyzeRisks } from "./modules/risks.js";
 import { resolveEntityInput } from "./modules/utils.js";
+import { initEntityAutocomplete } from "./modules/autocomplete.js";
 
 // Initialize theme toggle
 initThemeToggle();
+// Initialize entity autocomplete
+initEntityAutocomplete();
 // Initialize data console only if its elements exist (home page now links out)
 if (document.getElementById("btnCreatePerson")) {
   initAdmin();

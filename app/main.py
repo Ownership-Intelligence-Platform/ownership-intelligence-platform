@@ -44,6 +44,7 @@ from app.services.graph_service import (
     get_locations,
     find_entities_by_name_exact,
     resolve_entity_identifier,
+    search_entities_fuzzy,
 )
 from app.services.news_service import get_company_news
 from app.services.risk_service import analyze_entity_risks
@@ -425,6 +426,19 @@ def api_resolve_entity(q: str):
         # 409 Conflict for ambiguity, include choices
         return {"ok": False, "ambiguous": True, "matches": res.get("matches") or []}
     return {"ok": True, "ambiguous": False, "by": res.get("by"), "entity": res.get("resolved")}
+
+@app.get("/entities/suggest")
+def api_suggest_entities(q: str, limit: int = 10):
+    """Return fuzzy-matched entity suggestions for autocomplete.
+
+    Matches on partial id or name (case-insensitive), prioritizing startswith.
+    Returns a compact list of candidates.
+    """
+    try:
+        items = search_entities_fuzzy(q, limit=limit)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to search entities: {exc}")
+    return {"count": len(items), "items": items}
 
 @app.get("/entities/{entity_id}/risks")
 def api_get_entity_risks(entity_id: str, news_limit: int = 10):

@@ -42,6 +42,43 @@ def find_entities_by_name_exact(name: str) -> List[Dict[str, Any]]:
     return run_cypher(q, {"name": name}) or []
 
 
+def search_entities_fuzzy(q: str, limit: int = 10) -> List[Dict[str, Any]]:
+    """Fuzzy search entities by partial name or id.
+
+    Strategy:
+    - Case-insensitive containment match on name OR id.
+    - Compute a simple score: startswith match gets +2, contains gets +1.
+    - Order by score desc, then shorter name, then id.
+    - Return id, name, type and score.
+
+    NOTE: Neo4j doesn't have native full-text here (unless indexes configured); this
+    uses toLower + CONTAINS / STARTS WITH for a lightweight approach.
+    """
+    q_norm = (q or "").strip()
+    if not q_norm:
+        return []
+    # We perform two passes: startswith and contains, then union distinct.
+    cypher = (
+        "MATCH (e:Entity) "
+        "WHERE toLower(e.name) STARTS WITH toLower($q) OR toLower(e.id) STARTS WITH toLower($q) "
+        "WITH e, 2 AS baseScore "
+        "RETURN e.id AS id, e.name AS name, e.type AS type, baseScore AS score "
+        "UNION "
+        "MATCH (e:Entity) "
+        "WHERE (toLower(e.name) CONTAINS toLower($q) OR toLower(e.id) CONTAINS toLower($q)) "
+        "AND NOT (toLower(e.name) STARTS WITH toLower($q) OR toLower(e.id) STARTS WITH toLower($q)) "
+        "WITH e, 1 AS baseScore "
+        "RETURN e.id AS id, e.name AS name, e.type AS type, baseScore AS score"
+    )
+    rows = run_cypher(cypher, {"q": q_norm}) or []
+    # Sort in python for deterministic stable order criteria
+    def sort_key(r: Dict[str, Any]):
+        name = (r.get("name") or "")
+        return (-int(r.get("score") or 0), len(name), name.lower(), r.get("id"))
+    rows_sorted = sorted(rows, key=sort_key)[: limit]
+    return rows_sorted
+
+
 def resolve_entity_identifier(identifier: str) -> Dict[str, Any]:
     """Resolve a user-provided identifier to a single entity.
 
@@ -63,6 +100,12 @@ def resolve_entity_identifier(identifier: str) -> Dict[str, Any]:
         return {"resolved": matches[0], "by": "name", "ambiguous": False}
     if len(matches) > 1:
         return {"resolved": None, "by": "name", "ambiguous": True, "matches": matches}
+    # Fallback: fuzzy search; if exactly one reasonable match, accept it
+    fuzzy = search_entities_fuzzy(identifier, limit=5)
+    if len(fuzzy) == 1:
+        return {"resolved": fuzzy[0], "by": "fuzzy", "ambiguous": False}
+    if len(fuzzy) > 1:
+        return {"resolved": None, "by": "fuzzy", "ambiguous": True, "matches": fuzzy}
     return {}
 
 
