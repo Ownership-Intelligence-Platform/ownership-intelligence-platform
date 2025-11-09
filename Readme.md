@@ -2,6 +2,23 @@
 
 This repository contains a minimal Python FastAPI project that demonstrates layering ownership structures using Neo4j as a graph database.
 
+## Frontend
+
+The frontend now has two pages:
+
+1. `static/index.html` — Main dashboard (ownership layers, representatives, accounts, transactions, news, penetration graph) plus a card linking to the Data Console.
+2. `static/data_console.html` — Dedicated Data Console for creating entities and linking related models (accounts, locations, transactions, guarantees, supply links, employment).
+
+Navigation: Use the "Open Data Console" button on the home page, or directly visit `/data-console`.
+
+### Development
+
+Open http://localhost:8000/ for the dashboard and http://localhost:8000/data-console for the Data Console.
+
+# Ownership Intelligence Platform (initial scaffold)
+
+This repository contains a minimal Python FastAPI project that demonstrates layering ownership structures using Neo4j as a graph database.
+
 What I added:
 
 - `requirements.txt` - Python dependencies

@@ -76,6 +76,11 @@ app.mount("/static", StaticFiles(directory="static", html=True), name="static")
 def read_index():
     return FileResponse("static/index.html")
 
+@app.get("/data-console")
+def read_data_console():
+    """Serve the standalone Data Console page."""
+    return FileResponse("static/data_console.html")
+
 
 @app.post("/entities", status_code=201)
 def api_create_entity(payload: EntityCreate):

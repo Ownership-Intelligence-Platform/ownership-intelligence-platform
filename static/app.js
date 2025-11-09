@@ -10,8 +10,10 @@ import { loadTransactions } from "./modules/transactions.js";
 
 // Initialize theme toggle
 initThemeToggle();
-// Initialize data console
-initAdmin();
+// Initialize data console only if its elements exist (home page now links out)
+if (document.getElementById("btnCreatePerson")) {
+  initAdmin();
+}
 
 // Event wiring (DOM exists because script is loaded at end of body)
 document

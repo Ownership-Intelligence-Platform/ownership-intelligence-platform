@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Ownership Intelligence — Data Console</title>
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { darkMode: 'class' };
+  </script>
+</head>
+<body class="min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100 font-sans">
+  <!-- Top Bar -->
+  <header class="sticky top-0 z-30 bg-white/80 dark:bg-gray-900/80 backdrop-blur border-b border-gray-200 dark:border-gray-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-14">
+        <div class="flex items-center gap-3">
+          <div class="h-8 w-8 rounded bg-indigo-600"></div>
+          <h1 class="text-lg sm:text-xl font-semibold tracking-tight">Ownership Intelligence — Data Console</h1>
+        </div>
+        <div class="flex items-center gap-2">
+          <a href="/" class="inline-flex items-center gap-2 rounded-md border border-gray-300 dark:border-gray-700 px-3 py-2 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800">← Home</a>
+          <button id="themeToggle" class="inline-flex items-center gap-2 rounded-md border border-gray-300 dark:border-gray-700 px-3 py-2 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800">
+            <span class="hidden sm:inline">Toggle</span> Theme
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Status bar -->
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-3">
+    <div class="text-xs sm:text-sm text-gray-600 dark:text-gray-300">
+      <span id="status" class="inline-block rounded bg-gray-100 dark:bg-gray-800 px-2 py-1 align-middle"></span>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <section class="mb-6">
+      <div class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm">
+        <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
+          <h2 class="text-base sm:text-lg font-semibold">Data Console — Create & Link</h2>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Use these forms to create persons, companies, and link accounts, locations, transactions, guarantees, supply links, and employment relations.</p>
+        </div>
+        <div class="p-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Person -->
+            <div class="border border-gray-200 dark:border-gray-800 rounded p-3">
+              <h4 class="font-semibold mb-2">Person</h4>
+              <div class="grid grid-cols-2 gap-2 text-sm">
+                <input id="personId" placeholder="id (e.g., P1)" class="rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1" />
+                <input id="personName" placeholder="name" class="rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1" />
+                <input id="personJobTitle" placeholder="job title (optional)" class="col-span-2 rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1" />
+              </div>
+              <button id="btnCreatePerson" class="mt-2 rounded bg-indigo-600 text-white text-sm px-3 py-1.5">Create Person</button>
+            </div>
+
+            <!-- Company -->
+            <div class="border border-gray-200 dark:border-gray-800 rounded p-3">
+              <h4 class="font-semibold mb-2">Company</h4>
+              <div class="grid grid-cols-2 gap-2 text-sm">
+                <input id="companyId" placeholder="id (e.g., C1)" class="rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1" />
+                <input id="companyName" placeholder="name" class="rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1" />
+                <input id="companyStatus" placeholder="status" class="rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1" />
+                <input id="companyIndustry" placeholder="industry" class="rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1" />
+              </div>
+              <button id="btnCreateCompany" class="mt-2 rounded bg-indigo-600 text-white text-sm px-3 py-1.5">Create Company</button>
+            </div>
+
+            <!-- Account -->
+            <div class="border border-gray-200 dark:border-gray-800 rounded p-3">
+              <h4 class="font-semibold mb-2">Account</h4>
+              <div class="grid grid-cols-2 gap-2 text-sm">
+                <input id="accOwnerId" placeholder="owner_id (P1/C1)" class="rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1" />
+                <input id="accNumber" placeholder="account_number" class="rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1" />
+                <input id="accBank" placeholder="bank_name" class="rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1" />
+                <input id="accBalance" placeholder="balance" type="number" step="0.01" class="rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1" />
+              </div>
+              <button id="btnCreateAccount" class="mt-2 rounded bg-indigo-600 text-white text-sm px-3 py-1.5">Create Account</button>
+            </div>
+
+            <!-- Locations -->
+            <div class="border border-gray-200 dark:border-gray-800 rounded p-3">
+              <h4 class="font-semibold mb-2">Locations</h4>
+              <div class="grid grid-cols-2 gap-2 text-sm">
+                <input id="locEntityId" placeholder="entity_id (P1/C1)" class="col-span-2 rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1" />
+                <input id="locRegistered" placeholder="registered (e.g., Beijing)" class="rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1" />
+                <input id="locOperating" placeholder="operating (e.g., Shanghai)" class="rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1" />
+                <input id="locOffshore" placeholder="offshore (e.g., Cayman)" class="col-span-2 rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1" />
+              </div>
+              <button id="btnCreateLocations" class="mt-2 rounded bg-indigo-600 text-white text-sm px-3 py-1.5">Link Locations</button>
+            </div>
+
+            <!-- Transaction -->
+            <div class="border border-gray-200 dark:border-gray-800 rounded p-3">
+              <h4 class="font-semibold mb-2">Transaction</h4>
+              <div class="grid grid-cols-2 gap-2 text-sm">
+                <input id="txFrom" placeholder="from_id" class="rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1" />
+                <input id="txTo" placeholder="to_id" class="rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1" />
+                <input id="txAmount" placeholder="amount" type="number" step="0.01" class="rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1" />
+                <input id="txTime" placeholder="time (ISO)" class="rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1" />
+                <input id="txType" placeholder="tx_type" class="rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1" />
+                <input id="txChannel" placeholder="channel" class="rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1" />
+              </div>
+              <button id="btnCreateTransaction" class="mt-2 rounded bg-indigo-600 text-white text-sm px-3 py-1.5">Create Transaction</button>
+            </div>
+
+            <!-- Guarantee -->
+            <div class="border border-gray-200 dark:border-gray-800 rounded p-3">
+              <h4 class="font-semibold mb-2">Guarantee</h4>
+              <div class="grid grid-cols-2 gap-2 text-sm">
+                <input id="guaGuarantor" placeholder="guarantor_id" class="rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1" />
+                <input id="guaGuaranteed" placeholder="guaranteed_id" class="rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1" />
+                <input id="guaAmount" placeholder="amount" type="number" step="0.01" class="col-span-2 rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1" />
+              </div>
+              <button id="btnCreateGuarantee" class="mt-2 rounded bg-indigo-600 text-white text-sm px-3 py-1.5">Create Guarantee</button>
+            </div>
+
+            <!-- Supply Link -->
+            <div class="border border-gray-200 dark:border-gray-800 rounded p-3">
+              <h4 class="font-semibold mb-2">Supply Link</h4>
+              <div class="grid grid-cols-2 gap-2 text-sm">
+                <input id="supSupplier" placeholder="supplier_id" class="rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1" />
+                <input id="supCustomer" placeholder="customer_id" class="rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1" />
+                <input id="supFrequency" placeholder="frequency" type="number" step="1" class="col-span-2 rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1" />
+              </div>
+              <button id="btnCreateSupply" class="mt-2 rounded bg-indigo-600 text-white text-sm px-3 py-1.5">Create Supply Link</button>
+            </div>
+
+            <!-- Employment -->
+            <div class="border border-gray-200 dark:border-gray-800 rounded p-3">
+              <h4 class="font-semibold mb-2">Employment</h4>
+              <div class="grid grid-cols-2 gap-2 text-sm">
+                <input id="empCompany" placeholder="company_id" class="rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1" />
+                <input id="empPerson" placeholder="person_id" class="rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1" />
+                <input id="empRole" placeholder="role (e.g., Director)" class="col-span-2 rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1" />
+              </div>
+              <button id="btnCreateEmployment" class="mt-2 rounded bg-indigo-600 text-white text-sm px-3 py-1.5">Create Employment</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Page entry script -->
+  <script type="module" src="/static/admin.page.js"></script>
+</body>
+<html>
