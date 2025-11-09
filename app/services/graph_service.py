@@ -557,3 +557,128 @@ def get_transactions(entity_id: str, direction: str = "out") -> List[Dict[str, A
         )
     rows = run_cypher(query, {"id": entity_id})
     return rows or []
+
+
+# --- New list/query helpers (Phase 6 extensions) ---
+
+def get_guarantees(entity_id: str, direction: str = "out") -> List[Dict[str, Any]]:
+    """Return guarantee relationships related to an entity.
+
+    direction semantics:
+    - out: entity is the guarantor
+    - in:  entity is the guaranteed/beneficiary
+    - both: either side
+    """
+    direction = (direction or "out").lower()
+    if direction == "in":
+        query = (
+            "MATCH (g:Entity)-[r:GUARANTEES]->(b:Entity {id: $id}) "
+            "RETURN g.id AS guarantor_id, b.id AS guaranteed_id, r.amount AS amount "
+            "ORDER BY coalesce(r.amount, 0) DESC"
+        )
+    elif direction == "both":
+        query = (
+            "MATCH (g:Entity)-[r:GUARANTEES]->(b:Entity) "
+            "WHERE g.id = $id OR b.id = $id "
+            "RETURN g.id AS guarantor_id, b.id AS guaranteed_id, r.amount AS amount "
+            "ORDER BY coalesce(r.amount, 0) DESC"
+        )
+    else:  # default 'out'
+        query = (
+            "MATCH (g:Entity {id: $id})-[r:GUARANTEES]->(b:Entity) "
+            "RETURN g.id AS guarantor_id, b.id AS guaranteed_id, r.amount AS amount "
+            "ORDER BY coalesce(r.amount, 0) DESC"
+        )
+    rows = run_cypher(query, {"id": entity_id})
+    return rows or []
+
+
+def get_supply_chain(entity_id: str, direction: str = "out") -> List[Dict[str, Any]]:
+    """Return supply chain relationships related to an entity.
+
+    direction semantics:
+    - out: entity is the supplier
+    - in:  entity is the customer
+    - both: either side
+    """
+    direction = (direction or "out").lower()
+    if direction == "in":
+        query = (
+            "MATCH (s:Entity)-[r:SUPPLIES_TO]->(c:Entity {id: $id}) "
+            "RETURN s.id AS supplier_id, c.id AS customer_id, r.frequency AS frequency "
+            "ORDER BY coalesce(r.frequency, 0) DESC"
+        )
+    elif direction == "both":
+        query = (
+            "MATCH (s:Entity)-[r:SUPPLIES_TO]->(c:Entity) "
+            "WHERE s.id = $id OR c.id = $id "
+            "RETURN s.id AS supplier_id, c.id AS customer_id, r.frequency AS frequency "
+            "ORDER BY coalesce(r.frequency, 0) DESC"
+        )
+    else:  # default 'out'
+        query = (
+            "MATCH (s:Entity {id: $id})-[r:SUPPLIES_TO]->(c:Entity) "
+            "RETURN s.id AS supplier_id, c.id AS customer_id, r.frequency AS frequency "
+            "ORDER BY coalesce(r.frequency, 0) DESC"
+        )
+    rows = run_cypher(query, {"id": entity_id})
+    return rows or []
+
+
+def get_employment(entity_id: str, role: str = "both") -> List[Dict[str, Any]]:
+    """Return employment relationships (SERVES_AS) related to an entity.
+
+    role semantics:
+    - as_company: entity is the company, list people serving this company
+    - as_person:  entity is the person, list companies they serve
+    - both:       either side
+    """
+    role = (role or "both").lower()
+    if role in ("company", "as_company"):
+        query = (
+            "MATCH (p:Entity)-[r:SERVES_AS]->(c:Entity {id: $id}) "
+            "RETURN p.id AS person_id, c.id AS company_id, r.role AS role "
+            "ORDER BY coalesce(r.role, '')"
+        )
+    elif role in ("person", "as_person"):
+        query = (
+            "MATCH (p:Entity {id: $id})-[r:SERVES_AS]->(c:Entity) "
+            "RETURN p.id AS person_id, c.id AS company_id, r.role AS role "
+            "ORDER BY coalesce(r.role, '')"
+        )
+    else:  # both
+        query = (
+            "MATCH (p:Entity)-[r:SERVES_AS]->(c:Entity) "
+            "WHERE p.id = $id OR c.id = $id "
+            "RETURN p.id AS person_id, c.id AS company_id, r.role AS role "
+            "ORDER BY coalesce(r.role, '')"
+        )
+    rows = run_cypher(query, {"id": entity_id})
+    return rows or []
+
+
+def get_locations(entity_id: str) -> Dict[str, Any]:
+    """Return locations linked to an entity, grouped by relationship type.
+
+    Returns a dict with arrays: registered, operating, offshore (arrays of location names).
+    """
+    query = (
+        "MATCH (e:Entity {id: $id}) "
+        "OPTIONAL MATCH (e)-[:REGISTERED_IN]->(r:Location) "
+        "OPTIONAL MATCH (e)-[:OPERATES_IN]->(op:Location) "
+        "OPTIONAL MATCH (e)-[:OFFSHORE_IN]->(of:Location) "
+        "RETURN collect(DISTINCT r.name) AS registered, "
+        "       collect(DISTINCT op.name) AS operating, "
+        "       collect(DISTINCT of.name) AS offshore"
+    )
+    res = run_cypher(query, {"id": entity_id})
+    if not res:
+        return {"registered": [], "operating": [], "offshore": []}
+    row = res[0]
+    def _clean(xs):
+        return [x for x in (xs or []) if x]
+    return {
+        "registered": _clean(row.get("registered")),
+        "operating": _clean(row.get("operating")),
+        "offshore": _clean(row.get("offshore")),
+    }

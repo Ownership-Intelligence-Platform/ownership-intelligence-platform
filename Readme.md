@@ -15,6 +15,11 @@ Navigation: Use the "Open Data Console" button on the home page, or directly vis
 
 Open http://localhost:8000/ for the dashboard and http://localhost:8000/data-console for the Data Console.
 
+Home page cards include:
+
+- Ownership Layers, Legal Representatives, Accounts, Transactions
+- NEW: Guarantees, Supply Chain, Employment, Locations (each with quick loaders similar to Accounts/Transactions)
+
 # Ownership Intelligence Platform (initial scaffold)
 
 This repository contains a minimal Python FastAPI project that demonstrates layering ownership structures using Neo4j as a graph database.
@@ -99,6 +104,12 @@ CSV formats:
 - ownerships.csv: `owner_id,owned_id,stake` (stake is percentage 0-100)
 - legal_reps.csv (optional): `company_id,person_id,role`
 - news.csv (optional): `entity_id,title,url,source,published_at,summary`
+- accounts.csv (optional): `owner_id,account_number,bank_name,balance`
+- locations.csv (optional): `entity_id,registered,operating,offshore`
+- transactions.csv (optional): `from_id,to_id,amount,time,tx_type,channel`
+- guarantees.csv (optional): `guarantor_id,guaranteed_id,amount`
+- supply_chain.csv (optional): `supplier_id,customer_id,frequency`
+- employment.csv (optional): `company_id,person_id,role`
 
 The import returns a summary with counts of processed rows and unique items imported. It will also auto-create missing entities referenced by ownerships.
 
@@ -146,3 +157,22 @@ If you'd like, I can:
 - wire up async Neo4j usage
 - add OpenAPI examples and response models
 - add an integration test that spins up the Neo4j container automatically
+
+## API reference (selected)
+
+Creation endpoints (subset):
+
+- `POST /accounts`, `POST /locations`, `POST /transactions`, `POST /guarantees`, `POST /supply-links`, `POST /employment`
+
+Query/list endpoints:
+
+- `GET /entities/{entity_id}/accounts` — list bank accounts for the entity
+- `GET /entities/{entity_id}/transactions?direction=out|in|both` — list transactions related to the entity
+- `GET /entities/{entity_id}/guarantees?direction=out|in|both` — list guarantees where the entity is guarantor/beneficiary/both
+- `GET /entities/{entity_id}/supply-chain?direction=out|in|both` — list supply links where the entity is supplier/customer/both
+- `GET /entities/{entity_id}/employment?role=as_company|as_person|both` — list employment (SERVES_AS) relations
+- `GET /entities/{entity_id}/locations` — grouped locations (registered/operating/offshore)
+
+UI usage on home page:
+
+- Set Root Entity ID at the top, then use each card's Load button to fetch and display corresponding tables.

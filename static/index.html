@@ -128,6 +128,69 @@
         <div id="transactionsList" class="p-4 text-sm text-gray-500 dark:text-gray-400">Choose direction and click "Load Transactions" for Root Entity ID.</div>
       </div>
 
+      <!-- Guarantees Card -->
+      <div class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm">
+        <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
+          <h3 class="text-base font-semibold">Guarantees</h3>
+          <div class="flex items-center gap-2">
+            <label class="text-xs text-gray-600 dark:text-gray-300">Direction
+              <select id="guaranteeDirection" class="ml-1 rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm px-2 py-1">
+                <option value="out" selected>out</option>
+                <option value="in">in</option>
+                <option value="both">both</option>
+              </select>
+            </label>
+            <button id="loadGuarantees" class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white shadow hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500">Load Guarantees</button>
+          </div>
+        </div>
+        <div id="guaranteesList" class="p-4 text-sm text-gray-500 dark:text-gray-400">Choose direction and click "Load Guarantees" for Root Entity ID.</div>
+      </div>
+
+      <!-- Supply Chain Card -->
+      <div class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm">
+        <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
+          <h3 class="text-base font-semibold">Supply Chain</h3>
+          <div class="flex items-center gap-2">
+            <label class="text-xs text-gray-600 dark:text-gray-300">Direction
+              <select id="supplyDirection" class="ml-1 rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm px-2 py-1">
+                <option value="out" selected>out</option>
+                <option value="in">in</option>
+                <option value="both">both</option>
+              </select>
+            </label>
+            <button id="loadSupplyChain" class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white shadow hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500">Load Supply Chain</button>
+          </div>
+        </div>
+        <div id="supplyChainList" class="p-4 text-sm text-gray-500 dark:text-gray-400">Choose direction and click "Load Supply Chain" for Root Entity ID.</div>
+      </div>
+
+      <!-- Employment Card -->
+      <div class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm">
+        <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
+          <h3 class="text-base font-semibold">Employment</h3>
+          <div class="flex items-center gap-2">
+            <label class="text-xs text-gray-600 dark:text-gray-300">Role
+              <select id="employmentRole" class="ml-1 rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm px-2 py-1">
+                <option value="both" selected>both</option>
+                <option value="as_company">company</option>
+                <option value="as_person">person</option>
+              </select>
+            </label>
+            <button id="loadEmployment" class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white shadow hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500">Load Employment</button>
+          </div>
+        </div>
+        <div id="employmentList" class="p-4 text-sm text-gray-500 dark:text-gray-400">Choose role filter and click "Load Employment" for Root Entity ID.</div>
+      </div>
+
+      <!-- Locations Card -->
+      <div class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm">
+        <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
+          <h3 class="text-base font-semibold">Locations</h3>
+          <button id="loadLocations" class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white shadow hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500">Load Locations</button>
+        </div>
+        <div id="locationsList" class="p-4 text-sm text-gray-500 dark:text-gray-400">Click "Load Locations" for Root Entity ID.</div>
+      </div>
+
       <!-- News Card -->
       <div class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm lg:col-span-2">
         <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
