@@ -19,12 +19,22 @@ export async function loadGuarantees(entityId, direction = "out") {
     setStatus("Loading guarantees…", 0);
     container.innerHTML = "Loading…";
     const params = new URLSearchParams({ direction });
-    const res = await fetch(
-      `/entities/${encodeURIComponent(
-        entityId
-      )}/guarantees?${params.toString()}`
-    );
-    const data = await res.json();
+    const url = `/entities/${encodeURIComponent(
+      entityId
+    )}/guarantees?${params.toString()}`;
+    console.debug("[guarantees] fetch", url);
+    const res = await fetch(url);
+    let data;
+    try {
+      data = await res.json();
+    } catch {
+      data = {};
+    }
+    if (!res.ok) {
+      throw new Error(
+        `HTTP ${res.status}: ${(data && data.detail) || res.statusText}`
+      );
+    }
     const items = data.items || [];
     if (!items.length) {
       container.innerHTML = "No guarantees found.";
@@ -61,5 +71,6 @@ export async function loadGuarantees(entityId, direction = "out") {
   } catch (e) {
     container.innerHTML = `<span class="text-rose-600">Failed to load guarantees: ${e}</span>`;
     setStatus(`Failed: ${e}`);
+    console.error("[guarantees] error", e);
   }
 }

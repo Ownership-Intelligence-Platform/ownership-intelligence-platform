@@ -19,12 +19,22 @@ export async function loadSupplyChain(entityId, direction = "out") {
     setStatus("Loading supply chain…", 0);
     container.innerHTML = "Loading…";
     const params = new URLSearchParams({ direction });
-    const res = await fetch(
-      `/entities/${encodeURIComponent(
-        entityId
-      )}/supply-chain?${params.toString()}`
-    );
-    const data = await res.json();
+    const url = `/entities/${encodeURIComponent(
+      entityId
+    )}/supply-chain?${params.toString()}`;
+    console.debug("[supplyChain] fetch", url);
+    const res = await fetch(url);
+    let data;
+    try {
+      data = await res.json();
+    } catch {
+      data = {};
+    }
+    if (!res.ok) {
+      throw new Error(
+        `HTTP ${res.status}: ${(data && data.detail) || res.statusText}`
+      );
+    }
     const items = data.items || [];
     if (!items.length) {
       container.innerHTML = "No supply chain links found.";
@@ -61,5 +71,6 @@ export async function loadSupplyChain(entityId, direction = "out") {
   } catch (e) {
     container.innerHTML = `<span class="text-rose-600">Failed to load supply chain: ${e}</span>`;
     setStatus(`Failed: ${e}`);
+    console.error("[supplyChain] error", e);
   }
 }

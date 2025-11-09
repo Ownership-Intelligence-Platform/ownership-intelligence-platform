@@ -18,10 +18,20 @@ export async function loadLocations(entityId) {
   try {
     setStatus("Loading locations…", 0);
     container.innerHTML = "Loading…";
-    const res = await fetch(
-      `/entities/${encodeURIComponent(entityId)}/locations`
-    );
-    const data = await res.json();
+    const url = `/entities/${encodeURIComponent(entityId)}/locations`;
+    console.debug("[locations] fetch", url);
+    const res = await fetch(url);
+    let data;
+    try {
+      data = await res.json();
+    } catch {
+      data = {};
+    }
+    if (!res.ok) {
+      throw new Error(
+        `HTTP ${res.status}: ${(data && data.detail) || res.statusText}`
+      );
+    }
     const groups = data.groups || {
       registered: [],
       operating: [],
@@ -49,5 +59,6 @@ export async function loadLocations(entityId) {
   } catch (e) {
     container.innerHTML = `<span class=\"text-rose-600\">Failed to load locations: ${e}</span>`;
     setStatus(`Failed: ${e}`);
+    console.error("[locations] error", e);
   }
 }

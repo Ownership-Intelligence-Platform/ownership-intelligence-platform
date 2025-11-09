@@ -19,12 +19,22 @@ export async function loadEmployment(entityId, role = "both") {
     setStatus("Loading employment…", 0);
     container.innerHTML = "Loading…";
     const params = new URLSearchParams({ role });
-    const res = await fetch(
-      `/entities/${encodeURIComponent(
-        entityId
-      )}/employment?${params.toString()}`
-    );
-    const data = await res.json();
+    const url = `/entities/${encodeURIComponent(
+      entityId
+    )}/employment?${params.toString()}`;
+    console.debug("[employment] fetch", url);
+    const res = await fetch(url);
+    let data;
+    try {
+      data = await res.json();
+    } catch {
+      data = {};
+    }
+    if (!res.ok) {
+      throw new Error(
+        `HTTP ${res.status}: ${(data && data.detail) || res.statusText}`
+      );
+    }
     const items = data.items || [];
     if (!items.length) {
       container.innerHTML = "No employment relations found.";
@@ -59,5 +69,6 @@ export async function loadEmployment(entityId, role = "both") {
   } catch (e) {
     container.innerHTML = `<span class="text-rose-600">Failed to load employment: ${e}</span>`;
     setStatus(`Failed: ${e}`);
+    console.error("[employment] error", e);
   }
 }
