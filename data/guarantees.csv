@@ -3,5 +3,3 @@ C1,C2,500000
 C1,C3,300000
 C2,C4,250000
 C3,C5,150000
-guarantor_id,guaranteed_id,amount
-C1,C2,500000

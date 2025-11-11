@@ -4,6 +4,5 @@ C2,Acme Manufacturing wins large contract,https://example.com/news/acme-mfg-cont
 C3,Beta Components opens new plant,https://example.com/news/beta-new-plant,Example News,2025-06-18,Beta Components launched a new facility to support growing demand.
 C4,Gamma Trading invests in logistics,https://example.com/news/gamma-logistics,Example News,2025-06-25,Gamma Trading increases investment in cross-border logistics.
 C5,Delta Materials improves ESG rating,https://example.com/news/delta-esg,Example News,2025-07-02,Delta Materials received an upgraded ESG rating for sustainability practices.
-entity_id,title,url,source,published_at,summary
 E1,Alpha Corp announces new product,https://example.com/alpha-product,TechWire,2024-11-01T10:00:00Z,Alpha launches its next-gen platform.
 E1,Alpha Corp quarterly results beat estimates,https://example.com/alpha-q3,MarketDaily,2024-11-02T08:30:00Z,Strong revenue growth reported.

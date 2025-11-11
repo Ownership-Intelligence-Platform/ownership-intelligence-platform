@@ -14,6 +14,7 @@ import { loadLocations } from "./modules/locations.js";
 import { analyzeRisks } from "./modules/risks.js";
 import { resolveEntityInput } from "./modules/utils.js";
 import { initEntityAutocomplete } from "./modules/autocomplete.js";
+import { loadEntityInfo } from "./modules/entities.js";
 
 // Initialize theme toggle
 initThemeToggle();
@@ -34,6 +35,8 @@ document.getElementById("loadLayers")?.addEventListener("click", async () => {
   const id = await resolveEntityInput(raw);
   if (!id) return;
   document.getElementById("rootId").value = id;
+  // Load entity info panel first so users see description quickly
+  loadEntityInfo(id);
   loadLayers();
 });
 document
@@ -43,6 +46,7 @@ document
     const id = await resolveEntityInput(raw);
     if (!id) return;
     document.getElementById("rootId").value = id;
+    loadEntityInfo(id);
     loadPenetration();
   });
 document.getElementById("loadAccounts")?.addEventListener("click", async () => {
@@ -50,6 +54,7 @@ document.getElementById("loadAccounts")?.addEventListener("click", async () => {
   const id = await resolveEntityInput(raw);
   if (!id) return;
   document.getElementById("rootId").value = id;
+  loadEntityInfo(id);
   loadAccounts(id);
 });
 document
@@ -59,6 +64,7 @@ document
     const id = await resolveEntityInput(raw);
     if (!id) return;
     document.getElementById("rootId").value = id;
+    loadEntityInfo(id);
     const direction = document.getElementById("txDirection").value.trim();
     loadTransactions(id, direction);
   });
@@ -69,6 +75,7 @@ document
     const id = await resolveEntityInput(raw);
     if (!id) return;
     document.getElementById("rootId").value = id;
+    loadEntityInfo(id);
     const direction = document
       .getElementById("guaranteeDirection")
       .value.trim();
@@ -81,6 +88,7 @@ document
     const id = await resolveEntityInput(raw);
     if (!id) return;
     document.getElementById("rootId").value = id;
+    loadEntityInfo(id);
     const direction = document.getElementById("supplyDirection").value.trim();
     loadSupplyChain(id, direction);
   });
@@ -91,6 +99,7 @@ document
     const id = await resolveEntityInput(raw);
     if (!id) return;
     document.getElementById("rootId").value = id;
+    loadEntityInfo(id);
     const role = document.getElementById("employmentRole").value.trim();
     loadEmployment(id, role);
   });
@@ -101,6 +110,7 @@ document
     const id = await resolveEntityInput(raw);
     if (!id) return;
     document.getElementById("rootId").value = id;
+    loadEntityInfo(id);
     loadLocations(id);
   });
 document.getElementById("loadNews")?.addEventListener("click", async () => {
@@ -108,6 +118,7 @@ document.getElementById("loadNews")?.addEventListener("click", async () => {
   const id = await resolveEntityInput(raw);
   if (!id) return;
   document.getElementById("rootId").value = id;
+  loadEntityInfo(id);
   loadNews(id);
 });
 document.getElementById("analyzeRisks")?.addEventListener("click", async () => {
@@ -115,6 +126,7 @@ document.getElementById("analyzeRisks")?.addEventListener("click", async () => {
   const id = await resolveEntityInput(raw);
   if (!id) return;
   document.getElementById("rootId").value = id;
+  loadEntityInfo(id);
   const newsLimit = parseInt(
     document.getElementById("riskNewsLimit").value || "5",
     10

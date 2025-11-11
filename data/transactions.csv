@@ -8,6 +8,5 @@ C4,C5,200000,2025-06-22T11:00:00Z,Settlement,Internal Transfer
 C2,C5,100000,2025-07-01T09:30:00Z,Deposit,Bank Transfer
 C1,P2,120000,2025-07-05T08:15:00Z,Dividend,Cash
 C1,P1,300000,2025-07-10T08:15:00Z,Dividend,Bank Transfer
-from_id,to_id,amount,time,tx_type,channel
 C1,C2,25000,2024-11-01T12:00:00Z,transfer,wire
 C2,C1,10000,2024-11-02T09:00:00Z,payment,card

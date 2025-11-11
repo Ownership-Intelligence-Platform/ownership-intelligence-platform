@@ -92,7 +92,7 @@ def read_data_console():
 
 @app.post("/entities", status_code=201)
 def api_create_entity(payload: EntityCreate):
-    res = create_entity(payload.id, payload.name, payload.type)
+    res = create_entity(payload.id, payload.name, payload.type, payload.description)
     if not res:
         raise HTTPException(status_code=500, detail="Failed to create entity")
     return res
@@ -399,13 +399,12 @@ def api_get_entity_news(entity_id: str, limit: int = 10):
     combined = list(dedup.values())
     result_items = combined[:limit]
     return {
-        "entity": {"id": entity_id, "name": entity.get("name"), "type": entity.get("type")},
+        "entity": {"id": entity_id, "name": entity.get("name"), "type": entity.get("type"), "description": entity.get("description")},
         "count": len(result_items),
         "items": result_items,
         "stored_count": len(stored_items),
         "external_count": len(external_items),
     }
-
 
 @app.get("/entities/resolve")
 def api_resolve_entity(q: str):
@@ -439,6 +438,21 @@ def api_suggest_entities(q: str, limit: int = 10):
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to search entities: {exc}")
     return {"count": len(items), "items": items}
+
+
+@app.get("/entities/{entity_id}")
+def api_get_entity(entity_id: str):
+    """Return basic entity information including description.
+
+    Declared after /entities/resolve and /entities/suggest so static prefixes take priority.
+    """
+    # Guard: prevent accidental capture of known static endpoints if routing precedence shifts
+    if entity_id in {"resolve", "suggest"}:
+        raise HTTPException(status_code=400, detail="Invalid entity id reserved for endpoint")
+    ent = get_entity(entity_id)
+    if not ent:
+        raise HTTPException(status_code=404, detail="Entity not found")
+    return ent
 
 @app.get("/entities/{entity_id}/risks")
 def api_get_entity_risks(entity_id: str, news_limit: int = 10):

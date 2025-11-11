@@ -7,6 +7,3 @@ C2,ACC-C2-PAY,Merchants Bank,430000
 C3,ACC-C3-PAY,Merchants Bank,210000
 C4,ACC-C4-TRADE,Export Bank,150000
 C5,ACC-C5-RAW,Supply Chain Bank,90000
-owner_id,account_number,bank_name,balance
-C1,ACC-1001,BankAlpha,150000.50
-P1,ACC-2001,BankBeta,12000.00

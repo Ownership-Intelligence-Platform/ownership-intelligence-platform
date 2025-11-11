@@ -7,7 +7,6 @@ C1,C3,40
 C2,C4,55
 C3,C5,50
 C4,C5,15
-owner_id,owned_id,stake
 E1,E2,60
 E1,E3,20
 E2,E4,50

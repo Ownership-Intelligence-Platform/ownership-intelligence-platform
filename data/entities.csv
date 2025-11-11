@@ -1,18 +1,15 @@
-id,name,type
-P1,Li Wei,Person
-P2,Wang Fang,Person
-P3,Zhang Min,Person
-C1,Acme Holdings Ltd,Company
-C2,Acme Manufacturing Co,Company
-C3,Beta Components Ltd,Company
-C4,Gamma Trading LLC,Company
-C5,Delta Materials Co,Company
-id,name,type
-E1,Alpha,Company
-E2,Beta,Company
-E3,Gamma,Holding
-E4,Delta,Subsidiary
-E5,Epsilon,SPV
-E6,Zeta,JV
-P1,Jane Doe,Person
-P2,John Smith,Person
+id,name,type,description
+P1,Li Wei,Person,Li Wei
+P2,Wang Fang,Person,Wang Fang
+P3,Zhang Min,Person,Zhang Min
+C1,Acme Holdings Ltd,Company,Acme Holdings Ltd
+C2,Acme Manufacturing Co,Company,Acme Manufacturing Co
+C3,Beta Components Ltd,Company,Beta Components Ltd
+C4,Gamma Trading LLC,Company,Gamma Trading LLC
+C5,Delta Materials Co,Company,Delta Materials Co
+E1,Alpha,Company,Alpha
+E2,Beta,Company,Beta
+E3,Gamma,Holding,Gamma
+E4,Delta,Subsidiary,Delta
+E5,Epsilon,SPV,Epsilon
+E6,Zeta,JV,Zeta

@@ -2,26 +2,27 @@ from typing import List, Dict, Any, Optional
 from app.db.neo4j_connector import run_cypher
 
 
-def create_entity(entity_id: str, name: str = None, type_: str = None) -> Dict[str, Any]:
+def create_entity(entity_id: str, name: str = None, type_: str = None, description: Optional[str] = None) -> Dict[str, Any]:
     """Create or update an Entity node without clobbering existing properties with nulls.
 
     Behavior:
-    - If the node doesn't exist, it will be created; provided non-null name/type are set.
+    - If the node doesn't exist, it will be created; provided non-null name/type/description are set.
     - If the node exists, only overwrite properties when non-null values are provided.
     """
     query = (
         "MERGE (e:Entity {id: $id}) "
         "SET e.name = coalesce($name, e.name), "
-        "    e.type = coalesce($type, e.type) "
-        "RETURN e.id AS id, e.name AS name, e.type AS type"
+        "    e.type = coalesce($type, e.type), "
+        "    e.description = coalesce($description, e.description) "
+        "RETURN e.id AS id, e.name AS name, e.type AS type, e.description AS description"
     )
-    res = run_cypher(query, {"id": entity_id, "name": name, "type": type_})
+    res = run_cypher(query, {"id": entity_id, "name": name, "type": type_, "description": description})
     return res[0] if res else {}
 
 
 def get_entity(entity_id: str) -> Dict[str, Any]:
     """Fetch a single Entity by id. Returns empty dict if not found."""
-    q = "MATCH (e:Entity {id: $id}) RETURN e.id AS id, e.name AS name, e.type AS type"
+    q = "MATCH (e:Entity {id: $id}) RETURN e.id AS id, e.name AS name, e.type AS type, e.description AS description"
     res = run_cypher(q, {"id": entity_id})
     return res[0] if res else {}
 
@@ -37,7 +38,7 @@ def find_entities_by_name_exact(name: str) -> List[Dict[str, Any]]:
     q = (
         "MATCH (e:Entity) "
         "WHERE toLower(e.name) = toLower($name) "
-        "RETURN e.id AS id, e.name AS name, e.type AS type "
+        "RETURN e.id AS id, e.name AS name, e.type AS type, e.description AS description "
         "ORDER BY coalesce(e.type, ''), e.id"
     )
     return run_cypher(q, {"name": name}) or []
@@ -63,13 +64,13 @@ def search_entities_fuzzy(q: str, limit: int = 10) -> List[Dict[str, Any]]:
         "MATCH (e:Entity) "
         "WHERE toLower(e.name) STARTS WITH toLower($q) OR toLower(e.id) STARTS WITH toLower($q) "
         "WITH e, 2 AS baseScore "
-        "RETURN e.id AS id, e.name AS name, e.type AS type, baseScore AS score "
+        "RETURN e.id AS id, e.name AS name, e.type AS type, e.description AS description, baseScore AS score "
         "UNION "
         "MATCH (e:Entity) "
         "WHERE (toLower(e.name) CONTAINS toLower($q) OR toLower(e.id) CONTAINS toLower($q)) "
         "AND NOT (toLower(e.name) STARTS WITH toLower($q) OR toLower(e.id) STARTS WITH toLower($q)) "
         "WITH e, 1 AS baseScore "
-        "RETURN e.id AS id, e.name AS name, e.type AS type, baseScore AS score"
+        "RETURN e.id AS id, e.name AS name, e.type AS type, e.description AS description, baseScore AS score"
     )
     rows = run_cypher(cypher, {"q": q_norm}) or []
 

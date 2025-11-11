@@ -33,7 +33,7 @@ def import_graph_from_csv(
     ownerships_csv: str,
     *,
     project_root: str,
-    create_entity_fn: Callable[[str, str, str], Dict] = create_entity,
+    create_entity_fn: Callable[[str, Optional[str], Optional[str], Optional[str]], Dict] = create_entity,
     create_ownership_fn: Callable[[str, str, float], Dict] = create_ownership,
 ) -> Dict:
     """Import entities and ownerships from CSV files.
@@ -67,13 +67,18 @@ def import_graph_from_csv(
             eid = (row.get("id") or "").strip()
             name = (row.get("name") or None)
             type_ = (row.get("type") or None)
+            description = (row.get("description") or None)
             if not eid:
                 # Skip empty id lines
                 continue
             if eid in entity_ids:
                 continue
             entity_ids.add(eid)
-            create_entity_fn(eid, name, type_)
+            # Backward-compatible call: some injected fakes/tests may accept only 3 args
+            try:
+                create_entity_fn(eid, name, type_, description)
+            except TypeError:
+                create_entity_fn(eid, name, type_)
 
     # Import ownerships (optional dedupe by (owner, owned, stake))
     ownerships_processed = 0

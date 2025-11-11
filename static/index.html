@@ -10,8 +10,8 @@
     // Tailwind on-the-fly config (optional): enable class-based dark mode
     tailwind.config = { darkMode: 'class' };
   </script>
-  <!-- D3 -->
-  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+  <!-- D3 (local file served via FastAPI static mount) -->
+  <script src="/static/d3@7.js"></script>
   <style>
     #newsList ul li{
      border-bottom: solid 1px #ddd;
@@ -55,6 +55,7 @@
 
   <!-- Main Content -->
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
     <!-- Controls Card -->
     <section class="mb-6">
       <div class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm">
@@ -77,7 +78,16 @@
         </div>
       </div>
     </section>
-
+    <!-- Entity Info Card -->
+    <section class="mb-6">
+      <div class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm">
+        <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
+          <h2 class="text-base sm:text-lg font-semibold">Entity Info</h2>
+          <button id="refreshEntityInfo" class="hidden inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500">Refresh</button>
+        </div>
+        <div id="entityInfo" class="p-4 text-sm text-gray-500 dark:text-gray-400">Enter an Entity ID or Name and load layers to see its details.</div>
+      </div>
+    </section>
     <!-- Dashboard Grid -->
     <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <!-- Layers Tree Card -->

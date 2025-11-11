@@ -6,6 +6,7 @@ class EntityCreate(BaseModel):
     id: str = Field(..., description="Unique entity id")
     name: Optional[str]
     type: Optional[str]
+    description: Optional[str] = Field(None, description="Entity description / notes")
 
 
 class OwnershipCreate(BaseModel):
@@ -18,6 +19,7 @@ class EntityOut(BaseModel):
     id: str
     name: Optional[str]
     type: Optional[str]
+    description: Optional[str] = None
 
 
 class OwnershipOut(BaseModel):
