@@ -21,10 +21,13 @@ export async function loadRepresentatives(companyId) {
     const ul = document.createElement("ul");
     reps.forEach((r) => {
       const li = document.createElement("li");
-      const label = `${r.name || "(no name)"} [${r.id}]${
+      const a = document.createElement("a");
+      a.href = `/static/person_network.html?person=${encodeURIComponent(r.id)}`;
+      a.className = "text-indigo-600 hover:underline";
+      a.textContent = `${r.name || "(no name)"} [${r.id}]${
         r.type ? " · " + r.type : ""
       }${r.role ? " — " + r.role : ""}`;
-      li.textContent = label;
+      li.appendChild(a);
       ul.appendChild(li);
     });
     el.innerHTML = "";

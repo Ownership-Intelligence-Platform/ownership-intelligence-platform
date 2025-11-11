@@ -30,6 +30,7 @@ from .guarantees import create_guarantee, get_guarantees
 from .supply_chain import create_supply_link, get_supply_chain
 from .employment import create_employment, get_employment
 from .news import create_news_item, get_stored_news
+from .person_network import get_person_network
 
 __all__ = [
     # entities
@@ -58,4 +59,6 @@ __all__ = [
     'create_employment','get_employment',
     # news
     'create_news_item','get_stored_news',
+    # person network
+    'get_person_network',
 ]

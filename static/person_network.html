@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Person Network</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/static/d3@7.js"></script>
+</head>
+<body class="min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100 font-sans">
+  <header class="sticky top-0 z-30 bg-white/80 dark:bg-gray-900/80 backdrop-blur border-b border-gray-200 dark:border-gray-800">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+      <h1 class="text-lg font-semibold">Person Relationship Network</h1>
+      <a href="/" class="text-sm text-indigo-600 hover:underline">Back to Dashboard</a>
+    </div>
+  </header>
+  <main class="max-w-6xl mx-auto px-4 py-6 space-y-6">
+    <section class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4">
+      <div class="flex flex-wrap items-end gap-4">
+        <label class="block">
+          <span class="block text-xs uppercase tracking-wide text-gray-600 dark:text-gray-300">Person ID</span>
+          <input id="personId" class="mt-1 w-48 rounded-md border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="e.g., P1" />
+        </label>
+        <button id="loadNetwork" class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500">Load Network</button>
+        <span id="status" class="text-xs text-gray-600 dark:text-gray-300"></span>
+      </div>
+    </section>
+    <section class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4">
+      <h2 class="text-base font-semibold mb-3">Graph</h2>
+      <div id="graph" class="w-full h-[600px] overflow-hidden rounded border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800"></div>
+      <div class="mt-2 text-xs text-gray-600 dark:text-gray-300" id="legend">
+        <strong>Legend:</strong> Circles = Persons, Squares = Companies. Blue links: LEGAL_REP. Emerald links: SERVES_AS. Gray links: SHARE_COMPANY (persons share at least one company).
+      </div>
+    </section>
+    <section class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4">
+      <h2 class="text-base font-semibold mb-3">Raw Data</h2>
+      <pre id="raw" class="text-xs whitespace-pre-wrap"></pre>
+    </section>
+  </main>
+  <script type="module" src="/static/modules/personNetwork.js"></script>
+</body>
+</html>

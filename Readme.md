@@ -15,6 +15,8 @@ Navigation: Use the "Open Data Console" button on the home page, or directly vis
 
 Open http://localhost:8000/ for the dashboard and http://localhost:8000/data-console for the Data Console.
 
+Additionally, a person-centric relationship page is available at `/static/person_network.html`. The main dashboard's Legal Representatives list links to this page for each representative.
+
 Home page cards include:
 
 - Ownership Layers, Legal Representatives, Accounts, Transactions
@@ -123,6 +125,13 @@ Legal representatives
 You can bulk-load legal reps during `POST /populate-mock` by providing a CSV at `data/legal_reps.csv` or setting `$env:LEGAL_REPS_CSV_PATH` to a custom path. If the file is not present, the import silently skips this step.
 
 You can also bulk-load stored news items with `data/news.csv` or by setting `$env:NEWS_CSV_PATH` to a custom file. Each row creates a `News` node and links it to the entity via `HAS_NEWS`. The `/entities/{id}/news` endpoint merges stored items with external fetched news (deduped by URL or title) and returns a combined list.
+
+Person network
+
+- Endpoint: `GET /person-network/{person_id}` returns the person, nodes, and links representing:
+  - Direct person→company edges (LEGAL_REP, SERVES_AS)
+  - Person↔person edges (SHARE_COMPANY) for people connected to the same company
+- UI: open `/static/person_network.html?person=PID` or click on a representative in the dashboard's Legal Representatives list.
 
 Company news endpoint
 

@@ -2,3 +2,4 @@ company_id,person_id,role
 C1,P1,Chairman
 C1,P2,CFO
 C2,P3,CEO
+C2,P1,Director

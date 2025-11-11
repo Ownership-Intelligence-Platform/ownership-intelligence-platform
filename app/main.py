@@ -45,6 +45,7 @@ from app.services.graph_service import (
     find_entities_by_name_exact,
     resolve_entity_identifier,
     search_entities_fuzzy,
+    get_person_network,
 )
 from app.services.news_service import get_company_news
 from app.services.risk_service import analyze_entity_risks
@@ -370,6 +371,21 @@ def api_get_representatives(company_id: str):
     if not res:
         raise HTTPException(status_code=404, detail="Company not found or no representatives")
     return res
+
+
+@app.get("/person-network/{person_id}")
+def api_get_person_network(person_id: str):
+    """Return a person-centric relationship graph.
+
+    Includes focal person, connected companies, other persons sharing those companies,
+    and edges (LEGAL_REP, SERVES_AS, SHARE_COMPANY)."""
+    try:
+        graph = get_person_network(person_id)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to build person network: {exc}")
+    if not graph:
+        raise HTTPException(status_code=404, detail="Person not found")
+    return graph
 
 
 from app.services.graph_service import get_stored_news
