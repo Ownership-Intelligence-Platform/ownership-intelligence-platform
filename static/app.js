@@ -15,7 +15,11 @@ import { analyzeRisks } from "./modules/risks.js";
 import { resolveEntityInput } from "./modules/utils.js";
 import { initEntityAutocomplete } from "./modules/autocomplete.js";
 import { loadEntityInfo } from "./modules/entities.js";
-import { evaluateKbRisk, annotateGraph } from "./modules/kbRisk.js";
+import {
+  evaluateKbRisk,
+  annotateGraph,
+  openGraphView,
+} from "./modules/kbRisk.js";
 
 // Initialize theme toggle
 initThemeToggle();
@@ -186,6 +190,74 @@ document
     loadEntityInfo(id);
     annotateGraph(id);
   });
+
+// Open Graph button: focus penetration graph for current entity (fallback to person network page)
+document.getElementById("openGraph")?.addEventListener("click", async () => {
+  const raw = document.getElementById("rootId").value.trim();
+  const id = await resolveEntityInput(raw);
+  if (!id) return;
+  document.getElementById("rootId").value = id;
+  loadEntityInfo(id);
+  openGraphView(id);
+});
+
+// Load Example Chain: populate the textarea with a curated demo and show it
+document.getElementById("kbLoadExampleChain")?.addEventListener("click", () => {
+  const toggle = document.getElementById("kbUseCustomChain");
+  const box = document.getElementById("kbChainBox");
+  const ta = document.getElementById("kbChainJson");
+  const err = document.getElementById("kbChainError");
+  if (toggle && box && ta) {
+    toggle.checked = true;
+    box.classList.remove("hidden");
+    const example = {
+      transfers: [
+        {
+          from: "A1",
+          to: "B1",
+          amount_cny: 20000,
+          date: "2025-01-01",
+          to_region: "CN",
+        },
+        {
+          from: "A2",
+          to: "B1",
+          amount_cny: 18000,
+          date: "2025-01-02",
+          to_region: "CN",
+        },
+        {
+          from: "A3",
+          to: "B1",
+          amount_cny: 22000,
+          date: "2025-01-03",
+          to_region: "HK",
+        },
+        {
+          from: "A4",
+          to: "B1",
+          amount_cny: 24000,
+          date: "2025-01-04",
+          to_region: "HK",
+        },
+        {
+          from: "A5",
+          to: "B1",
+          amount_cny: 19000,
+          date: "2025-01-05",
+          to_region: "KY",
+        },
+      ],
+      beneficiary_name: "ACME OFFSHORE LTD",
+    };
+    ta.value = JSON.stringify(example, null, 2);
+    if (err) {
+      err.textContent = "";
+      err.classList.add("hidden");
+    }
+    ta.focus();
+  }
+});
 
 // Debug / manual access in browser console
 window.OI = {

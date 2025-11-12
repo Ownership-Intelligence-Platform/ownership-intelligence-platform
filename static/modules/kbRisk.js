@@ -174,7 +174,35 @@ export async function annotateGraph(entityId) {
   }
 }
 
+// Open graph view for the current entity: prefer in-page penetration graph; fallback to person network page
+export function openGraphView(entityId) {
+  try {
+    // If global helpers exist, set root and render penetration graph on the current page
+    const rootInput = document.getElementById("rootId");
+    if (rootInput) rootInput.value = entityId;
+    if (window.OI && typeof window.OI.loadPenetration === "function") {
+      // Try to render locally and scroll into view
+      window.OI.loadPenetration();
+      const section = document.getElementById("penetrationChart");
+      if (section && section.scrollIntoView)
+        section.scrollIntoView({ behavior: "smooth", block: "start" });
+      const el = document.getElementById("kbRiskResults");
+      el &&
+        (el.innerHTML += `<div class='mt-2 text-gray-600 dark:text-gray-300'>Opened penetration graph for ${escapeHtml(
+          entityId
+        )} below.</div>`);
+      return;
+    }
+  } catch (_) {}
+  // Fallback: open person network page in new tab (works best for person IDs)
+  const url = `/static/person_network.html?person=${encodeURIComponent(
+    entityId
+  )}`;
+  window.open(url, "_blank");
+}
+
 // Expose for manual testing
 window.OI = window.OI || {};
 window.OI.evaluateKbRisk = evaluateKbRisk;
 window.OI.annotateGraph = annotateGraph;
+window.OI.openGraphView = openGraphView;
