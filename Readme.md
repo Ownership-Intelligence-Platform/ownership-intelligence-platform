@@ -92,6 +92,36 @@ Invoke-RestMethod -Uri http://127.0.0.1:8000/clear-db -Method POST
 
 Or click the "Clear Imported Data (DB)" button in the web UI (served at `/`). This will delete ALL nodes and relationships (via `MATCH (n) DETACH DELETE n`). Use only in development.
 
+## LLM Report Generation
+
+You can now generate a CDD snapshot report via the new endpoint:
+
+- `GET /reports/cdd/{entity_id}` parameters:
+  - `refresh` (bool, default false): force regeneration (ignore cached markdown)
+  - `depth` (int, default 3): ownership penetration depth
+  - `news_limit` (int, default 10): number of external news items to fetch
+  - `bilingual` (bool, default false): produce Chinese + English mixed sections
+  - `format` (string, md|html, default md): additionally write and return HTML when `html`
+
+Environment variables for the LLM client:
+
+```powershell
+$env:LLM_API_KEY = "<your_key>"            # OR use DASHSCOPE_API_KEY / OPENAI_API_KEY
+$env:DASHSCOPE_API_KEY = "<dashscope_key>"  # If using Qwen on DashScope
+$env:LLM_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1" # Optional (auto-set when DASHSCOPE_API_KEY provided)
+$env:LLM_MODEL = "qwen-plus"                # Model name, default qwen-plus
+```
+
+Example (PowerShell):
+
+```powershell
+Invoke-RestMethod -Uri "http://127.0.0.1:8000/reports/cdd/E1?depth=3&news_limit=5" -Method GET | Out-File -FilePath report_E1.json
+```
+
+The response contains the markdown report content and path under `reports/<entity_id>.md`. If `format=html` is used, it also returns `content_html` and writes `reports/<entity_id>.html`. If the `.md` file exists and `refresh=false`, it returns the cached version.
+
+Failure fallback: If the LLM call fails (missing key or network error) a deterministic markdown report is generated with key data and a manual review recommendation.
+
 CSV import (populate mock data)
 
 - Endpoint: `POST /populate-mock`

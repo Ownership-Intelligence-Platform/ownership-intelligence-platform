@@ -74,7 +74,18 @@
             </label>
             <button id="loadLayers" class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500">Load Layers</button>
 
-             </div>
+            <div class="flex items-end gap-3 ml-auto">
+              <label class="block">
+                <span class="block text-xs uppercase tracking-wide text-gray-600 dark:text-gray-300">Report News Limit</span>
+                <input id="reportNewsLimit" type="number" value="5" min="1" max="50" class="mt-1 w-24 rounded-md border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+              </label>
+              <label class="inline-flex items-center gap-2 mt-6">
+                <input id="reportBilingual" type="checkbox" class="scale-110" />
+                <span class="text-xs uppercase tracking-wide text-gray-600 dark:text-gray-300">Bilingual</span>
+              </label>
+              <button id="generateReportHtml" class="inline-flex items-center rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500">Generate Report (HTML)</button>
+            </div>
+          </div>
         </div>
       </div>
     </section>

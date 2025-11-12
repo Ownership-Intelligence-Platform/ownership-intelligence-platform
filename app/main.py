@@ -11,6 +11,7 @@ from app.api.routers.news import router as news_router
 from app.api.routers.network import router as network_router
 from app.api.routers.subresources import router as subresources_router
 from app.api.routers.risk_kb import router as risk_kb_router
+from app.api.routers.reports import router as reports_router
 
 
 @asynccontextmanager
@@ -35,3 +36,4 @@ app.include_router(news_router)
 app.include_router(network_router)
 app.include_router(subresources_router)
 app.include_router(risk_kb_router)
+app.include_router(reports_router)
