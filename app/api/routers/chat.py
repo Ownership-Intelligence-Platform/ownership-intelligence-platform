@@ -24,6 +24,7 @@ class ChatRequest(BaseModel):
     use_web: Optional[bool] = False
     web_k: Optional[int] = 3
     web_timeout: Optional[float] = 6.0
+    web_provider: Optional[str] = "auto"  # auto|ddg|bing
 
 
 @router.post("/chat")
@@ -54,7 +55,7 @@ def chat(req: ChatRequest) -> Dict[str, Any]:
                 # Lazy import to avoid adding test-time dependency if unused
                 from app.services.web_search_service import WebSearch
 
-                ws = WebSearch(timeout=float(req.web_timeout or 6.0))
+                ws = WebSearch(timeout=float(req.web_timeout or 6.0), provider=(req.web_provider or "auto"))
                 web_sources = ws.search_and_crawl(req.message, k=int(req.web_k or 3))
                 if web_sources:
                     # Compose brief context block with citations

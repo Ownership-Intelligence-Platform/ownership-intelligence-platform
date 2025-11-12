@@ -156,7 +156,7 @@ Failure fallback: If the LLM call fails (missing key or network error) a determi
 
 ### Web-assisted answers (optional)
 
-The chat box has a "Use Web Search" toggle. When enabled, the backend will:
+The chat box has a "Use Web Search" toggle and a Provider selector (Auto/Bing/DuckDuckGo). When enabled, the backend will:
 
 - Run a quick DuckDuckGo HTML search for the question
 - Crawl the top results with short timeouts
@@ -169,7 +169,8 @@ You can also call the API directly with:
   "message": "What is beneficial ownership?",
   "use_web": true,
   "web_k": 3,
-  "web_timeout": 6.0
+  "web_timeout": 6.0,
+  "web_provider": "auto"
 }
 ```
 
@@ -180,7 +181,8 @@ The response will include a `sources` array with `{title, url}` for rendering ci
 Notes:
 
 - Web search is best-effort and time-bounded; failures fall back to a normal LLM reply.
-- No external API keys are required; DuckDuckGo HTML is used for lightweight search.
+- Auto provider preference: if `BING_SEARCH_API_KEY` (or `AZURE_BING_SEARCH_KEY`) is set, Bing is used; otherwise DuckDuckGo HTML.
+- To force Bing, choose Provider = Bing (requires `BING_SEARCH_API_KEY`) and optionally set `BING_SEARCH_ENDPOINT` (default: `https://api.bing.microsoft.com/v7.0/search`).
 
 CSV import (populate mock data)
 

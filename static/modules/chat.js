@@ -23,6 +23,7 @@ export function initChat() {
   const input = document.getElementById("chatInput");
   const sys = document.getElementById("chatSystemPrompt");
   const useWeb = document.getElementById("chatUseWeb");
+  const webProvider = document.getElementById("chatWebProvider");
   if (!form || !input) return;
 
   form.addEventListener("submit", async (e) => {
@@ -44,6 +45,7 @@ export function initChat() {
         history,
         system_prompt: sys ? sys.value.trim() || undefined : undefined,
         use_web: !!(useWeb && useWeb.checked),
+        web_provider: webProvider ? webProvider.value : undefined,
       };
       const resp = await fetch("/chat", {
         method: "POST",

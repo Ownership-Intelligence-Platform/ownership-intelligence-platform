@@ -26,8 +26,9 @@ def test_chat_endpoint_with_web_search(monkeypatch):
     fake_mod = types.SimpleNamespace()
 
     class _FakeWS:
-        def __init__(self, timeout=6.0):
+        def __init__(self, timeout=6.0, provider="auto"):
             self.timeout = timeout
+            self.provider = provider
 
         def search_and_crawl(self, query: str, k: int = 3):
             return [
@@ -42,7 +43,7 @@ def test_chat_endpoint_with_web_search(monkeypatch):
     monkeypatch.setitem(sys.modules, "app.services.web_search_service", fake_mod)
 
     client = TestClient(app)
-    resp = client.post("/chat", json={"message": "Hello", "use_web": True})
+    resp = client.post("/chat", json={"message": "Hello", "use_web": True, "web_provider": "bing"})
     assert resp.status_code == 200
     data = resp.json()
     # Ensure web context impacted the model echo and sources are returned
