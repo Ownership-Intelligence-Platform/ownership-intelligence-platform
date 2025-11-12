@@ -1,0 +1,9 @@
+{
+  "money_laundering": {
+    "id": "aml",
+    "children": {
+      "small_sum_aggregation": { "id": "aml.ssa" },
+      "cross_border_smurfing": { "id": "aml.cbs" }
+    }
+  }
+}

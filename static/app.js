@@ -15,6 +15,7 @@ import { analyzeRisks } from "./modules/risks.js";
 import { resolveEntityInput } from "./modules/utils.js";
 import { initEntityAutocomplete } from "./modules/autocomplete.js";
 import { loadEntityInfo } from "./modules/entities.js";
+import { evaluateKbRisk, annotateGraph } from "./modules/kbRisk.js";
 
 // Initialize theme toggle
 initThemeToggle();
@@ -134,6 +135,58 @@ document.getElementById("analyzeRisks")?.addEventListener("click", async () => {
   analyzeRisks(id, newsLimit);
 });
 
+// KB Risk UI handlers
+const kbUseCustomChainEl = document.getElementById("kbUseCustomChain");
+const kbChainBoxEl = document.getElementById("kbChainBox");
+kbUseCustomChainEl?.addEventListener("change", () => {
+  if (!kbChainBoxEl) return;
+  kbChainBoxEl.classList.toggle("hidden", !kbUseCustomChainEl.checked);
+});
+
+document
+  .getElementById("evaluateKbRisk")
+  ?.addEventListener("click", async () => {
+    const raw = document.getElementById("rootId").value.trim();
+    const id = await resolveEntityInput(raw);
+    if (!id) return;
+    document.getElementById("rootId").value = id;
+    loadEntityInfo(id);
+    let body = null;
+    const errEl = document.getElementById("kbChainError");
+    if (kbUseCustomChainEl?.checked) {
+      const txt = document.getElementById("kbChainJson").value.trim();
+      if (txt) {
+        try {
+          body = JSON.parse(txt);
+          if (errEl) {
+            errEl.textContent = "";
+            errEl.classList.add("hidden");
+          }
+        } catch (e) {
+          if (errEl) {
+            errEl.textContent = "Invalid JSON: " + e;
+            errEl.classList.remove("hidden");
+          }
+          return;
+        }
+      }
+    } else {
+      body = { entity_id: id };
+    }
+    evaluateKbRisk(id, body);
+  });
+
+document
+  .getElementById("annotateGraph")
+  ?.addEventListener("click", async () => {
+    const raw = document.getElementById("rootId").value.trim();
+    const id = await resolveEntityInput(raw);
+    if (!id) return;
+    document.getElementById("rootId").value = id;
+    loadEntityInfo(id);
+    annotateGraph(id);
+  });
+
 // Debug / manual access in browser console
 window.OI = {
   loadLayers,
@@ -148,4 +201,6 @@ window.OI = {
   loadEmployment,
   loadLocations,
   analyzeRisks,
+  evaluateKbRisk,
+  annotateGraph,
 };

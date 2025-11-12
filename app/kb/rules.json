@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "deterministic": [
+    {
+      "id": "sanctions_hit",
+      "description": "Counterparty is on sanctions-like list",
+      "match": { "counterparty_name_in_sanctions": true },
+      "risk_label": "high",
+      "category": "aml",
+      "effect": { "score": 100 }
+    }
+  ],
+  "weighted": [
+    {
+      "id": "small_sum_aggregation",
+      "category": "aml.ssa",
+      "weights": {
+        "small_amount": 0.25,
+        "multi_accounts": 0.25,
+        "consecutive_days": 0.2,
+        "same_beneficiary": 0.2,
+        "total_volume": 0.1
+      },
+      "threshold": 0.7,
+      "hints": {
+        "small_amount_cny_max": 50000,
+        "min_days": 5,
+        "min_accounts": 3
+      }
+    },
+    {
+      "id": "cross_border_offshore",
+      "category": "aml.cbs",
+      "weights": {
+        "cross_border": 0.3,
+        "small_amount": 0.2,
+        "same_offshore_beneficiary": 0.3,
+        "frequency": 0.2
+      },
+      "threshold": 0.7,
+      "hints": {
+        "offshore_region_list": "high_risk_regions",
+        "small_amount_cny_max": 50000,
+        "min_days": 3
+      }
+    }
+  ]
+}

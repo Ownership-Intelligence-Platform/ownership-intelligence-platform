@@ -251,6 +251,28 @@
         <div id="riskResults" class="p-4 text-sm text-gray-500 dark:text-gray-400">Click "Analyze Risks" to compute heuristic risk flags for the Root Entity ID.</div>
       </div>
 
+      <!-- KB Risk Evaluation Card -->
+      <div class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm lg:col-span-2">
+        <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
+          <h3 class="text-base font-semibold">KB Risk Evaluation</h3>
+          <div class="flex items-center gap-3">
+            <button id="evaluateKbRisk" class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500">Evaluate KB Risk</button>
+            <button id="annotateGraph" class="inline-flex items-center rounded-md bg-slate-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-500">Annotate Graph</button>
+          </div>
+        </div>
+        <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-start justify-between gap-3">
+          <label class="inline-flex items-center gap-2">
+            <input id="kbUseCustomChain" type="checkbox" class="scale-110" />
+            <span class="text-sm text-gray-700 dark:text-gray-200">Use custom transaction chain JSON</span>
+          </label>
+        </div>
+        <div id="kbChainBox" class="px-4 pb-3 hidden">
+          <textarea id="kbChainJson" class="mt-1 w-full h-32 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder='{"transfers":[{"from":"A1","to":"B1","amount_cny":20000,"date":"2025-01-01","to_region":"HK"}],"beneficiary_name":"ACME OFFSHORE LTD"}'></textarea>
+          <div id="kbChainError" class="mt-1 text-xs text-rose-600 hidden"></div>
+        </div>
+        <div id="kbRiskResults" class="p-4 text-sm text-gray-500 dark:text-gray-400" aria-live="polite">Click Evaluate to run KB-based risk scoring.</div>
+      </div>
+
     </section>
   </main>
 

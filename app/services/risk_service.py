@@ -16,6 +16,8 @@ for testing (to avoid needing a live Neo4j database).
 from __future__ import annotations
 
 from typing import Callable, Dict, List, Any, Optional
+import json
+import os
 import re
 
 from app.services.graph_service import (
@@ -46,6 +48,224 @@ NEGATIVE_NEWS_KEYWORDS = [
 ]
 
 KEYWORD_PATTERN = re.compile(r"|".join(re.escape(k) for k in NEGATIVE_NEWS_KEYWORDS), re.IGNORECASE)
+
+# --- KB (Knowledge Base) loading (MVP) ---
+_KB_CACHE: Dict[str, Any] = {}
+
+def load_kb(force: bool = False) -> Dict[str, Any]:
+    """Load KB JSON files (rules, lists, taxonomy) into a cache.
+
+    Files reside in app/kb/. If a file is missing, returns partial data.
+    This simple loader avoids adding new dependencies.
+    """
+    global _KB_CACHE
+    if _KB_CACHE and not force:
+        return _KB_CACHE
+    base = os.path.join(os.path.dirname(__file__), "..", "kb")
+    def _load(name: str):
+        path = os.path.abspath(os.path.join(base, name))
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except FileNotFoundError:
+            return {}
+        except Exception as exc:
+            # Surface minimal error without crashing entire service
+            return {"__error__": f"Failed to load {name}: {exc}"}
+    _KB_CACHE = {
+        "rules": _load("rules.json"),
+        "lists": _load("lists.json"),
+        "taxonomy": _load("taxonomy.json"),
+    }
+    return _KB_CACHE
+
+
+def evaluate_kb_risk(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Evaluate KB-based risk from an input payload.
+
+    Supports two input modes:
+      - {"entity_id": "E123"}: Basic entity-centric evaluation (currently minimal).
+      - {"transfers": [...], "beneficiary_name": "..."}: Transaction chain evaluation.
+
+    Deterministic rules: if match condition satisfied, sets score to effect.score.
+    Weighted rules: sum weights of matched feature flags; if >= threshold include category.
+    """
+    kb = load_kb()
+    rules = kb.get("rules", {})
+    lists = kb.get("lists", {})
+    deterministic_rules = rules.get("deterministic", [])
+    weighted_rules = rules.get("weighted", [])
+
+    score = 0.0
+    det_triggers: List[str] = []
+    labels: List[str] = []
+    matched_features_global: List[str] = []
+    weighted_details: List[Dict[str, Any]] = []
+
+    # Extract inputs
+    transfers: List[Dict[str, Any]] = payload.get("transfers", [])
+    beneficiary_name: str = payload.get("beneficiary_name", "")
+
+    # Support entity-only evaluation (future expansion): currently just placeholder
+    entity_id = payload.get("entity_id")
+    entity_data: Dict[str, Any] = {}
+    if entity_id:
+        # Optionally fetch entity for future feature extraction
+        try:
+            entity_data = get_entity(entity_id) or {}
+        except Exception:
+            entity_data = {}
+        # If no explicit transfers provided, derive a minimal set from graph transactions
+        if not transfers:
+            try:
+                txs = get_transactions(entity_id, "both")
+            except Exception:
+                txs = []
+            derived: List[Dict[str, Any]] = []
+            for tx in txs:
+                derived.append({
+                    "from": tx.get("from_id") or tx.get("from"),
+                    "to": tx.get("to_id") or tx.get("to"),
+                    "amount_cny": tx.get("amount_cny") or tx.get("amount"),
+                    "date": tx.get("time") or tx.get("date"),
+                    "to_region": tx.get("to_region") or tx.get("region"),
+                })
+            # Limit to a recent window if very large (simple cap at 100 for MVP)
+            transfers = derived[:100]
+
+    # --- Deterministic phase ---
+    sanctioned = beneficiary_name and beneficiary_name.upper() in {s.upper() for s in lists.get("sanctioned_parties", [])}
+    for rule in deterministic_rules:
+        match_cfg = rule.get("match", {})
+        # Simple supported key: counterparty_name_in_sanctions
+        if match_cfg.get("counterparty_name_in_sanctions") and sanctioned:
+            det_triggers.append(rule.get("id", "unknown"))
+            effect = rule.get("effect", {})
+            score = max(score, float(effect.get("score", 0)))
+            if rule.get("category") and rule["category"] not in labels:
+                labels.append(rule["category"])
+
+    # --- Weighted phase ---
+    # Pre-compute features from transfers
+    # Features: small_amount, multi_accounts, consecutive_days, same_beneficiary, total_volume, cross_border, same_offshore_beneficiary, frequency
+    amounts = [t.get("amount_cny") or t.get("amount") for t in transfers if (t.get("amount_cny") or t.get("amount")) is not None]
+    small_amount_flag = False
+    multi_accounts_flag = False
+    consecutive_days_flag = False
+    same_beneficiary_flag = False
+    total_volume_flag = False
+    cross_border_flag = False
+    same_offshore_beneficiary_flag = False
+    frequency_flag = False
+
+    if transfers:
+        # Determine unique source accounts and beneficiary consistency
+        from_accounts = {t.get("from") or t.get("from_id") for t in transfers if t.get("from") or t.get("from_id")}
+        to_accounts = {t.get("to") or t.get("to_id") for t in transfers if t.get("to") or t.get("to_id")}
+        # Multi accounts
+        multi_accounts_flag = len(from_accounts) >= 3
+        # Same beneficiary
+        same_beneficiary_flag = len(to_accounts) == 1
+        # Frequency: number of transfers per day threshold simplistic
+        frequency_flag = len(transfers) >= 3
+        # Amount checks
+        if amounts:
+            max_amount = max(amounts)
+        else:
+            max_amount = 0
+        # Collect dates for consecutive detection
+        dates = []
+        for t in transfers:
+            d = t.get("date") or t.get("time")
+            if d:
+                dates.append(str(d))
+        if dates:
+            # Sort and check consecutive (naive: count distinct days)
+            distinct_days = sorted({d for d in dates})
+            consecutive_days_flag = len(distinct_days) >= 5
+        # Total volume (simple sum threshold usage later)
+        total_volume = sum(amounts) if amounts else 0
+        # Cross-border (regions differ or offshore region list involved)
+        regions = [t.get("to_region") or t.get("region") for t in transfers if t.get("to_region") or t.get("region")]
+        region_set = {r for r in regions if r}
+        cross_border_flag = len(region_set) > 1
+        offshore_list = set(lists.get("high_risk_regions", []))
+        same_offshore_beneficiary_flag = bool(region_set) and all(r in offshore_list for r in region_set) and same_beneficiary_flag
+
+    # Weighted rule evaluation
+    for w_rule in weighted_rules:
+        weights: Dict[str, float] = w_rule.get("weights", {})
+        threshold = float(w_rule.get("threshold", 1.0))
+        raw_score = 0.0
+        matched_features: List[str] = []
+        feature_weights_list: List[Dict[str, Any]] = []
+        # Map feature name → flag
+        feature_flags = {
+            "small_amount": small_amount_flag,
+            "multi_accounts": multi_accounts_flag,
+            "consecutive_days": consecutive_days_flag,
+            "same_beneficiary": same_beneficiary_flag,
+            "total_volume": total_volume_flag,
+            "cross_border": cross_border_flag,
+            "same_offshore_beneficiary": same_offshore_beneficiary_flag,
+            "frequency": frequency_flag,
+        }
+        # Derive small_amount_flag and total_volume_flag using hints
+        hints = w_rule.get("hints", {})
+        limit_small = hints.get("small_amount_cny_max")
+        if limit_small is not None and amounts:
+            small_amount_flag = max(amounts) <= float(limit_small)
+            feature_flags["small_amount"] = small_amount_flag
+        # total volume heuristic: if total >= 3*limit_small treat flagged
+        if limit_small is not None and amounts:
+            total_volume_flag = sum(amounts) >= (3 * float(limit_small))
+            feature_flags["total_volume"] = total_volume_flag
+
+        for fname, fflag in feature_flags.items():
+            if fflag and fname in weights:
+                raw_score += float(weights[fname])
+                matched_features.append(fname)
+                feature_weights_list.append({"name": fname, "weight": float(weights[fname])})
+
+        passed = raw_score >= threshold
+        weighted_details.append({
+            "id": w_rule.get("id"),
+            "category": w_rule.get("category"),
+            "matched_features": matched_features,
+            "raw_score": raw_score,
+            "threshold": threshold,
+            "passed": passed,
+            "feature_weights": feature_weights_list,
+        })
+        if passed:
+            cat = w_rule.get("category")
+            if cat and cat not in labels:
+                labels.append(cat)
+            for mf in matched_features:
+                if mf not in matched_features_global:
+                    matched_features_global.append(mf)
+            # Scale weighted raw score to percentage if higher than current deterministic score
+            score = max(score, raw_score * 100)
+
+    explanation_parts = []
+    if det_triggers:
+        explanation_parts.append("Deterministic triggers: " + ", ".join(det_triggers))
+    if matched_features_global:
+        explanation_parts.append("Matched features: " + ", ".join(matched_features_global))
+    if not explanation_parts:
+        explanation_parts.append("No rules matched")
+    explanation = "; ".join(explanation_parts)
+
+    return {
+        "score": round(score, 2),
+        "labels": labels,
+        "deterministic_triggers": det_triggers,
+        "matched_features": matched_features_global,
+        "weighted_details": weighted_details,
+        "explanation": explanation,
+        "input_entity_id": entity_id,
+        "input_transfer_count": len(transfers),
+    }
 
 
 def _flag(item: Dict[str, Any], reason: str, weight: float, flags_acc: List[str]):
