@@ -314,7 +314,9 @@ document
 
         // Also trigger a client-side download of the HTML using a Blob
         try {
-          const blob = new Blob([data.content_html], { type: "text/html;charset=utf-8" });
+          const blob = new Blob([data.content_html], {
+            type: "text/html;charset=utf-8",
+          });
           const link = document.createElement("a");
           link.href = URL.createObjectURL(blob);
           link.download = `CDD_${id}.html`;
