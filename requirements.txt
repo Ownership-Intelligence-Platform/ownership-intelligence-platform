@@ -9,3 +9,6 @@ httpx>=0.27.0
 beautifulsoup4>=4.12.2
 readability-lxml>=0.8.1
 lxml>=4.9.3
+selectolax>=0.3.21
+APScheduler>=3.10.4
+tenacity>=8.2.3
