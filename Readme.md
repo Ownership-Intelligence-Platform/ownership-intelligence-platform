@@ -21,6 +21,7 @@ Home page cards include:
 
 - Ownership Layers, Legal Representatives, Accounts, Transactions
 - NEW: Guarantees, Supply Chain, Employment, Locations (each with quick loaders similar to Accounts/Transactions)
+- NEW: AI Assistant chat — type questions in the chat box; the backend calls the configured LLM
 
 # Ownership Intelligence Platform (initial scaffold)
 
@@ -110,6 +111,37 @@ $env:LLM_API_KEY = "<your_key>"            # OR use DASHSCOPE_API_KEY / OPENAI_A
 $env:DASHSCOPE_API_KEY = "<dashscope_key>"  # If using Qwen on DashScope
 $env:LLM_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1" # Optional (auto-set when DASHSCOPE_API_KEY provided)
 $env:LLM_MODEL = "qwen-plus"                # Model name, default qwen-plus
+```
+
+## AI Assistant Chat
+
+There is a built-in chat box on the main dashboard ("AI Assistant" card). It posts to `POST /chat` with the following JSON body:
+
+```json
+{
+  "message": "Your question",
+  "history": [
+    { "role": "user", "content": "..." },
+    { "role": "assistant", "content": "..." }
+  ],
+  "system_prompt": "You are a helpful assistant for ownership analysis.",
+  "temperature": 0.2,
+  "max_tokens": 600
+}
+```
+
+Response:
+
+```json
+{ "reply": "...", "model": "...", "usage": { "total_tokens": 123 } }
+```
+
+It uses the same `LLM_API_KEY` / `DASHSCOPE_API_KEY` and optional `LLM_BASE_URL` variables described above. If no key is provided, the endpoint returns HTTP 500 with a helpful message. To use Alibaba DashScope (Qwen), set:
+
+```powershell
+$env:DASHSCOPE_API_KEY = "<your_dashscope_key>"
+# optional; auto-set when DASHSCOPE_API_KEY is present
+$env:LLM_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
 ```
 
 Example (PowerShell):

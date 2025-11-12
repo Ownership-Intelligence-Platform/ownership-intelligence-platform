@@ -15,6 +15,7 @@ import { analyzeRisks } from "./modules/risks.js";
 import { resolveEntityInput } from "./modules/utils.js";
 import { initEntityAutocomplete } from "./modules/autocomplete.js";
 import { loadEntityInfo } from "./modules/entities.js";
+import { initChat } from "./modules/chat.js";
 import {
   evaluateKbRisk,
   annotateGraph,
@@ -29,6 +30,9 @@ initEntityAutocomplete();
 if (document.getElementById("btnCreatePerson")) {
   initAdmin();
 }
+
+// Initialize chat widget if present
+initChat();
 
 // Event wiring (DOM exists because script is loaded at end of body)
 document
