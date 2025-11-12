@@ -31,7 +31,8 @@ What I added:
 - `requirements.txt` - Python dependencies
 - `docker-compose.yml` - starts a local Neo4j instance with default credentials (neo4j/testpassword)
 - `app/` - application package
-  - `app/main.py` - FastAPI app with endpoints to create entities, ownerships and fetch layers
+  - `app/main.py` - FastAPI app initialization (lifespan, static files) registering modular routers
+  - `app/api/routers/` - extracted APIRouter modules (`core`, `entities`, `analysis`, `news`, `network`, `subresources`) providing all previous endpoints with unchanged paths
   - `app/db/neo4j_connector.py` - small Neo4j helper using environment variables
   - `app/models/ownership.py` - Pydantic models
   - `app/services/graph/` - modular graph operations split into focused files (entities, ownerships, layers, penetration, legal, news, accounts, transactions, guarantees, supply_chain, employment, locations, admin)
