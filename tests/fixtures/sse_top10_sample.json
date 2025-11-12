@@ -1,0 +1,16 @@
+{
+  "data": {
+    "list": [
+      { "holder_name": "中国证券金融股份有限公司", "ratio": "2.5%" },
+      { "holder_name": "香港中央结算有限公司", "ratio": 0.145 },
+      { "holder_name": "张三", "ratio": "10%" },
+      { "holder_name": "李四", "ratio": "9.5%" },
+      { "holder_name": "王五", "ratio": 0.08 },
+      { "holder_name": "社保基金一一五组合", "ratio": "3.1%" },
+      { "holder_name": "中央汇金资产管理有限责任公司", "ratio": "2%" },
+      { "holder_name": "上海某投资公司", "ratio": "1.5%" },
+      { "holder_name": "北京某投资公司", "ratio": 0.012 },
+      { "holder_name": "自然人甲", "ratio": "0.9%" }
+    ]
+  }
+}

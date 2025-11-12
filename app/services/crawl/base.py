@@ -42,6 +42,39 @@ class NewsRecord:
         return d
 
 
+@dataclass
+class CompanyRecord:
+    id: str  # canonical id; for CN sites ideally use unified social credit code
+    name: Optional[str]
+    type: Optional[str] = "Company"
+    description: Optional[str] = None
+    meta: Optional[SourceMeta] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        d = asdict(self)
+        meta = d.pop("meta", None)
+        if isinstance(meta, dict):
+            for k, v in (meta or {}).items():
+                d[f"meta_{k}"] = v
+        return d
+
+
+@dataclass
+class OwnershipRecord:
+    owner_id: str
+    owned_id: str
+    stake: Optional[float]  # percentage as 0..100 or 0..1 according to source; we standardize to percentage 0..100
+    meta: Optional[SourceMeta] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        d = asdict(self)
+        meta = d.pop("meta", None)
+        if isinstance(meta, dict):
+            for k, v in (meta or {}).items():
+                d[f"meta_{k}"] = v
+        return d
+
+
 class Spider:
     """Minimal spider contract.
 
