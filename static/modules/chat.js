@@ -1,5 +1,11 @@
 // Simple chat widget logic for the AI Assistant panel
-// Maintains in-memory history and calls backend /chat endpoint.
+// Enhancements: detect quoted entity names in messages to resolve against
+// internal data first; if found, load the Entity Info card and show a
+// lightweight confirmation reply without invoking the LLM. Otherwise,
+// maintain in-memory history and call backend /chat endpoint.
+
+import { resolveEntityInput } from "./utils.js";
+import { loadEntityInfo } from "./entities.js";
 
 let history = [];
 
@@ -36,7 +42,39 @@ export function initChat() {
     history.push({ role: "user", content: text });
     input.value = "";
 
-    // Show a temporary placeholder for assistant
+    // Try to extract a quoted entity name for internal resolution, e.g.:
+    // help me search "Acme Holdings Ltd"
+    // We match any straight or curly quotes.
+    const m = text.match(/["“”'‘’]([^"“”'‘’]+)["“”'‘’]/);
+    const candidate = m ? m[1].trim() : null;
+
+    if (candidate) {
+      try {
+        const entityId = await resolveEntityInput(candidate);
+        if (entityId) {
+          // Update the root input field and load the entity info card
+          const root = document.getElementById("rootId");
+          if (root) root.value = entityId;
+          loadEntityInfo(entityId);
+
+          // Respond inline without invoking the LLM
+          appendMessage(
+            "assistant",
+            `Found internal entity and loaded its details: [${entityId}].`
+          );
+          history.push({
+            role: "assistant",
+            content: `Found internal entity and loaded its details: [${entityId}].`,
+          });
+          return; // skip LLM/web flow when resolved internally
+        }
+        // If resolution failed (e.g., 404) fall through to LLM/web
+      } catch (err) {
+        // Non-fatal; fall back to LLM/web chat
+      }
+    }
+
+    // Show a temporary placeholder for assistant (LLM or web fallback)
     appendMessage("assistant", "…");
 
     try {
