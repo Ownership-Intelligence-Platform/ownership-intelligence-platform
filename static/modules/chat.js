@@ -22,6 +22,7 @@ export function initChat() {
   const form = document.getElementById("chatForm");
   const input = document.getElementById("chatInput");
   const sys = document.getElementById("chatSystemPrompt");
+  const useWeb = document.getElementById("chatUseWeb");
   if (!form || !input) return;
 
   form.addEventListener("submit", async (e) => {
@@ -42,6 +43,7 @@ export function initChat() {
         message: text,
         history,
         system_prompt: sys ? sys.value.trim() || undefined : undefined,
+        use_web: !!(useWeb && useWeb.checked),
       };
       const resp = await fetch("/chat", {
         method: "POST",
@@ -59,6 +61,31 @@ export function initChat() {
       if (last) last.textContent = reply;
       else appendMessage("assistant", reply);
       history.push({ role: "assistant", content: reply });
+
+      // If sources provided, render them as a tiny citation list below
+      if (Array.isArray(data.sources) && data.sources.length) {
+        const container = document.createElement("div");
+        container.className =
+          "px-3 py-2 rounded mb-2 text-xs bg-amber-50 dark:bg-amber-900/30 text-amber-900 dark:text-amber-100";
+        const listEl = document.createElement("ul");
+        for (const s of data.sources) {
+          const li = document.createElement("li");
+          const a = document.createElement("a");
+          a.href = s.url;
+          a.textContent = s.title || s.url;
+          a.target = "_blank";
+          a.rel = "noopener noreferrer";
+          li.appendChild(a);
+          listEl.appendChild(li);
+        }
+        const heading = document.createElement("div");
+        heading.className = "font-medium mb-1";
+        heading.textContent = "Sources:";
+        container.appendChild(heading);
+        container.appendChild(listEl);
+        const msgs = document.getElementById("chatMessages");
+        msgs?.appendChild(container);
+      }
     } catch (err) {
       const list = document.getElementById("chatMessages");
       const last = list?.lastElementChild;

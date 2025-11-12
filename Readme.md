@@ -154,6 +154,34 @@ The response contains the markdown report content and path under `reports/<entit
 
 Failure fallback: If the LLM call fails (missing key or network error) a deterministic markdown report is generated with key data and a manual review recommendation.
 
+### Web-assisted answers (optional)
+
+The chat box has a "Use Web Search" toggle. When enabled, the backend will:
+
+- Run a quick DuckDuckGo HTML search for the question
+- Crawl the top results with short timeouts
+- Extract page text and prepend a brief context block (with citations) to the LLM
+
+You can also call the API directly with:
+
+```json
+{
+  "message": "What is beneficial ownership?",
+  "use_web": true,
+  "web_k": 3,
+  "web_timeout": 6.0
+}
+```
+
+The response will include a `sources` array with `{title, url}` for rendering citations. Dependencies:
+
+- `httpx`, `beautifulsoup4`, `readability-lxml`, `lxml` (added to `requirements.txt`).
+
+Notes:
+
+- Web search is best-effort and time-bounded; failures fall back to a normal LLM reply.
+- No external API keys are required; DuckDuckGo HTML is used for lightweight search.
+
 CSV import (populate mock data)
 
 - Endpoint: `POST /populate-mock`
