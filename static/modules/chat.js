@@ -13,15 +13,13 @@ function hideDashboard() {
   ["controlsSection", "entityInfoSection", "dashboardSection"].forEach((id) =>
     document.getElementById(id)?.classList.add("hidden")
   );
-  const mainEl = document.querySelector("main");
-  mainEl?.classList.remove("split-active");
-  document.getElementById("chatSection")?.classList.remove("motion-pop-left");
-  document.getElementById("rightPanel")?.classList.remove("motion-slide-in");
 }
 
 function appendMessage(role, content) {
   const list = document.getElementById("chatMessages");
   if (!list) return;
+  // Ensure the message area is visible when first used
+  if (list.classList.contains("hidden")) list.classList.remove("hidden");
   const item = document.createElement("div");
   item.className = `px-3 py-2 rounded mb-2 text-sm whitespace-pre-wrap ${
     role === "user"
@@ -46,6 +44,15 @@ export function initChat() {
     e.preventDefault();
     const text = input.value.trim();
     if (!text) return;
+
+    // On first submit, move chat from center to bottom dock and reveal messages
+    const chatSection = document.getElementById("chatSection");
+    const msgs = document.getElementById("chatMessages");
+    if (chatSection && chatSection.classList.contains("centered")) {
+      chatSection.classList.remove("centered");
+      chatSection.classList.add("docked");
+      msgs?.classList.remove("hidden");
+    }
 
     // Show and store user message
     appendMessage("user", text);
@@ -73,16 +80,6 @@ export function initChat() {
             (id) => document.getElementById(id)?.classList.remove("hidden")
           );
 
-          // Activate split layout and add entrance animations
-          const mainEl = document.querySelector("main");
-          mainEl?.classList.add("split-active");
-          document
-            .getElementById("chatSection")
-            ?.classList.add("motion-pop-left");
-          document
-            .getElementById("rightPanel")
-            ?.classList.add("motion-slide-in");
-
           // Load entity details and trigger full layers load via existing button handler
           loadEntityInfo(entityId);
           document.getElementById("loadLayers")?.click();
@@ -104,6 +101,37 @@ export function initChat() {
         // Non-fatal; hide dashboard and fall back to LLM/web chat
         hideDashboard();
       }
+    }
+
+    // No quoted candidate or not resolved: try resolving the whole input as an entity id/name
+    try {
+      const entityId2 = await resolveEntityInput(text);
+      if (entityId2) {
+        const root = document.getElementById("rootId");
+        if (root) root.value = entityId2;
+        const initRoot = document.getElementById("initialRootId");
+        if (initRoot) initRoot.value = entityId2;
+
+        ["controlsSection", "entityInfoSection", "dashboardSection"].forEach(
+          (id) => document.getElementById(id)?.classList.remove("hidden")
+        );
+
+        loadEntityInfo(entityId2);
+        document.getElementById("loadLayers")?.click();
+
+        appendMessage(
+          "assistant",
+          `Found internal entity and loaded its details: [${entityId2}].`
+        );
+        history.push({
+          role: "assistant",
+          content: `Found internal entity and loaded its details: [${entityId2}].`,
+        });
+        return;
+      }
+      // If still not resolved, continue to LLM/web
+    } catch (_) {
+      hideDashboard();
     }
 
     // Show a temporary placeholder for assistant (LLM or web fallback)
@@ -176,5 +204,13 @@ export function initChat() {
     if (list) list.innerHTML = "";
     // Also hide the dashboard sections and exit split view
     hideDashboard();
+    // Return chat UI to centered state
+    const chatSection = document.getElementById("chatSection");
+    chatSection?.classList.remove("docked");
+    chatSection?.classList.add("centered");
+    // Hide messages area until next use and refocus the input
+    list?.classList.add("hidden");
+    const inputEl = document.getElementById("chatInput");
+    inputEl?.focus();
   });
 }
