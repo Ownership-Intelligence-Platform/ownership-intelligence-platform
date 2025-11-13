@@ -52,6 +52,8 @@ export function initChat() {
       chatSection.classList.remove("centered");
       chatSection.classList.add("docked");
       msgs?.classList.remove("hidden");
+      // Toggle layout padding for docked chat on small screens
+      document.body.classList.add("chat-docked");
     }
 
     // Show and store user message
@@ -212,5 +214,7 @@ export function initChat() {
     list?.classList.add("hidden");
     const inputEl = document.getElementById("chatInput");
     inputEl?.focus();
+    // Remove docked padding from layout
+    document.body.classList.remove("chat-docked");
   });
 }
