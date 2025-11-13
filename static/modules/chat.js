@@ -9,6 +9,16 @@ import { loadEntityInfo } from "./entities.js";
 
 let history = [];
 
+function hideDashboard() {
+  ["controlsSection", "entityInfoSection", "dashboardSection"].forEach((id) =>
+    document.getElementById(id)?.classList.add("hidden")
+  );
+  const mainEl = document.querySelector("main");
+  mainEl?.classList.remove("split-active");
+  document.getElementById("chatSection")?.classList.remove("motion-pop-left");
+  document.getElementById("rightPanel")?.classList.remove("motion-slide-in");
+}
+
 function appendMessage(role, content) {
   const list = document.getElementById("chatMessages");
   if (!list) return;
@@ -63,6 +73,16 @@ export function initChat() {
             (id) => document.getElementById(id)?.classList.remove("hidden")
           );
 
+          // Activate split layout and add entrance animations
+          const mainEl = document.querySelector("main");
+          mainEl?.classList.add("split-active");
+          document
+            .getElementById("chatSection")
+            ?.classList.add("motion-pop-left");
+          document
+            .getElementById("rightPanel")
+            ?.classList.add("motion-slide-in");
+
           // Load entity details and trigger full layers load via existing button handler
           loadEntityInfo(entityId);
           document.getElementById("loadLayers")?.click();
@@ -78,9 +98,11 @@ export function initChat() {
           });
           return; // skip LLM/web flow when resolved internally
         }
-        // If resolution failed (e.g., 404) fall through to LLM/web
+        // If resolution failed (e.g., 404) hide dashboard and fall through to LLM/web
+        hideDashboard();
       } catch (err) {
-        // Non-fatal; fall back to LLM/web chat
+        // Non-fatal; hide dashboard and fall back to LLM/web chat
+        hideDashboard();
       }
     }
 
@@ -151,5 +173,7 @@ export function initChat() {
     history = [];
     const list = document.getElementById("chatMessages");
     if (list) list.innerHTML = "";
+    // Also hide the dashboard sections and exit split view
+    hideDashboard();
   });
 }

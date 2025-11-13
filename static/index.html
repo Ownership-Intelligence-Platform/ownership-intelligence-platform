@@ -17,6 +17,47 @@
         border-bottom: solid 1px #ddd;
         padding: 7px 3px;
       }
+      /* Split view layout and animations */
+      main.split-active {
+        display: grid;
+        grid-template-columns: minmax(320px, 40%) 1fr;
+        gap: 1.25rem; /* ~20px */
+        align-items: start;
+      }
+      /* Ensure placement in split mode */
+      main.split-active #chatSection {
+        grid-column: 1;
+      }
+      main.split-active #rightPanel {
+        grid-column: 2;
+      }
+      /* Animations */
+      @keyframes slideIn {
+        from {
+          transform: translateX(28px);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
+      @keyframes popLeft {
+        from {
+          transform: translateX(-16px) scale(0.985);
+          opacity: 0.95;
+        }
+        to {
+          transform: translateX(0) scale(1);
+          opacity: 1;
+        }
+      }
+      .motion-slide-in {
+        animation: slideIn 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+      }
+      .motion-pop-left {
+        animation: popLeft 460ms ease-out both;
+      }
     </style>
   </head>
   <body
@@ -178,542 +219,553 @@
           </div>
         </div>
       </section>
-      <!-- Controls Card -->
-      <section class="mb-6 hidden" id="controlsSection">
-        <div
-          class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm"
-        >
+      <!-- Right Panel Wrapper: holds all non-chat sections for split layout/animation -->
+      <div id="rightPanel">
+        <!-- Controls Card -->
+        <section class="mb-6 hidden" id="controlsSection">
           <div
-            class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between"
+            class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm"
           >
-            <h2 class="text-base sm:text-lg font-semibold">
-              Ownership Layers (from backend)
-            </h2>
-          </div>
-          <div class="p-4">
-            <div class="flex flex-wrap items-end gap-3">
-              <label class="block">
-                <span
-                  class="block text-xs uppercase tracking-wide text-gray-600 dark:text-gray-300"
-                  >Root Entity ID or Name</span
-                >
-                <input
-                  id="rootId"
-                  value="E1"
-                  placeholder="e.g., E1 or Alpha"
-                  class="mt-1 w-40 sm:w-56 rounded-md border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </label>
-              <label class="block">
-                <span
-                  class="block text-xs uppercase tracking-wide text-gray-600 dark:text-gray-300"
-                  >Depth</span
-                >
-                <input
-                  id="depth"
-                  type="number"
-                  value="2"
-                  min="0"
-                  max="10"
-                  class="mt-1 w-20 rounded-md border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </label>
-              <button
-                id="loadLayers"
-                class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              >
-                Load Layers
-              </button>
-
-              <div class="flex items-end gap-3 ml-auto">
+            <div
+              class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between"
+            >
+              <h2 class="text-base sm:text-lg font-semibold">
+                Ownership Layers (from backend)
+              </h2>
+            </div>
+            <div class="p-4">
+              <div class="flex flex-wrap items-end gap-3">
                 <label class="block">
                   <span
                     class="block text-xs uppercase tracking-wide text-gray-600 dark:text-gray-300"
-                    >Report News Limit</span
+                    >Root Entity ID or Name</span
                   >
                   <input
-                    id="reportNewsLimit"
+                    id="rootId"
+                    value="E1"
+                    placeholder="e.g., E1 or Alpha"
+                    class="mt-1 w-40 sm:w-56 rounded-md border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </label>
+                <label class="block">
+                  <span
+                    class="block text-xs uppercase tracking-wide text-gray-600 dark:text-gray-300"
+                    >Depth</span
+                  >
+                  <input
+                    id="depth"
+                    type="number"
+                    value="2"
+                    min="0"
+                    max="10"
+                    class="mt-1 w-20 rounded-md border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </label>
+                <button
+                  id="loadLayers"
+                  class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  Load Layers
+                </button>
+
+                <div class="flex items-end gap-3 ml-auto">
+                  <label class="block">
+                    <span
+                      class="block text-xs uppercase tracking-wide text-gray-600 dark:text-gray-300"
+                      >Report News Limit</span
+                    >
+                    <input
+                      id="reportNewsLimit"
+                      type="number"
+                      value="5"
+                      min="1"
+                      max="50"
+                      class="mt-1 w-24 rounded-md border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </label>
+                  <label class="inline-flex items-center gap-2 mt-6">
+                    <input
+                      id="reportBilingual"
+                      type="checkbox"
+                      class="scale-110"
+                    />
+                    <span
+                      class="text-xs uppercase tracking-wide text-gray-600 dark:text-gray-300"
+                      >Bilingual</span
+                    >
+                  </label>
+                  <button
+                    id="generateReportHtml"
+                    class="inline-flex items-center rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  >
+                    Generate Report (HTML)
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+        <!-- Entity Info Card -->
+        <section class="mb-6 hidden" id="entityInfoSection">
+          <div
+            class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm"
+          >
+            <div
+              class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between"
+            >
+              <h2 class="text-base sm:text-lg font-semibold">Entity Info</h2>
+              <button
+                id="refreshEntityInfo"
+                class="hidden inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                Refresh
+              </button>
+            </div>
+            <div
+              id="entityInfo"
+              class="p-4 text-sm text-gray-500 dark:text-gray-400"
+            >
+              Enter an Entity ID or Name and load layers to see its details.
+            </div>
+          </div>
+        </section>
+        <!-- Dashboard Grid -->
+        <section
+          class="grid grid-cols-1 lg:grid-cols-2 gap-6 hidden"
+          id="dashboardSection"
+        >
+          <!-- Layers Tree Card -->
+          <div
+            class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm"
+          >
+            <div
+              class="px-4 py-3 border-b border-gray-200 dark:border-gray-800"
+            >
+              <h3 class="text-base font-semibold">Ownership Layers</h3>
+            </div>
+            <div
+              id="layersTree"
+              class="p-4 text-sm text-gray-700 dark:text-gray-200"
+            >
+              Enter a root entity and click "Load Layers".
+            </div>
+          </div>
+
+          <!-- Representatives Card -->
+          <div
+            class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm"
+          >
+            <div
+              class="px-4 py-3 border-b border-gray-200 dark:border-gray-800"
+            >
+              <h3 class="text-base font-semibold">Legal Representatives</h3>
+            </div>
+            <div
+              id="repsList"
+              class="p-4 text-sm text-gray-500 dark:text-gray-400"
+            >
+              Load a company to see its legal representatives.
+            </div>
+          </div>
+
+          <!-- Accounts Card -->
+          <div
+            class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm"
+          >
+            <div
+              class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between"
+            >
+              <h3 class="text-base font-semibold">Accounts</h3>
+              <button
+                id="loadAccounts"
+                class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white shadow hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                Load Accounts
+              </button>
+            </div>
+            <div
+              id="accountsList"
+              class="p-4 text-sm text-gray-500 dark:text-gray-400"
+            >
+              Click "Load Accounts" to list accounts for Root Entity ID.
+            </div>
+          </div>
+
+          <!-- Transactions Card -->
+          <div
+            class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm"
+          >
+            <div
+              class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between"
+            >
+              <h3 class="text-base font-semibold">Transactions</h3>
+              <div class="flex items-center gap-2">
+                <label class="text-xs text-gray-600 dark:text-gray-300"
+                  >Direction
+                  <select
+                    id="txDirection"
+                    class="ml-1 rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm px-2 py-1"
+                  >
+                    <option value="out" selected>out</option>
+                    <option value="in">in</option>
+                    <option value="both">both</option>
+                  </select>
+                </label>
+                <button
+                  id="loadTransactions"
+                  class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white shadow hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  Load Transactions
+                </button>
+              </div>
+            </div>
+            <div
+              id="transactionsList"
+              class="p-4 text-sm text-gray-500 dark:text-gray-400"
+            >
+              Choose direction and click "Load Transactions" for Root Entity ID.
+            </div>
+          </div>
+
+          <!-- Guarantees Card -->
+          <div
+            class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm"
+          >
+            <div
+              class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between"
+            >
+              <h3 class="text-base font-semibold">Guarantees</h3>
+              <div class="flex items-center gap-2">
+                <label class="text-xs text-gray-600 dark:text-gray-300"
+                  >Direction
+                  <select
+                    id="guaranteeDirection"
+                    class="ml-1 rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm px-2 py-1"
+                  >
+                    <option value="out" selected>out</option>
+                    <option value="in">in</option>
+                    <option value="both">both</option>
+                  </select>
+                </label>
+                <button
+                  id="loadGuarantees"
+                  class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white shadow hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  Load Guarantees
+                </button>
+              </div>
+            </div>
+            <div
+              id="guaranteesList"
+              class="p-4 text-sm text-gray-500 dark:text-gray-400"
+            >
+              Choose direction and click "Load Guarantees" for Root Entity ID.
+            </div>
+          </div>
+
+          <!-- Supply Chain Card -->
+          <div
+            class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm"
+          >
+            <div
+              class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between"
+            >
+              <h3 class="text-base font-semibold">Supply Chain</h3>
+              <div class="flex items-center gap-2">
+                <label class="text-xs text-gray-600 dark:text-gray-300"
+                  >Direction
+                  <select
+                    id="supplyDirection"
+                    class="ml-1 rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm px-2 py-1"
+                  >
+                    <option value="out" selected>out</option>
+                    <option value="in">in</option>
+                    <option value="both">both</option>
+                  </select>
+                </label>
+                <button
+                  id="loadSupplyChain"
+                  class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white shadow hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  Load Supply Chain
+                </button>
+              </div>
+            </div>
+            <div
+              id="supplyChainList"
+              class="p-4 text-sm text-gray-500 dark:text-gray-400"
+            >
+              Choose direction and click "Load Supply Chain" for Root Entity ID.
+            </div>
+          </div>
+
+          <!-- Employment Card -->
+          <div
+            class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm"
+          >
+            <div
+              class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between"
+            >
+              <h3 class="text-base font-semibold">Employment</h3>
+              <div class="flex items-center gap-2">
+                <label class="text-xs text-gray-600 dark:text-gray-300"
+                  >Role
+                  <select
+                    id="employmentRole"
+                    class="ml-1 rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm px-2 py-1"
+                  >
+                    <option value="both" selected>both</option>
+                    <option value="as_company">company</option>
+                    <option value="as_person">person</option>
+                  </select>
+                </label>
+                <button
+                  id="loadEmployment"
+                  class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white shadow hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  Load Employment
+                </button>
+              </div>
+            </div>
+            <div
+              id="employmentList"
+              class="p-4 text-sm text-gray-500 dark:text-gray-400"
+            >
+              Choose role filter and click "Load Employment" for Root Entity ID.
+            </div>
+          </div>
+
+          <!-- Locations Card -->
+          <div
+            class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm"
+          >
+            <div
+              class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between"
+            >
+              <h3 class="text-base font-semibold">Locations</h3>
+              <button
+                id="loadLocations"
+                class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white shadow hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                Load Locations
+              </button>
+            </div>
+            <div
+              id="locationsList"
+              class="p-4 text-sm text-gray-500 dark:text-gray-400"
+            >
+              Click "Load Locations" for Root Entity ID.
+            </div>
+          </div>
+
+          <!-- News Card -->
+          <div
+            class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm lg:col-span-2"
+          >
+            <div
+              class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between gap-3"
+            >
+              <h3 class="text-base font-semibold">Company News</h3>
+              <div class="flex items-end gap-3">
+                <label class="block">
+                  <span
+                    class="block text-xs uppercase tracking-wide text-gray-600 dark:text-gray-300"
+                    >News Limit</span
+                  >
+                  <input
+                    id="newsLimit"
                     type="number"
                     value="5"
                     min="1"
                     max="50"
-                    class="mt-1 w-24 rounded-md border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    class="mt-1 w-20 rounded-md border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
-                </label>
-                <label class="inline-flex items-center gap-2 mt-6">
-                  <input
-                    id="reportBilingual"
-                    type="checkbox"
-                    class="scale-110"
-                  />
-                  <span
-                    class="text-xs uppercase tracking-wide text-gray-600 dark:text-gray-300"
-                    >Bilingual</span
-                  >
                 </label>
                 <button
-                  id="generateReportHtml"
-                  class="inline-flex items-center rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  id="loadNews"
+                  class="inline-flex items-center rounded-md bg-slate-700 px-3 py-2 text-sm font-medium text-white shadow hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-500"
                 >
-                  Generate Report (HTML)
+                  Load News
                 </button>
               </div>
             </div>
-          </div>
-        </div>
-      </section>
-      <!-- Entity Info Card -->
-      <section class="mb-6 hidden" id="entityInfoSection">
-        <div
-          class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm"
-        >
-          <div
-            class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between"
-          >
-            <h2 class="text-base sm:text-lg font-semibold">Entity Info</h2>
-            <button
-              id="refreshEntityInfo"
-              class="hidden inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            <div
+              id="newsList"
+              class="p-4 text-sm text-gray-500 dark:text-gray-400"
             >
-              Refresh
-            </button>
+              Load a company to see recent news (stored + external).
+            </div>
           </div>
-          <div
-            id="entityInfo"
-            class="p-4 text-sm text-gray-500 dark:text-gray-400"
-          >
-            Enter an Entity ID or Name and load layers to see its details.
-          </div>
-        </div>
-      </section>
-      <!-- Dashboard Grid -->
-      <section
-        class="grid grid-cols-1 lg:grid-cols-2 gap-6 hidden"
-        id="dashboardSection"
-      >
-        <!-- Layers Tree Card -->
-        <div
-          class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm"
-        >
-          <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
-            <h3 class="text-base font-semibold">Ownership Layers</h3>
-          </div>
-          <div
-            id="layersTree"
-            class="p-4 text-sm text-gray-700 dark:text-gray-200"
-          >
-            Enter a root entity and click "Load Layers".
-          </div>
-        </div>
 
-        <!-- Representatives Card -->
-        <div
-          class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm"
-        >
-          <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
-            <h3 class="text-base font-semibold">Legal Representatives</h3>
-          </div>
+          <!-- Penetration Card -->
           <div
-            id="repsList"
-            class="p-4 text-sm text-gray-500 dark:text-gray-400"
+            class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm lg:col-span-2"
           >
-            Load a company to see its legal representatives.
-          </div>
-        </div>
-
-        <!-- Accounts Card -->
-        <div
-          class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm"
-        >
-          <div
-            class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between"
-          >
-            <h3 class="text-base font-semibold">Accounts</h3>
-            <button
-              id="loadAccounts"
-              class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white shadow hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            <div
+              class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between gap-3"
             >
-              Load Accounts
-            </button>
-          </div>
-          <div
-            id="accountsList"
-            class="p-4 text-sm text-gray-500 dark:text-gray-400"
-          >
-            Click "Load Accounts" to list accounts for Root Entity ID.
-          </div>
-        </div>
-
-        <!-- Transactions Card -->
-        <div
-          class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm"
-        >
-          <div
-            class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between"
-          >
-            <h3 class="text-base font-semibold">Transactions</h3>
-            <div class="flex items-center gap-2">
-              <label class="text-xs text-gray-600 dark:text-gray-300"
-                >Direction
-                <select
-                  id="txDirection"
-                  class="ml-1 rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm px-2 py-1"
+              <h3 class="text-base font-semibold">Equity Penetration (D3)</h3>
+              <div class="flex items-end gap-3">
+                <label class="block">
+                  <span
+                    class="block text-xs uppercase tracking-wide text-gray-600 dark:text-gray-300"
+                    >Include Paths</span
+                  >
+                  <input
+                    id="includePaths"
+                    type="checkbox"
+                    class="mt-2 scale-110"
+                    checked
+                  />
+                </label>
+                <label class="block">
+                  <span
+                    class="block text-xs uppercase tracking-wide text-gray-600 dark:text-gray-300"
+                    >Max Paths</span
+                  >
+                  <input
+                    id="maxPaths"
+                    type="number"
+                    value="3"
+                    min="0"
+                    max="10"
+                    class="mt-1 w-20 rounded-md border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </label>
+                <button
+                  id="loadPenetration"
+                  class="inline-flex items-center rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
-                  <option value="out" selected>out</option>
-                  <option value="in">in</option>
-                  <option value="both">both</option>
-                </select>
-              </label>
-              <button
-                id="loadTransactions"
-                class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white shadow hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  Load Equity Penetration Graph
+                </button>
+              </div>
+            </div>
+            <div class="p-4">
+              <div
+                id="penetrationChart"
+                class="w-full overflow-hidden rounded border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800"
+              ></div>
+              <div
+                id="legend"
+                class="mt-2 text-xs text-gray-600 dark:text-gray-300"
               >
-                Load Transactions
-              </button>
+                <strong>Legend:</strong> Node size/color = Equity Penetration
+                (look-through %). Link width = stake %. Label shows stake and
+                look-through via that edge.
+              </div>
             </div>
           </div>
-          <div
-            id="transactionsList"
-            class="p-4 text-sm text-gray-500 dark:text-gray-400"
-          >
-            Choose direction and click "Load Transactions" for Root Entity ID.
-          </div>
-        </div>
 
-        <!-- Guarantees Card -->
-        <div
-          class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm"
-        >
+          <!-- Risk Analysis Card -->
           <div
-            class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between"
+            class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm lg:col-span-2"
           >
-            <h3 class="text-base font-semibold">Guarantees</h3>
-            <div class="flex items-center gap-2">
-              <label class="text-xs text-gray-600 dark:text-gray-300"
-                >Direction
-                <select
-                  id="guaranteeDirection"
-                  class="ml-1 rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm px-2 py-1"
-                >
-                  <option value="out" selected>out</option>
-                  <option value="in">in</option>
-                  <option value="both">both</option>
-                </select>
-              </label>
-              <button
-                id="loadGuarantees"
-                class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white shadow hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              >
-                Load Guarantees
-              </button>
-            </div>
-          </div>
-          <div
-            id="guaranteesList"
-            class="p-4 text-sm text-gray-500 dark:text-gray-400"
-          >
-            Choose direction and click "Load Guarantees" for Root Entity ID.
-          </div>
-        </div>
-
-        <!-- Supply Chain Card -->
-        <div
-          class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm"
-        >
-          <div
-            class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between"
-          >
-            <h3 class="text-base font-semibold">Supply Chain</h3>
-            <div class="flex items-center gap-2">
-              <label class="text-xs text-gray-600 dark:text-gray-300"
-                >Direction
-                <select
-                  id="supplyDirection"
-                  class="ml-1 rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm px-2 py-1"
-                >
-                  <option value="out" selected>out</option>
-                  <option value="in">in</option>
-                  <option value="both">both</option>
-                </select>
-              </label>
-              <button
-                id="loadSupplyChain"
-                class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white shadow hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              >
-                Load Supply Chain
-              </button>
-            </div>
-          </div>
-          <div
-            id="supplyChainList"
-            class="p-4 text-sm text-gray-500 dark:text-gray-400"
-          >
-            Choose direction and click "Load Supply Chain" for Root Entity ID.
-          </div>
-        </div>
-
-        <!-- Employment Card -->
-        <div
-          class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm"
-        >
-          <div
-            class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between"
-          >
-            <h3 class="text-base font-semibold">Employment</h3>
-            <div class="flex items-center gap-2">
-              <label class="text-xs text-gray-600 dark:text-gray-300"
-                >Role
-                <select
-                  id="employmentRole"
-                  class="ml-1 rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm px-2 py-1"
-                >
-                  <option value="both" selected>both</option>
-                  <option value="as_company">company</option>
-                  <option value="as_person">person</option>
-                </select>
-              </label>
-              <button
-                id="loadEmployment"
-                class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white shadow hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              >
-                Load Employment
-              </button>
-            </div>
-          </div>
-          <div
-            id="employmentList"
-            class="p-4 text-sm text-gray-500 dark:text-gray-400"
-          >
-            Choose role filter and click "Load Employment" for Root Entity ID.
-          </div>
-        </div>
-
-        <!-- Locations Card -->
-        <div
-          class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm"
-        >
-          <div
-            class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between"
-          >
-            <h3 class="text-base font-semibold">Locations</h3>
-            <button
-              id="loadLocations"
-              class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white shadow hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            <div
+              class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between"
             >
-              Load Locations
-            </button>
-          </div>
-          <div
-            id="locationsList"
-            class="p-4 text-sm text-gray-500 dark:text-gray-400"
-          >
-            Click "Load Locations" for Root Entity ID.
-          </div>
-        </div>
-
-        <!-- News Card -->
-        <div
-          class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm lg:col-span-2"
-        >
-          <div
-            class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between gap-3"
-          >
-            <h3 class="text-base font-semibold">Company News</h3>
-            <div class="flex items-end gap-3">
-              <label class="block">
-                <span
-                  class="block text-xs uppercase tracking-wide text-gray-600 dark:text-gray-300"
-                  >News Limit</span
+              <h3 class="text-base font-semibold">Risk Analysis</h3>
+              <div class="flex items-center gap-3">
+                <label class="block">
+                  <span
+                    class="block text-xs uppercase tracking-wide text-gray-600 dark:text-gray-300"
+                    >News Limit</span
+                  >
+                  <input
+                    id="riskNewsLimit"
+                    type="number"
+                    value="5"
+                    min="1"
+                    max="50"
+                    class="mt-1 w-20 rounded-md border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"
+                  />
+                </label>
+                <button
+                  id="analyzeRisks"
+                  class="inline-flex items-center rounded-md bg-rose-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500"
                 >
+                  Analyze Risks
+                </button>
+              </div>
+            </div>
+            <div
+              id="riskResults"
+              class="p-4 text-sm text-gray-500 dark:text-gray-400"
+            >
+              Click "Analyze Risks" to compute heuristic risk flags for the Root
+              Entity ID.
+            </div>
+          </div>
+
+          <!-- KB Risk Evaluation Card -->
+          <div
+            class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm lg:col-span-2"
+          >
+            <div
+              class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between"
+            >
+              <h3 class="text-base font-semibold">KB Risk Evaluation</h3>
+              <div class="flex items-center gap-3">
+                <button
+                  id="evaluateKbRisk"
+                  class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  Evaluate KB Risk
+                </button>
+                <button
+                  id="annotateGraph"
+                  class="inline-flex items-center rounded-md bg-slate-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-500"
+                >
+                  Annotate Graph
+                </button>
+                <button
+                  id="openGraph"
+                  class="inline-flex items-center rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                >
+                  Open Graph
+                </button>
+                <button
+                  id="kbLoadExampleChain"
+                  class="inline-flex items-center rounded-md bg-gray-700 px-3 py-2 text-sm font-medium text-white shadow hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-600"
+                >
+                  Load Example Chain
+                </button>
+              </div>
+            </div>
+            <div
+              class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-start justify-between gap-3"
+            >
+              <label class="inline-flex items-center gap-2">
                 <input
-                  id="newsLimit"
-                  type="number"
-                  value="5"
-                  min="1"
-                  max="50"
-                  class="mt-1 w-20 rounded-md border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </label>
-              <button
-                id="loadNews"
-                class="inline-flex items-center rounded-md bg-slate-700 px-3 py-2 text-sm font-medium text-white shadow hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-500"
-              >
-                Load News
-              </button>
-            </div>
-          </div>
-          <div
-            id="newsList"
-            class="p-4 text-sm text-gray-500 dark:text-gray-400"
-          >
-            Load a company to see recent news (stored + external).
-          </div>
-        </div>
-
-        <!-- Penetration Card -->
-        <div
-          class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm lg:col-span-2"
-        >
-          <div
-            class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between gap-3"
-          >
-            <h3 class="text-base font-semibold">Equity Penetration (D3)</h3>
-            <div class="flex items-end gap-3">
-              <label class="block">
-                <span
-                  class="block text-xs uppercase tracking-wide text-gray-600 dark:text-gray-300"
-                  >Include Paths</span
-                >
-                <input
-                  id="includePaths"
+                  id="kbUseCustomChain"
                   type="checkbox"
-                  class="mt-2 scale-110"
-                  checked
+                  class="scale-110"
                 />
-              </label>
-              <label class="block">
-                <span
-                  class="block text-xs uppercase tracking-wide text-gray-600 dark:text-gray-300"
-                  >Max Paths</span
+                <span class="text-sm text-gray-700 dark:text-gray-200"
+                  >Use custom transaction chain JSON</span
                 >
-                <input
-                  id="maxPaths"
-                  type="number"
-                  value="3"
-                  min="0"
-                  max="10"
-                  class="mt-1 w-20 rounded-md border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                />
               </label>
-              <button
-                id="loadPenetration"
-                class="inline-flex items-center rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              >
-                Load Equity Penetration Graph
-              </button>
             </div>
-          </div>
-          <div class="p-4">
+            <div id="kbChainBox" class="px-4 pb-3 hidden">
+              <textarea
+                id="kbChainJson"
+                class="mt-1 w-full h-32 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder='{"transfers":[{"from":"A1","to":"B1","amount_cny":20000,"date":"2025-01-01","to_region":"HK"}],"beneficiary_name":"ACME OFFSHORE LTD"}'
+              ></textarea>
+              <div
+                id="kbChainError"
+                class="mt-1 text-xs text-rose-600 hidden"
+              ></div>
+            </div>
             <div
-              id="penetrationChart"
-              class="w-full overflow-hidden rounded border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800"
-            ></div>
-            <div
-              id="legend"
-              class="mt-2 text-xs text-gray-600 dark:text-gray-300"
+              id="kbRiskResults"
+              class="p-4 text-sm text-gray-500 dark:text-gray-400"
+              aria-live="polite"
             >
-              <strong>Legend:</strong> Node size/color = Equity Penetration
-              (look-through %). Link width = stake %. Label shows stake and
-              look-through via that edge.
+              Click Evaluate to run KB-based risk scoring.
             </div>
           </div>
-        </div>
-
-        <!-- Risk Analysis Card -->
-        <div
-          class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm lg:col-span-2"
-        >
-          <div
-            class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between"
-          >
-            <h3 class="text-base font-semibold">Risk Analysis</h3>
-            <div class="flex items-center gap-3">
-              <label class="block">
-                <span
-                  class="block text-xs uppercase tracking-wide text-gray-600 dark:text-gray-300"
-                  >News Limit</span
-                >
-                <input
-                  id="riskNewsLimit"
-                  type="number"
-                  value="5"
-                  min="1"
-                  max="50"
-                  class="mt-1 w-20 rounded-md border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"
-                />
-              </label>
-              <button
-                id="analyzeRisks"
-                class="inline-flex items-center rounded-md bg-rose-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500"
-              >
-                Analyze Risks
-              </button>
-            </div>
-          </div>
-          <div
-            id="riskResults"
-            class="p-4 text-sm text-gray-500 dark:text-gray-400"
-          >
-            Click "Analyze Risks" to compute heuristic risk flags for the Root
-            Entity ID.
-          </div>
-        </div>
-
-        <!-- KB Risk Evaluation Card -->
-        <div
-          class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm lg:col-span-2"
-        >
-          <div
-            class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between"
-          >
-            <h3 class="text-base font-semibold">KB Risk Evaluation</h3>
-            <div class="flex items-center gap-3">
-              <button
-                id="evaluateKbRisk"
-                class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              >
-                Evaluate KB Risk
-              </button>
-              <button
-                id="annotateGraph"
-                class="inline-flex items-center rounded-md bg-slate-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-500"
-              >
-                Annotate Graph
-              </button>
-              <button
-                id="openGraph"
-                class="inline-flex items-center rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              >
-                Open Graph
-              </button>
-              <button
-                id="kbLoadExampleChain"
-                class="inline-flex items-center rounded-md bg-gray-700 px-3 py-2 text-sm font-medium text-white shadow hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-600"
-              >
-                Load Example Chain
-              </button>
-            </div>
-          </div>
-          <div
-            class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-start justify-between gap-3"
-          >
-            <label class="inline-flex items-center gap-2">
-              <input id="kbUseCustomChain" type="checkbox" class="scale-110" />
-              <span class="text-sm text-gray-700 dark:text-gray-200"
-                >Use custom transaction chain JSON</span
-              >
-            </label>
-          </div>
-          <div id="kbChainBox" class="px-4 pb-3 hidden">
-            <textarea
-              id="kbChainJson"
-              class="mt-1 w-full h-32 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              placeholder='{"transfers":[{"from":"A1","to":"B1","amount_cny":20000,"date":"2025-01-01","to_region":"HK"}],"beneficiary_name":"ACME OFFSHORE LTD"}'
-            ></textarea>
-            <div
-              id="kbChainError"
-              class="mt-1 text-xs text-rose-600 hidden"
-            ></div>
-          </div>
-          <div
-            id="kbRiskResults"
-            class="p-4 text-sm text-gray-500 dark:text-gray-400"
-            aria-live="polite"
-          >
-            Click Evaluate to run KB-based risk scoring.
-          </div>
-        </div>
-      </section>
+        </section>
+      </div>
     </main>
 
     <!-- App logic moved to external ES module -->
@@ -728,12 +780,19 @@
         const controls = document.getElementById("controlsSection");
         const info = document.getElementById("entityInfoSection");
         const dash = document.getElementById("dashboardSection");
+        const rightPanel = document.getElementById("rightPanel");
+        const chatSection = document.getElementById("chatSection");
+        const mainEl = document.querySelector("main");
         const loadBtn = document.getElementById("loadLayers");
 
         function reveal() {
           controls?.classList.remove("hidden");
           info?.classList.remove("hidden");
           dash?.classList.remove("hidden");
+          // Activate split view and animate
+          mainEl?.classList.add("split-active");
+          chatSection?.classList.add("motion-pop-left");
+          rightPanel?.classList.add("motion-slide-in");
         }
 
         form?.addEventListener("submit", (e) => {
