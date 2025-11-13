@@ -52,10 +52,20 @@ export function initChat() {
       try {
         const entityId = await resolveEntityInput(candidate);
         if (entityId) {
-          // Update the root input field and load the entity info card
+          // Update the root input fields
           const root = document.getElementById("rootId");
           if (root) root.value = entityId;
+          const initRoot = document.getElementById("initialRootId");
+          if (initRoot) initRoot.value = entityId;
+
+          // Reveal hidden dashboard sections (home shows only chat initially)
+          ["controlsSection", "entityInfoSection", "dashboardSection"].forEach(
+            (id) => document.getElementById(id)?.classList.remove("hidden")
+          );
+
+          // Load entity details and trigger full layers load via existing button handler
           loadEntityInfo(entityId);
+          document.getElementById("loadLayers")?.click();
 
           // Respond inline without invoking the LLM
           appendMessage(

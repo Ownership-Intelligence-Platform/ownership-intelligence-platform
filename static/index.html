@@ -78,7 +78,7 @@
     <!-- Main Content -->
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       <!-- AI Assistant Chat Card -->
-      <section class="mb-6">
+      <section class="mb-6" id="chatSection">
         <div
           class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm lg:col-span-2"
         >
@@ -149,11 +149,37 @@
                 Send
               </button>
             </form>
+
+            <!-- Minimal entity search to reveal the rest of the dashboard -->
+            <div class="pt-2 border-t border-gray-200 dark:border-gray-800">
+              <form id="initialEntityForm" class="flex items-end gap-2">
+                <label class="block">
+                  <span
+                    class="block text-xs uppercase tracking-wide text-gray-600 dark:text-gray-300"
+                    >Entity ID or Name</span
+                  >
+                  <input
+                    id="initialRootId"
+                    placeholder="e.g., E1 or Alpha"
+                    class="mt-1 w-48 sm:w-64 rounded-md border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </label>
+                <button
+                  type="submit"
+                  class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  Load Dashboard
+                </button>
+                <span class="text-xs text-gray-500 dark:text-gray-400"
+                  >The full dashboard appears after you select an entity.</span
+                >
+              </form>
+            </div>
           </div>
         </div>
       </section>
       <!-- Controls Card -->
-      <section class="mb-6">
+      <section class="mb-6 hidden" id="controlsSection">
         <div
           class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm"
         >
@@ -237,7 +263,7 @@
         </div>
       </section>
       <!-- Entity Info Card -->
-      <section class="mb-6">
+      <section class="mb-6 hidden" id="entityInfoSection">
         <div
           class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm"
         >
@@ -261,7 +287,10 @@
         </div>
       </section>
       <!-- Dashboard Grid -->
-      <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <section
+        class="grid grid-cols-1 lg:grid-cols-2 gap-6 hidden"
+        id="dashboardSection"
+      >
         <!-- Layers Tree Card -->
         <div
           class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm"
@@ -689,5 +718,35 @@
 
     <!-- App logic moved to external ES module -->
     <script type="module" src="/static/app.js"></script>
+    <!-- Lightweight bootstrap to keep only chat visible until an entity is searched -->
+    <script type="module">
+      // On first load, only the chat card is visible. Reveal the rest after an entity search.
+      document.addEventListener("DOMContentLoaded", () => {
+        const form = document.getElementById("initialEntityForm");
+        const input = document.getElementById("initialRootId");
+        const rootInput = document.getElementById("rootId");
+        const controls = document.getElementById("controlsSection");
+        const info = document.getElementById("entityInfoSection");
+        const dash = document.getElementById("dashboardSection");
+        const loadBtn = document.getElementById("loadLayers");
+
+        function reveal() {
+          controls?.classList.remove("hidden");
+          info?.classList.remove("hidden");
+          dash?.classList.remove("hidden");
+        }
+
+        form?.addEventListener("submit", (e) => {
+          e.preventDefault();
+          const val = input?.value?.trim();
+          if (!val) return;
+          if (rootInput) rootInput.value = val;
+          // Reveal dashboard sections first so users see progress
+          reveal();
+          // Delegate to existing handler which resolves IDs and loads panels
+          loadBtn?.click();
+        });
+      });
+    </script>
   </body>
 </html>
