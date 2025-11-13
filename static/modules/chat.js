@@ -117,6 +117,7 @@ export function initChat() {
         use_web: !!(useWeb && useWeb.checked),
         web_provider: webProvider ? webProvider.value : undefined,
       };
+      hideDashboard();
       const resp = await fetch("/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
