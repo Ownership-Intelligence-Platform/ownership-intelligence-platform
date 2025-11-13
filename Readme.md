@@ -261,6 +261,19 @@ If you'd like, I can:
 - add OpenAPI examples and response models
 - add an integration test that spins up the Neo4j container automatically
 
+## Copilot custom instruction
+
+To keep Copilot aligned with this project in every chat, use our ready-made instruction:
+
+- Full doc: `docs/copilot-custom-instruction.md`
+- Prompt file (add to chat quickly): `.copilot/prompt.md`
+
+How to use in VS Code Copilot Chat:
+
+1. Open Settings > Extensions > GitHub Copilot > Chat: Custom Instructions, and paste the content of `docs/copilot-custom-instruction.md`.
+2. Or, in a chat, use “Add file to chat” and select `.copilot/prompt.md` to include the context for that session.
+3. Prefer Windows PowerShell commands for local runs.
+
 ## API reference (selected)
 
 Creation endpoints (subset):
