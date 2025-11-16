@@ -155,6 +155,31 @@ export function renderPenetrationGraph(graph, root) {
     height
   );
   attachDrag(node, sim);
+
+  // Auto-fit once after initial layout to reduce clutter and center content
+  setTimeout(() => {
+    try {
+      const nodesSel = g.selectAll("g.node");
+      if (!nodesSel.size()) return;
+      let minX = Infinity,
+        minY = Infinity,
+        maxX = -Infinity,
+        maxY = -Infinity;
+      nodesSel.each((d) => {
+        const r = radius(d.penetration || 0);
+        minX = Math.min(minX, d.x - r);
+        minY = Math.min(minY, d.y - r);
+        maxX = Math.max(maxX, d.x + r);
+        maxY = Math.max(maxY, d.y + r);
+      });
+      const bW = maxX - minX || 1;
+      const bH = maxY - minY || 1;
+      const scale = Math.min(width / bW, height / bH) * 0.85;
+      const tx = (width - scale * (minX + maxX)) / 2;
+      const ty = (height - scale * (minY + maxY)) / 2;
+      svg.call(zoom.transform, d3.zoomIdentity.translate(tx, ty).scale(scale));
+    } catch (_) {}
+  }, 450);
 }
 
 function createControls(
@@ -495,14 +520,22 @@ function runSimulation(
       d3
         .forceLink(links)
         .id((d) => d.id)
-        .distance(90)
-        .strength(0.2)
+        // Spread nodes proportionally to their rendered size so large nodes don't clump
+        .distance(
+          (d) =>
+            60 +
+            radius(d.source.penetration || 0) +
+            radius(d.target.penetration || 0)
+        )
+        .strength(0.15)
     )
-    .force("charge", d3.forceManyBody().strength(-200))
+    // Stronger repulsion to avoid overlaps when many nodes are near each other
+    .force("charge", d3.forceManyBody().strength(-350))
     .force("center", d3.forceCenter(width / 2, height / 2))
     .force(
       "collide",
-      d3.forceCollide().radius((d) => radius(d.penetration || 0) + 10)
+      // Slightly larger padding around nodes to keep labels readable
+      d3.forceCollide().radius((d) => radius(d.penetration || 0) + 16)
     );
 
   sim.on("tick", () => {

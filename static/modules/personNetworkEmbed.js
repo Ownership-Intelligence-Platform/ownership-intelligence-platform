@@ -108,8 +108,11 @@ function escapeHtml(s) {
 
 function renderGraph(container, data) {
   container.innerHTML = "";
-  const width = container.clientWidth;
-  const height = container.clientHeight;
+  // When rendering into hidden panels (display:none), clientWidth/Height can be 0.
+  // Use bounding rect with sensible fallbacks to ensure a visible chart in snapshots.
+  const rect = container.getBoundingClientRect();
+  const width = Math.max(480, rect.width || container.clientWidth || 640);
+  const height = Math.max(280, rect.height || container.clientHeight || 420);
 
   const svg = d3
     .select(container)
@@ -231,8 +234,20 @@ function renderGraph(container, data) {
 
 export async function loadPersonNetwork(personId, { graphEl, relationsEl }) {
   if (!personId) return;
-  const data = await fetchNetwork(personId);
-  if (relationsEl) renderRelationsCard(relationsEl, data);
-  if (graphEl) renderGraph(graphEl, data);
-  return data;
+  try {
+    const data = await fetchNetwork(personId);
+    if (relationsEl) renderRelationsCard(relationsEl, data);
+    if (graphEl) renderGraph(graphEl, data);
+    return data;
+  } catch (e) {
+    if (relationsEl) {
+      relationsEl.innerHTML = `<span class="text-xs text-gray-500">未找到该人员或无关系数据</span>`;
+    }
+    if (graphEl) {
+      graphEl.innerHTML = `<div class="p-2 text-xs text-gray-500">加载失败：${String(
+        e
+      )}</div>`;
+    }
+    return null;
+  }
 }

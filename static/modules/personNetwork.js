@@ -30,8 +30,10 @@ async function fetchAccountOpening(personId) {
 
 function renderGraph(container, data) {
   container.innerHTML = "";
-  const width = container.clientWidth;
-  const height = container.clientHeight;
+  // Use rect with fallbacks to avoid zero-size rendering if container is temporarily hidden
+  const rect = container.getBoundingClientRect();
+  const width = Math.max(480, rect.width || container.clientWidth || 640);
+  const height = Math.max(300, rect.height || container.clientHeight || 600);
 
   const svg = d3
     .select(container)
