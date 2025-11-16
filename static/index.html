@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full">
+<html lang="zh-CN" class="h-full">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -97,26 +97,26 @@
               id="populate"
               class="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
-              Populate DB
+              导入示例数据
             </button>
 
             <a
               href="/static/data_console.html"
               class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              >Open Data Console</a
+              >打开数据控制台</a
             >
 
             <button
               id="clearDb"
               class="inline-flex items-center gap-2 rounded-md bg-rose-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500"
             >
-              Clear Imported Data
+              清空导入数据
             </button>
             <button
               id="themeToggle"
               class="inline-flex items-center gap-2 rounded-md border border-gray-300 dark:border-gray-700 px-3 py-2 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800"
             >
-              <span class="hidden sm:inline">Toggle</span> Theme
+              <span class="hidden sm:inline">切换</span> 主题
             </button>
           </div>
         </div>
@@ -151,7 +151,7 @@
             <form id="chatForm" class="flex items-center gap-2 p-3">
               <input
                 id="chatInput"
-                placeholder="Ask anything or enter an Entity ID (e.g., E1)…"
+                placeholder="请输入问题或实体ID（例如：E1）…"
                 class="flex-1 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
               <button
@@ -182,7 +182,7 @@
               class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between"
             >
               <h2 class="text-base sm:text-lg font-semibold">
-                Ownership Layers (from backend)
+                股权层级（来自后端）
               </h2>
             </div>
             <div class="p-4">
@@ -190,19 +190,19 @@
                 <label class="block">
                   <span
                     class="block text-xs uppercase tracking-wide text-gray-600 dark:text-gray-300"
-                    >Root Entity ID or Name</span
+                    >根实体ID或名称</span
                   >
                   <input
                     id="rootId"
                     value="E1"
-                    placeholder="e.g., E1 or Alpha"
+                    placeholder="例如：E1 或 Alpha"
                     class="mt-1 w-40 sm:w-56 rounded-md border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                 </label>
                 <label class="block">
                   <span
                     class="block text-xs uppercase tracking-wide text-gray-600 dark:text-gray-300"
-                    >Depth</span
+                    >深度</span
                   >
                   <input
                     id="depth"
@@ -217,14 +217,14 @@
                   id="loadLayers"
                   class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
-                  Load Layers
+                  加载层级
                 </button>
 
                 <div class="flex items-end gap-3 ml-auto">
                   <label class="block">
                     <span
                       class="block text-xs uppercase tracking-wide text-gray-600 dark:text-gray-300"
-                      >Report News Limit</span
+                      >新闻条数</span
                     >
                     <input
                       id="reportNewsLimit"
@@ -243,14 +243,14 @@
                     />
                     <span
                       class="text-xs uppercase tracking-wide text-gray-600 dark:text-gray-300"
-                      >Bilingual</span
+                      >双语</span
                     >
                   </label>
                   <button
                     id="generateReportHtml"
                     class="inline-flex items-center rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   >
-                    Generate Report (HTML)
+                    生成报告（HTML）
                   </button>
                 </div>
               </div>
@@ -265,19 +265,19 @@
             <div
               class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between"
             >
-              <h2 class="text-base sm:text-lg font-semibold">Entity Info</h2>
+              <h2 class="text-base sm:text-lg font-semibold">实体信息</h2>
               <button
                 id="refreshEntityInfo"
                 class="hidden inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
-                Refresh
+                刷新数据
               </button>
             </div>
             <div
               id="entityInfo"
               class="p-4 text-sm text-gray-500 dark:text-gray-400"
             >
-              Enter an Entity ID or Name and load layers to see its details.
+              输入实体ID或名称，然后加载层级以查看详情。
             </div>
           </div>
         </section>
@@ -298,15 +298,14 @@
                 id="loadPersonOpening"
                 class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white shadow hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
-                Load Opening Info
+                刷新账号信息
               </button>
             </div>
             <div
               id="personOpeningBox"
               class="p-4 text-sm text-gray-500 dark:text-gray-400"
             >
-              Use a Person ID in Root Entity field and click to load masked
-              account-opening info.
+              在“根实体”输入框中使用人员ID，将自动加载（如可用）；也可点击上方按钮刷新账号信息（已脱敏）。
             </div>
           </div>
           <!-- Layers Tree Card -->
@@ -316,13 +315,13 @@
             <div
               class="px-4 py-3 border-b border-gray-200 dark:border-gray-800"
             >
-              <h3 class="text-base font-semibold">Ownership Layers</h3>
+              <h3 class="text-base font-semibold">股权层级树</h3>
             </div>
             <div
               id="layersTree"
               class="p-4 text-sm text-gray-700 dark:text-gray-200"
             >
-              Enter a root entity and click "Load Layers".
+              输入根实体后点击“加载层级”。
             </div>
           </div>
 
@@ -333,13 +332,13 @@
             <div
               class="px-4 py-3 border-b border-gray-200 dark:border-gray-800"
             >
-              <h3 class="text-base font-semibold">Legal Representatives</h3>
+              <h3 class="text-base font-semibold">法定代表人</h3>
             </div>
             <div
               id="repsList"
               class="p-4 text-sm text-gray-500 dark:text-gray-400"
             >
-              Load a company to see its legal representatives.
+              加载公司后显示其法定代表人。
             </div>
           </div>
 
@@ -350,19 +349,19 @@
             <div
               class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between"
             >
-              <h3 class="text-base font-semibold">Accounts</h3>
+              <h3 class="text-base font-semibold">账户</h3>
               <button
                 id="loadAccounts"
                 class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white shadow hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
-                Load Accounts
+                刷新数据
               </button>
             </div>
             <div
               id="accountsList"
               class="p-4 text-sm text-gray-500 dark:text-gray-400"
             >
-              Click "Load Accounts" to list accounts for Root Entity ID.
+              将自动加载账户列表（基于根实体ID）；也可点击上方按钮刷新。
             </div>
           </div>
 
@@ -373,24 +372,24 @@
             <div
               class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between"
             >
-              <h3 class="text-base font-semibold">Transactions</h3>
+              <h3 class="text-base font-semibold">交易</h3>
               <div class="flex items-center gap-2">
                 <label class="text-xs text-gray-600 dark:text-gray-300"
-                  >Direction
+                  >方向
                   <select
                     id="txDirection"
                     class="ml-1 rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm px-2 py-1"
                   >
-                    <option value="out" selected>out</option>
-                    <option value="in">in</option>
-                    <option value="both">both</option>
+                    <option value="out" selected>出</option>
+                    <option value="in">入</option>
+                    <option value="both">双向</option>
                   </select>
                 </label>
                 <button
                   id="loadTransactions"
                   class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white shadow hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
-                  Load Transactions
+                  刷新数据
                 </button>
               </div>
             </div>
@@ -398,7 +397,7 @@
               id="transactionsList"
               class="p-4 text-sm text-gray-500 dark:text-gray-400"
             >
-              Choose direction and click "Load Transactions" for Root Entity ID.
+              按选择的方向自动加载交易（基于根实体ID）；也可点击上方按钮刷新。
             </div>
           </div>
 
@@ -409,24 +408,24 @@
             <div
               class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between"
             >
-              <h3 class="text-base font-semibold">Guarantees</h3>
+              <h3 class="text-base font-semibold">担保</h3>
               <div class="flex items-center gap-2">
                 <label class="text-xs text-gray-600 dark:text-gray-300"
-                  >Direction
+                  >方向
                   <select
                     id="guaranteeDirection"
                     class="ml-1 rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm px-2 py-1"
                   >
-                    <option value="out" selected>out</option>
-                    <option value="in">in</option>
-                    <option value="both">both</option>
+                    <option value="out" selected>出</option>
+                    <option value="in">入</option>
+                    <option value="both">双向</option>
                   </select>
                 </label>
                 <button
                   id="loadGuarantees"
                   class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white shadow hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
-                  Load Guarantees
+                  刷新数据
                 </button>
               </div>
             </div>
@@ -434,7 +433,7 @@
               id="guaranteesList"
               class="p-4 text-sm text-gray-500 dark:text-gray-400"
             >
-              Choose direction and click "Load Guarantees" for Root Entity ID.
+              按选择的方向自动加载担保信息（基于根实体ID）；也可点击上方按钮刷新。
             </div>
           </div>
 
@@ -445,24 +444,24 @@
             <div
               class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between"
             >
-              <h3 class="text-base font-semibold">Supply Chain</h3>
+              <h3 class="text-base font-semibold">供应链</h3>
               <div class="flex items-center gap-2">
                 <label class="text-xs text-gray-600 dark:text-gray-300"
-                  >Direction
+                  >方向
                   <select
                     id="supplyDirection"
                     class="ml-1 rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm px-2 py-1"
                   >
-                    <option value="out" selected>out</option>
-                    <option value="in">in</option>
-                    <option value="both">both</option>
+                    <option value="out" selected>出</option>
+                    <option value="in">入</option>
+                    <option value="both">双向</option>
                   </select>
                 </label>
                 <button
                   id="loadSupplyChain"
                   class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white shadow hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
-                  Load Supply Chain
+                  刷新数据
                 </button>
               </div>
             </div>
@@ -470,7 +469,7 @@
               id="supplyChainList"
               class="p-4 text-sm text-gray-500 dark:text-gray-400"
             >
-              Choose direction and click "Load Supply Chain" for Root Entity ID.
+              按选择的方向自动加载供应链（基于根实体ID）；也可点击上方按钮刷新。
             </div>
           </div>
 
@@ -481,24 +480,24 @@
             <div
               class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between"
             >
-              <h3 class="text-base font-semibold">Employment</h3>
+              <h3 class="text-base font-semibold">任职信息</h3>
               <div class="flex items-center gap-2">
                 <label class="text-xs text-gray-600 dark:text-gray-300"
-                  >Role
+                  >角色
                   <select
                     id="employmentRole"
                     class="ml-1 rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm px-2 py-1"
                   >
-                    <option value="both" selected>both</option>
-                    <option value="as_company">company</option>
-                    <option value="as_person">person</option>
+                    <option value="both" selected>全部</option>
+                    <option value="as_company">公司</option>
+                    <option value="as_person">个人</option>
                   </select>
                 </label>
                 <button
                   id="loadEmployment"
                   class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white shadow hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
-                  Load Employment
+                  刷新数据
                 </button>
               </div>
             </div>
@@ -506,7 +505,7 @@
               id="employmentList"
               class="p-4 text-sm text-gray-500 dark:text-gray-400"
             >
-              Choose role filter and click "Load Employment" for Root Entity ID.
+              按选择的角色过滤自动加载任职信息（基于根实体ID）；也可点击上方按钮刷新。
             </div>
           </div>
 
@@ -517,19 +516,19 @@
             <div
               class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between"
             >
-              <h3 class="text-base font-semibold">Locations</h3>
+              <h3 class="text-base font-semibold">地址</h3>
               <button
                 id="loadLocations"
                 class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white shadow hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
-                Load Locations
+                刷新数据
               </button>
             </div>
             <div
               id="locationsList"
               class="p-4 text-sm text-gray-500 dark:text-gray-400"
             >
-              Click "Load Locations" for Root Entity ID.
+              将自动加载地址信息（基于根实体ID）；也可点击上方按钮刷新。
             </div>
           </div>
 
@@ -540,12 +539,12 @@
             <div
               class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between gap-3"
             >
-              <h3 class="text-base font-semibold">Company News</h3>
+              <h3 class="text-base font-semibold">公司新闻</h3>
               <div class="flex items-end gap-3">
                 <label class="block">
                   <span
                     class="block text-xs uppercase tracking-wide text-gray-600 dark:text-gray-300"
-                    >News Limit</span
+                    >新闻条数</span
                   >
                   <input
                     id="newsLimit"
@@ -560,7 +559,7 @@
                   id="loadNews"
                   class="inline-flex items-center rounded-md bg-slate-700 px-3 py-2 text-sm font-medium text-white shadow hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-500"
                 >
-                  Load News
+                  刷新数据
                 </button>
               </div>
             </div>
@@ -568,7 +567,7 @@
               id="newsList"
               class="p-4 text-sm text-gray-500 dark:text-gray-400"
             >
-              Load a company to see recent news (stored + external).
+              加载公司后显示近期新闻（本地存储 + 外部来源）。
             </div>
           </div>
 
@@ -579,12 +578,12 @@
             <div
               class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between gap-3"
             >
-              <h3 class="text-base font-semibold">Equity Penetration (D3)</h3>
+              <h3 class="text-base font-semibold">股权穿透（D3）</h3>
               <div class="flex items-end gap-3">
                 <label class="block">
                   <span
                     class="block text-xs uppercase tracking-wide text-gray-600 dark:text-gray-300"
-                    >Include Paths</span
+                    >包含路径</span
                   >
                   <input
                     id="includePaths"
@@ -596,7 +595,7 @@
                 <label class="block">
                   <span
                     class="block text-xs uppercase tracking-wide text-gray-600 dark:text-gray-300"
-                    >Max Paths</span
+                    >最大路径数</span
                   >
                   <input
                     id="maxPaths"
@@ -611,7 +610,7 @@
                   id="loadPenetration"
                   class="inline-flex items-center rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
-                  Load Equity Penetration Graph
+                  刷新数据
                 </button>
               </div>
             </div>
@@ -624,9 +623,9 @@
                 id="legend"
                 class="mt-2 text-xs text-gray-600 dark:text-gray-300"
               >
-                <strong>Legend:</strong> Node size/color = Equity Penetration
-                (look-through %). Link width = stake %. Label shows stake and
-                look-through via that edge.
+                <strong>图例：</strong> 节点大小/颜色 =
+                股权穿透（透视比例%）；连线宽度 =
+                持股比例%；标签显示该边的持股与透视比例。
               </div>
             </div>
           </div>
@@ -638,12 +637,12 @@
             <div
               class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between"
             >
-              <h3 class="text-base font-semibold">Risk Analysis</h3>
+              <h3 class="text-base font-semibold">风险分析</h3>
               <div class="flex items-center gap-3">
                 <label class="block">
                   <span
                     class="block text-xs uppercase tracking-wide text-gray-600 dark:text-gray-300"
-                    >News Limit</span
+                    >新闻条数</span
                   >
                   <input
                     id="riskNewsLimit"
@@ -658,7 +657,7 @@
                   id="analyzeRisks"
                   class="inline-flex items-center rounded-md bg-rose-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500"
                 >
-                  Analyze Risks
+                  刷新数据
                 </button>
               </div>
             </div>
@@ -666,8 +665,7 @@
               id="riskResults"
               class="p-4 text-sm text-gray-500 dark:text-gray-400"
             >
-              Click "Analyze Risks" to compute heuristic risk flags for the Root
-              Entity ID.
+              将自动计算并展示风险提示（基于根实体ID与新闻数据）；也可点击上方按钮刷新。
             </div>
           </div>
 
@@ -678,31 +676,31 @@
             <div
               class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between"
             >
-              <h3 class="text-base font-semibold">KB Risk Evaluation</h3>
+              <h3 class="text-base font-semibold">知识库风险评估</h3>
               <div class="flex items-center gap-3">
                 <button
                   id="evaluateKbRisk"
                   class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
-                  Evaluate KB Risk
+                  评估风险
                 </button>
                 <button
                   id="annotateGraph"
                   class="inline-flex items-center rounded-md bg-slate-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-500"
                 >
-                  Annotate Graph
+                  标注图谱
                 </button>
                 <button
                   id="openGraph"
                   class="inline-flex items-center rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
-                  Open Graph
+                  打开图谱
                 </button>
                 <button
                   id="kbLoadExampleChain"
                   class="inline-flex items-center rounded-md bg-gray-700 px-3 py-2 text-sm font-medium text-white shadow hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-600"
                 >
-                  Load Example Chain
+                  加载示例链
                 </button>
               </div>
             </div>
@@ -716,7 +714,7 @@
                   class="scale-110"
                 />
                 <span class="text-sm text-gray-700 dark:text-gray-200"
-                  >Use custom transaction chain JSON</span
+                  >使用自定义交易链 JSON</span
                 >
               </label>
             </div>
@@ -736,7 +734,7 @@
               class="p-4 text-sm text-gray-500 dark:text-gray-400"
               aria-live="polite"
             >
-              Click Evaluate to run KB-based risk scoring.
+              点击“评估风险”运行基于知识库的风险评分。
             </div>
           </div>
         </section>

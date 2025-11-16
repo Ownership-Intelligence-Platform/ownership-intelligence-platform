@@ -41,13 +41,70 @@ document
   ?.addEventListener("click", () => populateMock(loadLayers));
 document.getElementById("clearDb")?.addEventListener("click", clearDb);
 document.getElementById("loadLayers")?.addEventListener("click", async () => {
-  const raw = document.getElementById("rootId").value.trim();
-  const id = await resolveEntityInput(raw);
+  const rawInput = document.getElementById("rootId").value.trim();
+  const id = await resolveEntityInput(rawInput);
   if (!id) return;
   document.getElementById("rootId").value = id;
   // Load entity info panel first so users see description quickly
   loadEntityInfo(id);
+  // Load core ownership layers
   loadLayers();
+
+  // After layers load, automatically load dashboard cards using current controls
+  try {
+    // Accounts
+    loadAccounts(id);
+  } catch (_) {}
+  try {
+    // Transactions (respect current direction)
+    const txDirEl = document.getElementById("txDirection");
+    const txDir = txDirEl ? txDirEl.value.trim() : "out";
+    loadTransactions(id, txDir);
+  } catch (_) {}
+  try {
+    // Guarantees
+    const gDirEl = document.getElementById("guaranteeDirection");
+    const gDir = gDirEl ? gDirEl.value.trim() : "out";
+    loadGuarantees(id, gDir);
+  } catch (_) {}
+  try {
+    // Supply chain
+    const sDirEl = document.getElementById("supplyDirection");
+    const sDir = sDirEl ? sDirEl.value.trim() : "out";
+    loadSupplyChain(id, sDir);
+  } catch (_) {}
+  try {
+    // Employment
+    const roleEl = document.getElementById("employmentRole");
+    const role = roleEl ? roleEl.value.trim() : "both";
+    loadEmployment(id, role);
+  } catch (_) {}
+  try {
+    // Locations
+    loadLocations(id);
+  } catch (_) {}
+  try {
+    // News (respect current limit)
+    loadNews(id);
+  } catch (_) {}
+  try {
+    // Penetration graph
+    loadPenetration();
+  } catch (_) {}
+  try {
+    // Person account opening (use raw input, which may be a person id)
+    if (rawInput) {
+      loadPersonOpening(rawInput);
+    }
+  } catch (_) {}
+  try {
+    // Risk analysis (respect current news limit)
+    const newsLimit = parseInt(
+      document.getElementById("riskNewsLimit")?.value || "5",
+      10
+    );
+    analyzeRisks(id, newsLimit);
+  } catch (_) {}
 });
 document
   .getElementById("loadPenetration")
@@ -309,7 +366,7 @@ document
     const bilingual = document.getElementById("reportBilingual").checked;
 
     const statusEl = document.getElementById("status");
-    if (statusEl) statusEl.textContent = "Generating report...";
+    if (statusEl) statusEl.textContent = "正在生成报告…";
     try {
       const url = `/reports/cdd/${encodeURIComponent(
         id
@@ -345,8 +402,8 @@ document
           // noop if download fails; the new tab still shows the content
         }
       }
-      if (statusEl) statusEl.textContent = "Report generated.";
+      if (statusEl) statusEl.textContent = "报告已生成。";
     } catch (e) {
-      if (statusEl) statusEl.textContent = `Failed to generate report: ${e}`;
+      if (statusEl) statusEl.textContent = `生成报告失败：${e}`;
     }
   });
