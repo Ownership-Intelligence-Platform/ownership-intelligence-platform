@@ -1,5 +1,10 @@
 // Renderer for equity penetration force-directed graph using D3
 // Requires global d3 from CDN in index.html
+// Color/style NOTE: Aligned with person network module (`static/modules/personNetwork.js`)
+// - Focal (root) node: #1d4ed8
+// - Company nodes: rect with fill #374151
+// - Other/person nodes: circle with fill #6366f1
+// - Link color (ownership/share): #6b7280 with 0.5 opacity
 
 /**
  * Render an interactive force-directed graph showing equity penetration.
@@ -16,9 +21,11 @@ export function renderPenetrationGraph(graph, root) {
   const prefersDark = document.documentElement.classList.contains("dark");
   const bgColor = prefersDark ? "#0f172a" : "#fbfbfc";
   const borderColor = prefersDark ? "#334155" : "#e5e7eb";
-  const textPrimary = prefersDark ? "#f3f4f6" : "#1f2937";
+  // For white theme, use pure black text per requirement
+  const textPrimary = prefersDark ? "#f3f4f6" : "#000000";
   const textHalo = prefersDark ? "#0b1220" : "#ffffff";
-  const linkStrokeColor = prefersDark ? "#94a3b8" : "#999";
+  // Use the same link color as person network for share/ownership relations
+  const linkStrokeColor = "#6b7280"; // gray-500
   d3.select(chartEl).style("position", "relative");
 
   const containerRect = chartEl.getBoundingClientRect();
@@ -26,7 +33,12 @@ export function renderPenetrationGraph(graph, root) {
   const height = Math.round(width * 0.55);
   const maxPen = d3.max(graph.nodes, (d) => d.penetration || 0) || 100;
   const radius = d3.scaleSqrt().domain([0, maxPen]).range([6, 34]);
-  const color = d3.scaleSequential(d3.interpolatePuBu).domain([0, maxPen || 1]);
+  // Person network color style
+  const nodeFill = (d) => {
+    if (root && d.id === root.id) return "#1d4ed8"; // focal blue
+    if ((d.type || "").toLowerCase() === "company") return "#374151"; // company gray
+    return "#6366f1"; // person/other indigo
+  };
   const linkWidth = d3.scaleLinear().domain([0, 100]).range([0.75, 7]);
   const fonts = { base: 12, node: 12, link: 10 };
 
@@ -47,7 +59,7 @@ export function renderPenetrationGraph(graph, root) {
     d3.select(chartEl)
       .insert("div", ":first-child")
       .style("margin", "6px 0")
-      .style("color", "#555")
+      .style("color", textPrimary)
       .text(
         `Root: ${root.name || ""} [${root.id}]${
           root.type ? " · " + root.type : ""
@@ -111,7 +123,7 @@ export function renderPenetrationGraph(graph, root) {
     g,
     graph.nodes,
     radius,
-    color,
+    nodeFill,
     root,
     textPrimary,
     textHalo,
@@ -129,7 +141,7 @@ export function renderPenetrationGraph(graph, root) {
     .text(`.faded { opacity: 0.15; } .linkLabel text { user-select: none; }`);
 
   // Legend
-  createLegend(chartEl, maxPen, color, prefersDark, fonts, borderColor);
+  createLegend(chartEl, maxPen, prefersDark, fonts, borderColor);
 
   // Simulation
   const sim = runSimulation(
@@ -220,7 +232,7 @@ function renderLinks(
   const link = g
     .append("g")
     .attr("stroke", linkStrokeColor)
-    .attr("stroke-opacity", 0.6)
+    .attr("stroke-opacity", 0.5) // align with person network SHARE_COMPANY style
     .selectAll("line")
     .data(linksData)
     .enter()
@@ -265,7 +277,7 @@ function renderNodes(
   g,
   nodesData,
   radius,
-  color,
+  nodeFill,
   root,
   textPrimary,
   textHalo,
@@ -282,10 +294,28 @@ function renderNodes(
     .append("g")
     .attr("class", "node");
 
+  // Company nodes as rects, others as circles (match person network)
+  const isCompany = (d) => (d.type || "").toLowerCase() === "company";
+
   node
+    .filter((d) => isCompany(d))
+    .append("rect")
+    .attr("x", (d) => -radius(d.penetration || 0))
+    .attr("y", (d) => -radius(d.penetration || 0))
+    .attr("width", (d) => 2 * radius(d.penetration || 0))
+    .attr("height", (d) => 2 * radius(d.penetration || 0))
+    .attr("rx", 6)
+    .attr("fill", (d) => nodeFill(d))
+    .attr("stroke", (d) =>
+      root && d.id === root.id ? textPrimary : borderColor
+    )
+    .attr("stroke-width", (d) => (root && d.id === root.id ? 2.2 : 1.5));
+
+  node
+    .filter((d) => !isCompany(d))
     .append("circle")
     .attr("r", (d) => radius(d.penetration || 0))
-    .attr("fill", (d) => color(d.penetration || 0))
+    .attr("fill", (d) => nodeFill(d))
     .attr("stroke", (d) =>
       root && d.id === root.id ? textPrimary : borderColor
     )
@@ -343,7 +373,7 @@ function createTooltip(chartEl, prefersDark, fonts, textPrimary) {
     .style("padding", "6px 8px")
     .style("border-radius", "6px")
     .style("font-size", `${fonts.base}px`)
-    .style("color", prefersDark ? "#e5e7eb" : "#111827")
+    .style("color", prefersDark ? "#e5e7eb" : "#000000")
     .style(
       "box-shadow",
       prefersDark ? "0 2px 6px rgba(0,0,0,0.4)" : "0 2px 6px rgba(0,0,0,0.12)"
@@ -408,35 +438,44 @@ function addNodeInteractivity(node, link, linkLabels, tooltip, chartEl) {
   // styles are injected once at the svg level in the caller
 }
 
-function createLegend(chartEl, maxPen, color, prefersDark, fonts, borderColor) {
-  const legendWidth = 180,
-    legendHeight = 12;
+function createLegend(chartEl, maxPen, prefersDark, fonts, borderColor) {
+  // Size legend: node size encodes penetration percentage
   const legend = d3
     .select(chartEl)
     .append("div")
     .style("margin-top", "6px")
     .style("font-size", `${fonts.base - 1}px`)
-    .style("color", prefersDark ? "#d1d5db" : "#374151");
-  const canvas = document.createElement("canvas");
-  canvas.width = legendWidth;
-  canvas.height = legendHeight;
-  const ctx = canvas.getContext("2d");
-  for (let i = 0; i < legendWidth; i++) {
-    const t = i / (legendWidth - 1);
-    ctx.fillStyle = color(t * maxPen);
-    ctx.fillRect(i, 0, 1, legendHeight);
-  }
-  legend.append(() => canvas).style("border", `1px solid ${borderColor}`);
+    .style("color", prefersDark ? "#d1d5db" : "#000000");
+  const svg = legend
+    .append("svg")
+    .attr("width", 220)
+    .attr("height", 48)
+    .style("border", `1px solid ${borderColor}`);
+  const r = d3.scaleSqrt().domain([0, maxPen]).range([6, 20]);
+  const values = [0, Math.round(maxPen / 4), Math.round(maxPen / 2), maxPen];
+  values.forEach((v, i) => {
+    const cx = 20 + i * 50;
+    const cy = 24;
+    svg
+      .append("circle")
+      .attr("cx", cx)
+      .attr("cy", cy)
+      .attr("r", r(v))
+      .attr("fill", "#e5e7eb")
+      .attr("stroke", "#fff");
+    svg
+      .append("text")
+      .attr("x", cx)
+      .attr("y", 44)
+      .attr("text-anchor", "middle")
+      .attr("fill", prefersDark ? "#d1d5db" : "#000000")
+      .attr("font-size", `${fonts.base - 2}px`)
+      .text(`${v}%`);
+  });
   legend
     .append("div")
-    .style("display", "flex")
-    .style("justify-content", "space-between")
-    .style("margin-top", "2px")
-    .html(
-      `<span>0%</span><span>Penetration</span><span>${maxPen.toFixed(
-        0
-      )}%</span>`
-    );
+    .style("margin-top", "4px")
+    .text("节点大小代表穿透率 (Penetration)");
 }
 
 function runSimulation(

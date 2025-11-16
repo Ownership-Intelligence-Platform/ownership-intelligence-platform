@@ -1,4 +1,9 @@
 // Person Network visualization module
+// Color/style contract (reused by penetration graph):
+// - Focal person: #1d4ed8
+// - Company nodes: rect with fill #374151
+// - Other/person nodes: circle with fill #6366f1
+// - SHARE_COMPANY link color: #6b7280 (others vary by relation)
 
 function getParam(name) {
   const params = new URLSearchParams(window.location.search);
