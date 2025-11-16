@@ -32,6 +32,7 @@ from .employment import create_employment, get_employment
 from .news import create_news_item, get_stored_news
 from .person_network import get_person_network
 from .person_info import set_person_account_opening, get_person_account_opening
+from .relationships import create_person_relationship
 
 __all__ = [
     # entities
@@ -64,4 +65,6 @@ __all__ = [
     'get_person_network',
     # person info
     'set_person_account_opening','get_person_account_opening',
+    # interpersonal relationships
+    'create_person_relationship',
 ]

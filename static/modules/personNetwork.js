@@ -201,6 +201,7 @@ async function load() {
       fetchNetwork(pid),
       fetchAccountOpening(pid).catch(() => null),
     ]);
+    renderRelationsCard(document.getElementById("relationsCard"), data);
     renderGraph(document.getElementById("graph"), data);
     document.getElementById("raw").textContent = JSON.stringify(data, null, 2);
 
@@ -248,3 +249,103 @@ async function load() {
 }
 
 init();
+
+function renderRelationsCard(container, data) {
+  if (!container) return;
+  const id2name = new Map(
+    (data.nodes || []).map((n) => [n.id, n.name || n.id])
+  );
+  const cats = computeCategories(data, data.person?.id);
+  const items = [
+    { key: "parents", label: "父母" },
+    { key: "children", label: "子女" },
+    { key: "spouses", label: "配偶" },
+    { key: "friends", label: "朋友" },
+    { key: "classmates", label: "同学" },
+    { key: "colleagues", label: "同事" },
+  ];
+  const html = items
+    .map((it) => {
+      const ids = cats.list[it.key] || [];
+      const count = ids.length;
+      const chips = ids
+        .slice(0, 6)
+        .map(
+          (pid) =>
+            `<span class="inline-flex items-center px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-xs">${escapeHtml(
+              id2name.get(pid) || pid
+            )}</span>`
+        )
+        .join(" ");
+      return `
+      <div class="rounded border border-gray-200 dark:border-gray-800 p-3">
+        <div class="text-xs text-gray-500 mb-1">${it.label}</div>
+        <div class="text-xl font-semibold">${count}</div>
+        <div class="mt-2 flex flex-wrap gap-1">${
+          chips || `<span class='text-gray-400 text-xs'>暂无</span>`
+        }</div>
+      </div>`;
+    })
+    .join("");
+  container.innerHTML = html;
+}
+
+function computeCategories(data, focalId) {
+  if (data.summary) {
+    // Build simple list arrays from links to show chips
+    const list = buildListFromLinks(data.links || [], focalId);
+    return { counts: data.summary, list };
+  }
+  const list = buildListFromLinks(data.links || [], focalId);
+  const counts = Object.fromEntries(
+    Object.entries(list).map(([k, arr]) => [k, arr.length])
+  );
+  return { counts, list };
+}
+
+function buildListFromLinks(links, focalId) {
+  const out = {
+    parents: new Set(),
+    children: new Set(),
+    spouses: new Set(),
+    friends: new Set(),
+    classmates: new Set(),
+    colleagues: new Set(),
+  };
+  for (const e of links) {
+    const t = (e.type || "").toUpperCase();
+    const s = e.source;
+    const tgt = e.target;
+    if (t === "PARENT_OF") {
+      if (tgt === focalId) out.parents.add(s);
+      else if (s === focalId) out.children.add(tgt);
+    } else if (t === "CHILD_OF") {
+      if (s === focalId) out.parents.add(tgt);
+      else if (tgt === focalId) out.children.add(s);
+    } else if (t === "SPOUSE_OF") {
+      const other = s === focalId ? tgt : tgt === focalId ? s : null;
+      if (other) out.spouses.add(other);
+    } else if (t === "FRIEND_OF") {
+      const other = s === focalId ? tgt : tgt === focalId ? s : null;
+      if (other) out.friends.add(other);
+    } else if (t === "CLASSMATE_OF") {
+      const other = s === focalId ? tgt : tgt === focalId ? s : null;
+      if (other) out.classmates.add(other);
+    } else if (t === "SHARE_COMPANY") {
+      const other = s === focalId ? tgt : tgt === focalId ? s : null;
+      if (other) out.colleagues.add(other);
+    }
+  }
+  return Object.fromEntries(
+    Object.entries(out).map(([k, v]) => [k, Array.from(v)])
+  );
+}
+
+function escapeHtml(s) {
+  return String(s)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}

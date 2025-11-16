@@ -308,6 +308,42 @@
               在“根实体”输入框中使用人员ID，将自动加载（如可用）；也可点击上方按钮刷新账号信息（已脱敏）。
             </div>
           </div>
+
+          <!-- Person Relationship Network Card -->
+          <div
+            class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm lg:col-span-2"
+          >
+            <div
+              class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between gap-3"
+            >
+              <h3 class="text-base font-semibold">人际关系网络</h3>
+              <button
+                id="loadPersonNetwork"
+                class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                刷新人际网络
+              </button>
+            </div>
+            <div class="p-4">
+              <div class="mb-3">
+                <h4 class="text-sm font-medium mb-2">人际关系概览</h4>
+                <div
+                  id="personRelationsHomeCard"
+                  class="text-sm grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3"
+                ></div>
+                <div class="mt-2 text-[11px] text-gray-500 dark:text-gray-400">
+                  注：同事来源于“共享同一公司”的关系；其他关系需要在图谱中维护后显示。
+                </div>
+              </div>
+              <div>
+                <h4 class="text-sm font-medium mb-2">图谱</h4>
+                <div
+                  id="personNetworkHomeGraph"
+                  class="w-full h-[420px] overflow-hidden rounded border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800"
+                ></div>
+              </div>
+            </div>
+          </div>
           <!-- Layers Tree Card -->
           <div
             class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm"

@@ -17,6 +17,7 @@ import { resolveEntityInput } from "./modules/utils.js";
 import { initEntityAutocomplete } from "./modules/autocomplete.js";
 import { loadEntityInfo } from "./modules/entities.js";
 import { initChat } from "./modules/chat.js";
+import { loadPersonNetwork as loadPersonNetworkEmbed } from "./modules/personNetworkEmbed.js";
 import {
   evaluateKbRisk,
   annotateGraph,
@@ -95,6 +96,16 @@ document.getElementById("loadLayers")?.addEventListener("click", async () => {
     // Person account opening (use raw input, which may be a person id)
     if (rawInput) {
       loadPersonOpening(rawInput);
+    }
+  } catch (_) {}
+  try {
+    // Person relationship network (only if looks like a person id e.g., P1)
+    if (/^P\w+/i.test(rawInput)) {
+      const graphEl = document.getElementById("personNetworkHomeGraph");
+      const relationsEl = document.getElementById("personRelationsHomeCard");
+      if (graphEl || relationsEl) {
+        await loadPersonNetworkEmbed(rawInput, { graphEl, relationsEl });
+      }
     }
   } catch (_) {}
   try {
@@ -189,6 +200,16 @@ document
     if (!id) return;
     document.getElementById("rootId").value = id;
     loadPersonOpening(id);
+  });
+document
+  .getElementById("loadPersonNetwork")
+  ?.addEventListener("click", async () => {
+    const raw = document.getElementById("rootId").value.trim();
+    const id = raw; // expect a person id like P1
+    if (!id) return;
+    const graphEl = document.getElementById("personNetworkHomeGraph");
+    const relationsEl = document.getElementById("personRelationsHomeCard");
+    await loadPersonNetworkEmbed(id, { graphEl, relationsEl });
   });
 document.getElementById("loadNews")?.addEventListener("click", async () => {
   const raw = document.getElementById("rootId").value.trim();

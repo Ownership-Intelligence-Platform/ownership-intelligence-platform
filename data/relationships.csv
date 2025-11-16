@@ -1,0 +1,5 @@
+subject_id,related_id,relation,subject_name,related_name
+P1,P2,father,张伟,王刚
+P1,P3,spouse,张伟,张敏
+P1,P4,friend,张伟,李雷
+P1,P5,classmate,张伟,韩梅梅

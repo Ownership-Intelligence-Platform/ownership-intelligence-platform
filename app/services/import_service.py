@@ -21,6 +21,9 @@ RequiredPersonOpeningHeaders = {
     # optional: but we include in required set only person_id; others validated at use time
 }
 
+# Relationships (person-to-person)
+RequiredRelationshipsHeaders = {"subject_id", "related_id", "relation"}
+
 
 def _resolve_path(path: str, project_root: str) -> str:
     """Resolve a possibly relative path against the project root.
@@ -586,3 +589,60 @@ def import_employment_from_csv(
             unique += 1
 
     return {"employment": {"processed_rows": processed, "unique_imported": unique}}
+
+
+def import_relationships_from_csv(
+    relationships_csv: str,
+    *,
+    project_root: str,
+    create_relationship_fn: Callable[[str, str, str], Dict],
+    ensure_person_fn: Callable[[str, Optional[str], Optional[str]], Dict] = create_entity,
+) -> Dict:
+    """Import interpersonal relationships between persons.
+
+    Expected headers: subject_id,related_id,relation[,subject_name][,related_name]
+
+    Behavior:
+    - Ensures both persons exist (sets :Person label via ensure_person_fn)
+    - Calls create_relationship_fn(subject_id, related_id, relation)
+    - Dedupe by (subject_id, related_id, relation) triple
+    """
+    pr = os.path.abspath(project_root)
+    path = _resolve_path(relationships_csv, pr)
+    if not os.path.isfile(path):
+        raise FileNotFoundError(f"Relationships CSV not found: {path}")
+
+    processed = 0
+    unique = 0
+    seen: Set[Tuple[str, str, str]] = set()
+    with open(path, newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        headers = {h.strip() for h in (reader.fieldnames or [])}
+        if not RequiredRelationshipsHeaders.issubset(headers):
+            missing = RequiredRelationshipsHeaders - headers
+            raise ValueError(
+                f"Relationships CSV missing required columns: {', '.join(sorted(missing))}"
+            )
+        for row in reader:
+            processed += 1
+            s = (row.get("subject_id") or "").strip()
+            r = (row.get("related_id") or "").strip()
+            rel = (row.get("relation") or "").strip()
+            if not s or not r or not rel:
+                continue
+            key = (s, r, rel.upper())
+            if key in seen:
+                continue
+            seen.add(key)
+            # Ensure persons
+            ensure_person_fn(s, row.get("subject_name"), "Person")
+            ensure_person_fn(r, row.get("related_name"), "Person")
+            # Create edge
+            try:
+                create_relationship_fn(s, r, rel)
+                unique += 1
+            except Exception:
+                # skip invalid rows but continue import
+                continue
+
+    return {"relationships": {"processed_rows": processed, "unique_imported": unique}}

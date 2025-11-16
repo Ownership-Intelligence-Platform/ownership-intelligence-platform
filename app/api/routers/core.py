@@ -11,6 +11,7 @@ from app.services.import_service import (
     import_guarantees_from_csv,
     import_supply_chain_from_csv,
     import_employment_from_csv,
+    import_relationships_from_csv,
 )
 from app.db.neo4j_connector import close_driver
 
@@ -56,6 +57,7 @@ def populate_mock():
                 create_guarantee,
                 create_supply_link,
                 create_employment,
+                create_person_relationship,
             )
             accounts_csv = os.getenv("ACCOUNTS_CSV_PATH", os.path.join("data", "accounts.csv"))
             try:
@@ -95,6 +97,19 @@ def populate_mock():
             employment_csv = os.getenv("EMPLOYMENT_CSV_PATH", os.path.join("data", "employment.csv"))
             try:
                 summary.update(import_employment_from_csv(employment_csv, project_root=project_root, create_employment_fn=create_employment))
+            except FileNotFoundError:
+                pass
+
+            # Interpersonal relationships (persons)
+            relationships_csv = os.getenv("RELATIONSHIPS_CSV_PATH", os.path.join("data", "relationships.csv"))
+            try:
+                summary.update(
+                    import_relationships_from_csv(
+                        relationships_csv,
+                        project_root=project_root,
+                        create_relationship_fn=create_person_relationship,
+                    )
+                )
             except FileNotFoundError:
                 pass
         except Exception:

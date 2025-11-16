@@ -1,6 +1,6 @@
 # CDD Snapshot — Test Entity
 
-Generated: 2025-11-15 12:50:56 UTC (depth=3)
+Generated: 2025-11-16 12:41:58 UTC (depth=3)
 
 ## Summary
 - Entity ID: TEST_ENT
