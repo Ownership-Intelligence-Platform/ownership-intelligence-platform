@@ -2,16 +2,16 @@ from app.services.graph.person_info import set_person_account_opening, get_perso
 
 
 def test_set_and_get_person_account_opening(monkeypatch):
-    # Fake run_cypher to simulate Neo4j
+    # Fake run_cypher to simulate Neo4j JSON-string storage
     store = {}
 
     def fake_run_cypher(query, params):
         pid = params.get("id")
-        if "RETURN p.account_opening AS account_opening" in query and "SET" not in query:
-            return [{"account_opening": store.get(pid)}]
-        if "SET p:Person, p.account_opening = $ao" in query:
-            store[pid] = params.get("ao")
-            return [{"account_opening": store[pid]}]
+        if "RETURN p.account_opening_json AS account_opening_json" in query and "SET" not in query:
+            return [{"account_opening_json": store.get(pid)}]
+        if "SET p:Person, p.account_opening_json = $ao_json" in query:
+            store[pid] = params.get("ao_json")
+            return [{"account_opening_json": store[pid]}]
         return []
 
     monkeypatch.setattr("app.services.graph.person_info.run_cypher", fake_run_cypher)

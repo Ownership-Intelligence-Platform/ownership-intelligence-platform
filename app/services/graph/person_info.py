@@ -1,4 +1,5 @@
 from typing import Any, Dict, Optional
+import json
 from app.db.neo4j_connector import run_cypher
 
 
@@ -13,7 +14,11 @@ def _mask_number(value: Optional[str], keep_tail: int = 4, mask_char: str = "•
 
 
 def set_person_account_opening(person_id: str, info: Dict[str, Any]) -> Dict[str, Any]:
-    """Set masked account opening info onto a Person (Entity) node as e.account_opening.
+    """Set masked account opening info onto a Person (Entity) node.
+
+    Neo4j node properties cannot store maps; only primitives or arrays. To persist
+    a flexible set of fields, we serialize the masked payload as JSON into
+    `p.account_opening_json`.
 
     Only masked versions of sensitive fields are persisted. Raw inputs are discarded.
     Stored keys: bank_name, account_type, currencies, account_number_masked,
@@ -36,28 +41,34 @@ def set_person_account_opening(person_id: str, info: Dict[str, Any]) -> Dict[str
         "employer": info.get("employer"),
     }
 
+    json_payload = json.dumps(stored, ensure_ascii=False)
     query = (
         "MERGE (p:Entity {id: $id}) "
-        "SET p:Person, p.account_opening = $ao "
-        "RETURN p.account_opening AS account_opening"
+        "SET p:Person, p.account_opening_json = $ao_json "
+        "RETURN p.account_opening_json AS account_opening_json"
     )
-    res = run_cypher(query, {"id": person_id, "ao": stored})
-    return res[0]["account_opening"] if res else {}
+    run_cypher(query, {"id": person_id, "ao_json": json_payload})
+    # Return the masked dict we just stored for convenience
+    return stored
 
 
 def get_person_account_opening(person_id: str) -> Dict[str, Any]:
     """Get account opening info for a Person (if any), else {}."""
     query = (
         "MATCH (p:Entity {id: $id}) "
-        "RETURN p.account_opening AS account_opening"
+        "RETURN p.account_opening_json AS account_opening_json"
     )
     res = run_cypher(query, {"id": person_id})
     if not res:
         return {}
-    data = res[0].get("account_opening") or {}
-    # Ensure only masked fields for sensitive data are exposed
-    if "account_number" in data:
-        data.pop("account_number", None)
-    if "id_no" in data:
-        data.pop("id_no", None)
+    raw = res[0].get("account_opening_json")
+    if not raw:
+        return {}
+    try:
+        data = json.loads(raw)
+    except Exception:
+        return {}
+    # Ensure only masked fields for sensitive data are exposed (defense-in-depth)
+    data.pop("account_number", None)
+    data.pop("id_no", None)
     return data
