@@ -1,0 +1,78 @@
+<!-- Controls Card -->
+<section class="mb-6 hidden" id="controlsSection">
+  <div
+    class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm"
+  >
+    <div
+      class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between"
+    >
+      <h2 class="text-base sm:text-lg font-semibold">股权层级（来自后端）</h2>
+    </div>
+    <div class="p-4">
+      <div class="flex flex-wrap items-end gap-3">
+        <label class="block">
+          <span
+            class="block text-xs uppercase tracking-wide text-gray-600 dark:text-gray-300"
+            >根实体ID或名称</span
+          >
+          <input
+            id="rootId"
+            value="E1"
+            placeholder="例如：E1 或 Alpha"
+            class="mt-1 w-40 sm:w-56 rounded-md border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+        </label>
+        <label class="block">
+          <span
+            class="block text-xs uppercase tracking-wide text-gray-600 dark:text-gray-300"
+            >深度</span
+          >
+          <input
+            id="depth"
+            type="number"
+            value="2"
+            min="0"
+            max="10"
+            class="mt-1 w-20 rounded-md border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+        </label>
+        <button
+          id="loadLayers"
+          class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        >
+          加载层级
+        </button>
+
+        <div class="flex items-end gap-3 ml-auto">
+          <label class="block">
+            <span
+              class="block text-xs uppercase tracking-wide text-gray-600 dark:text-gray-300"
+              >新闻条数</span
+            >
+            <input
+              id="reportNewsLimit"
+              type="number"
+              value="5"
+              min="1"
+              max="50"
+              class="mt-1 w-24 rounded-md border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </label>
+          <label class="inline-flex items-center gap-2 mt-6">
+            <input id="reportBilingual" type="checkbox" class="scale-110" />
+            <span
+              class="text-xs uppercase tracking-wide text-gray-600 dark:text-gray-300"
+              >双语</span
+            >
+          </label>
+          <button
+            id="generateReportHtml"
+            class="inline-flex items-center rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          >
+            生成报告（HTML）
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

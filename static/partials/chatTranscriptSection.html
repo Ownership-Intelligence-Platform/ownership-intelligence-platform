@@ -1,0 +1,17 @@
+<!-- Chat transcript card lives with the dashboard so messages and results appear together -->
+<section class="mb-6 hidden" id="chatTranscriptSection">
+  <div
+    class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm"
+  >
+    <div
+      class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between"
+    >
+      <h2 class="text-base sm:text-lg font-semibold">对话</h2>
+    </div>
+    <div
+      class="max-h-[28vh] overflow-y-auto p-3 space-y-2"
+      id="chatMessages"
+      aria-live="polite"
+    ></div>
+  </div>
+</section>

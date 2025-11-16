@@ -1,0 +1,16 @@
+/* Safe area support for iOS notch and home indicator */
+header { padding-top: env(safe-area-inset-top); }
+/* When chat is docked, reserve bottom space in main so content isn't covered */
+.chat-docked main { padding-bottom: calc(9rem + env(safe-area-inset-bottom)); }
+/* Add safe-area padding to the chat dock itself when docked */
+#chatSection.docked #chatDock { padding-bottom: env(safe-area-inset-bottom); }
+#newsList ul li { border-bottom: solid 1px #ddd; padding: 7px 3px; }
+/* Chat dock positions */
+#chatSection.centered { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+#chatSection.centered #chatDock { max-width: 48rem; margin-left: auto; margin-right: auto; }
+#chatSection.docked { position: fixed; left: 0; right: 0; bottom: 0; }
+/* Animations */
+@keyframes slideIn { from { transform: translateX(28px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+@keyframes popLeft { from { transform: translateX(-16px) scale(0.985); opacity: 0.95; } to { transform: translateX(0) scale(1); opacity: 1; } }
+.motion-slide-in { animation: slideIn 520ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.motion-pop-left { animation: popLeft 460ms ease-out both; }

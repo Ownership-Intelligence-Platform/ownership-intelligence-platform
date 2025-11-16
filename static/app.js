@@ -1,15 +1,21 @@
 // Entry module: lean shell that bootstraps base UI and wires feature-specific handlers.
 
+import { loadHomePartials } from "./modules/partials.js";
 import { bootstrapApp } from "./modules/init.js";
 import { wireCoreEvents } from "./modules/events.js";
 import { wireKbUi } from "./modules/kbUi.js";
 import { wireReportHandlers } from "./modules/report.js";
+import { initHomeReveal } from "./modules/homeReveal.js";
+
+// Load page partials first to ensure DOM elements exist before wiring
+await loadHomePartials();
 
 // Initialize base UI and all event handlers
 bootstrapApp();
 wireCoreEvents();
 wireKbUi();
 wireReportHandlers();
+initHomeReveal();
 
 // Optional: expose selected functions for manual debugging in the browser console
 import { loadLayers } from "./modules/layers.js";
