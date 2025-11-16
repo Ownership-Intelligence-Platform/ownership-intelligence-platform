@@ -23,11 +23,15 @@ export function renderPenetrationGraph(graph, root) {
   const radius = d3.scaleSqrt().domain([0, maxPen]).range([6, 28]);
   const linkWidth = d3.scaleLinear().domain([0, 100]).range([0.5, 6]);
 
+  // Ensure container allows absolute tooltip or future overlays if needed
+  d3.select(chartEl).style("position", "relative");
+
   const svg = d3
     .select(chartEl)
     .append("svg")
     .attr("width", "100%")
-    .attr("height", height);
+    .attr("height", height)
+    .attr("viewBox", `0 0 ${width} ${height}`);
 
   const g = svg.append("g");
 
@@ -37,6 +41,16 @@ export function renderPenetrationGraph(graph, root) {
     .scaleExtent([0.2, 4])
     .on("zoom", (event) => g.attr("transform", event.transform));
   svg.call(zoom);
+
+  // Radial pre-seed to avoid initial overlap & give readable first frame
+  const cx = width / 2;
+  const cy = height / 2;
+  const baseR = Math.min(width, height) / 3;
+  graph.nodes.forEach((n, i) => {
+    const ang = (i / graph.nodes.length) * Math.PI * 2;
+    n.x = cx + Math.cos(ang) * baseR * 0.7 + (Math.random() - 0.5) * 20;
+    n.y = cy + Math.sin(ang) * baseR * 0.7 + (Math.random() - 0.5) * 20;
+  });
 
   // Links
   const link = g
@@ -92,21 +106,27 @@ export function renderPenetrationGraph(graph, root) {
       d3
         .forceLink(graph.links)
         .id((d) => d.id)
-        .distance(
-          (d) =>
-            60 +
-            radius(d.source.penetration || 0) +
-            radius(d.target.penetration || 0)
-        )
-        .strength(0.15)
+        .distance(90)
+        .strength(0.25)
     )
-    .force("charge", d3.forceManyBody().strength(-280))
-    .force("center", d3.forceCenter(width / 2, height / 2))
+    .force("charge", d3.forceManyBody().strength(-220))
+    .force("center", d3.forceCenter(cx, cy))
     .force(
       "collide",
       d3.forceCollide().radius((d) => radius(d.penetration || 0) + 8)
     );
 
+  // Run some synchronous ticks for immediate layout
+  for (let i = 0; i < 60; i++) sim.tick();
+  link
+    .attr("x1", (d) => d.source.x)
+    .attr("y1", (d) => d.source.y)
+    .attr("x2", (d) => d.target.x)
+    .attr("y2", (d) => d.target.y);
+  node.attr("transform", (d) => `translate(${d.x},${d.y})`);
+
+  // Continue lighter live adjustments
+  sim.alpha(0.3).restart();
   sim.on("tick", () => {
     link
       .attr("x1", (d) => d.source.x)
@@ -117,22 +137,27 @@ export function renderPenetrationGraph(graph, root) {
   });
 
   // Drag
-  node.call(
-    d3
-      .drag()
-      .on("start", (event, d) => {
-        if (!event.active) sim.alphaTarget(0.3).restart();
-        d.fx = d.x;
-        d.fy = d.y;
-      })
-      .on("drag", (event, d) => {
-        d.fx = event.x;
-        d.fy = event.y;
-      })
-      .on("end", (event, d) => {
-        if (!event.active) sim.alphaTarget(0);
-        d.fx = null;
-        d.fy = null;
-      })
-  );
+  const drag = d3
+    .drag()
+    .on("start", (event, d) => {
+      if (!event.active) sim.alphaTarget(0.25).restart();
+      d.fx = d.x;
+      d.fy = d.y;
+      svg.style("cursor", "grabbing");
+    })
+    .on("drag", (event, d) => {
+      d.fx = event.x;
+      d.fy = event.y;
+    })
+    .on("end", (event, d) => {
+      if (!event.active) sim.alphaTarget(0);
+      d.fx = null;
+      d.fy = null;
+      svg.style("cursor", "grab");
+    });
+  node.call(drag);
+  svg
+    .style("cursor", "grab")
+    .style("user-select", "none")
+    .style("touch-action", "none");
 }
