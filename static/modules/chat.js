@@ -9,16 +9,20 @@ import { loadEntityInfo } from "./entities.js";
 
 let history = [];
 
-function hideDashboard() {
-  ["controlsSection", "entityInfoSection", "dashboardSection"].forEach((id) =>
-    document.getElementById(id)?.classList.add("hidden")
-  );
+function revealDashboard() {
+  [
+    "chatTranscriptSection",
+    "controlsSection",
+    "entityInfoSection",
+    "dashboardSection",
+  ].forEach((id) => document.getElementById(id)?.classList.remove("hidden"));
 }
 
 function appendMessage(role, content) {
   const list = document.getElementById("chatMessages");
   if (!list) return;
   // Ensure the message area is visible when first used
+  document.getElementById("chatTranscriptSection")?.classList.remove("hidden");
   if (list.classList.contains("hidden")) list.classList.remove("hidden");
   const item = document.createElement("div");
   item.className = `px-3 py-2 rounded mb-2 text-sm whitespace-pre-wrap ${
@@ -29,6 +33,94 @@ function appendMessage(role, content) {
   item.textContent = content;
   list.appendChild(item);
   // scroll to bottom
+  list.parentElement.scrollTop = list.parentElement.scrollHeight;
+}
+
+// Lightweight intent hooks: trigger dashboard refreshes based on user query keywords
+function triggerDashboardIntents(text) {
+  const t = (text || "").toLowerCase();
+  const dispatchClick = (id) =>
+    document.getElementById(id)?.dispatchEvent(new Event("click"));
+  // Only act if there's a current rootId or the action itself will resolve
+  const hasRoot = !!document.getElementById("rootId")?.value?.trim();
+
+  // Mappings (CN + EN keywords)
+  const rules = [
+    { re: /(交易|transact|transfer)/i, id: "loadTransactions", needRoot: true },
+    { re: /(担保|guarantee)/i, id: "loadGuarantees", needRoot: true },
+    { re: /(供应链|supply)/i, id: "loadSupplyChain", needRoot: true },
+    {
+      re: /(任职|就业|职位|employment|role)/i,
+      id: "loadEmployment",
+      needRoot: true,
+    },
+    { re: /(地址|location|address)/i, id: "loadLocations", needRoot: true },
+    { re: /(新闻|news)/i, id: "loadNews", needRoot: true },
+    {
+      re: /(穿透|penetration|股权图|graph)/i,
+      id: "loadPenetration",
+      needRoot: false,
+    },
+    { re: /(账户|账号|account)/i, id: "loadAccounts", needRoot: true },
+    { re: /(风险|risk)/i, id: "analyzeRisks", needRoot: true },
+    {
+      re: /(人际|关系网络|person network|关系图)/i,
+      id: "loadPersonNetwork",
+      needRoot: true,
+    },
+  ];
+
+  for (const r of rules) {
+    if (r.re.test(t) && (!r.needRoot || hasRoot)) {
+      dispatchClick(r.id);
+    }
+  }
+}
+
+// Detect entity IDs in assistant reply and offer quick actions (+ auto-load first)
+function extractEntityIds(txt) {
+  const ids = new Set();
+  const re = /(E\d+|P\d+)/g; // basic entity/person id patterns
+  let m;
+  while ((m = re.exec(txt))) ids.add(m[1]);
+  return Array.from(ids);
+}
+
+function attachIdChipsBelowLastAssistant(ids) {
+  if (!ids?.length) return;
+  const list = document.getElementById("chatMessages");
+  if (!list) return;
+  const chipBox = document.createElement("div");
+  chipBox.className =
+    "px-3 py-2 rounded mb-2 text-xs bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100";
+  const title = document.createElement("div");
+  title.className = "font-medium mb-1";
+  title.textContent = "检测到实体：";
+  chipBox.appendChild(title);
+  const wrap = document.createElement("div");
+  wrap.className = "flex flex-wrap gap-2";
+  ids.forEach((id) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className =
+      "inline-flex items-center rounded-full border border-gray-300 dark:border-gray-700 px-2.5 py-1 text-xs hover:bg-gray-50 dark:hover:bg-gray-700";
+    btn.textContent = id;
+    btn.addEventListener("click", () => {
+      const root = document.getElementById("rootId");
+      if (root) root.value = id;
+      revealDashboard();
+      // Load details via existing flow
+      loadEntityInfo(id);
+      document.getElementById("loadLayers")?.click();
+      // Ensure view scroll context is near dashboard
+      document
+        .getElementById("entityInfoSection")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    wrap.appendChild(btn);
+  });
+  chipBox.appendChild(wrap);
+  list.appendChild(chipBox);
   list.parentElement.scrollTop = list.parentElement.scrollHeight;
 }
 
@@ -56,10 +148,16 @@ export function initChat() {
       document.body.classList.add("chat-docked");
     }
 
+    // Ensure dashboard and transcript area are visible alongside the conversation
+    revealDashboard();
+
     // Show and store user message
     appendMessage("user", text);
     history.push({ role: "user", content: text });
     input.value = "";
+
+    // Fire lightweight intents to update dashboard contextually (non-blocking)
+    triggerDashboardIntents(text);
 
     // Try to extract a quoted entity name for internal resolution, e.g.:
     // help me search "Acme Holdings Ltd"
@@ -77,10 +175,8 @@ export function initChat() {
           const initRoot = document.getElementById("initialRootId");
           if (initRoot) initRoot.value = entityId;
 
-          // Reveal hidden dashboard sections (home shows only chat initially)
-          ["controlsSection", "entityInfoSection", "dashboardSection"].forEach(
-            (id) => document.getElementById(id)?.classList.remove("hidden")
-          );
+          // Reveal dashboard sections so entity details and panels show as part of the answer
+          revealDashboard();
 
           // Load entity details and trigger full layers load via existing button handler
           loadEntityInfo(entityId);
@@ -97,11 +193,9 @@ export function initChat() {
           });
           return; // skip LLM/web flow when resolved internally
         }
-        // If resolution failed (e.g., 404) hide dashboard and fall through to LLM/web
-        hideDashboard();
+        // If resolution failed (e.g., 404) keep dashboard visible and fall through to LLM/web
       } catch (err) {
-        // Non-fatal; hide dashboard and fall back to LLM/web chat
-        hideDashboard();
+        // Non-fatal; keep dashboard visible and fall back to LLM/web chat
       }
     }
 
@@ -114,9 +208,7 @@ export function initChat() {
         const initRoot = document.getElementById("initialRootId");
         if (initRoot) initRoot.value = entityId2;
 
-        ["controlsSection", "entityInfoSection", "dashboardSection"].forEach(
-          (id) => document.getElementById(id)?.classList.remove("hidden")
-        );
+        revealDashboard();
 
         loadEntityInfo(entityId2);
         document.getElementById("loadLayers")?.click();
@@ -132,9 +224,7 @@ export function initChat() {
         return;
       }
       // If still not resolved, continue to LLM/web
-    } catch (_) {
-      hideDashboard();
-    }
+    } catch (_) {}
 
     // Show a temporary placeholder for assistant (LLM or web fallback)
     appendMessage("assistant", "…");
@@ -147,7 +237,6 @@ export function initChat() {
         use_web: !!(useWeb && useWeb.checked),
         web_provider: webProvider ? webProvider.value : undefined,
       };
-      hideDashboard();
       const resp = await fetch("/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -164,6 +253,19 @@ export function initChat() {
       if (last) last.textContent = reply;
       else appendMessage("assistant", reply);
       history.push({ role: "assistant", content: reply });
+
+      // Detect entity ids in reply and attach quick chips; auto-load first
+      const ids = extractEntityIds(reply);
+      if (ids.length) {
+        attachIdChipsBelowLastAssistant(ids);
+        // Auto-load the first one to make dashboard part of the answer
+        const first = ids[0];
+        const root = document.getElementById("rootId");
+        if (root) root.value = first;
+        revealDashboard();
+        loadEntityInfo(first);
+        document.getElementById("loadLayers")?.click();
+      }
 
       // If sources provided, render them as a tiny citation list below
       if (Array.isArray(data.sources) && data.sources.length) {
@@ -204,8 +306,8 @@ export function initChat() {
     history = [];
     const list = document.getElementById("chatMessages");
     if (list) list.innerHTML = "";
-    // Also hide the dashboard sections and exit split view
-    hideDashboard();
+    // Hide transcript section and exit split view (dashboard remains as-is)
+    document.getElementById("chatTranscriptSection")?.classList.add("hidden");
     // Return chat UI to centered state
     const chatSection = document.getElementById("chatSection");
     chatSection?.classList.remove("docked");
