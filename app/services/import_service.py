@@ -16,6 +16,10 @@ RequiredTransactionsHeaders = {"from_id", "to_id", "amount", "time", "tx_type", 
 RequiredGuaranteesHeaders = {"guarantor_id", "guaranteed_id", "amount"}
 RequiredSupplyChainHeaders = {"supplier_id", "customer_id", "frequency"}
 RequiredEmploymentHeaders = {"company_id", "person_id", "role"}
+RequiredPersonOpeningHeaders = {
+    "person_id",
+    # optional: but we include in required set only person_id; others validated at use time
+}
 
 
 def _resolve_path(path: str, project_root: str) -> str:
@@ -298,6 +302,65 @@ def import_accounts_from_csv(
             unique += 1
 
     return {"accounts": {"processed_rows": processed, "unique_imported": unique}}
+
+
+def import_person_account_opening_from_csv(
+    opening_csv: str,
+    *,
+    project_root: str,
+    set_opening_fn: Callable[[str, Dict], Dict],
+    ensure_person_fn: Callable[[str, Optional[str], Optional[str]], Dict] = create_entity,
+) -> Dict:
+    """
+    Import person account opening metadata.
+
+    CSV requirements:
+      - Header must contain 'person_id'
+      - Additional columns are treated as opening attributes (flexible schema)
+    For each row:
+      - Ensure person node exists (id=person_id, type='Person')
+      - Call set_opening_fn(person_id, payload_dict)
+    Returns:
+      {
+        "person_account_opening": {
+            "processed_rows": <int>,
+            "updated": <int>
+        }
+      }
+    """
+    pr = os.path.abspath(project_root)
+    path = _resolve_path(opening_csv, pr)
+    if not os.path.isfile(path):
+        raise FileNotFoundError(f"Person account-opening CSV not found: {path}")
+
+    processed = 0
+    updated = 0
+    with open(path, newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        if "person_id" not in reader.fieldnames:
+            raise ValueError("Person account-opening CSV missing required column: person_id")
+        for row in reader:
+            processed += 1
+            person_id = (row.get("person_id") or "").strip()
+            if not person_id:
+                continue  # skip empty id
+            # Ensure person node exists (minimal attributes; extend if columns present)
+            ensure_person_fn(person_id, row.get("name"), "Person")
+            # Build payload excluding person_id
+            payload = {k: v for k, v in row.items() if k != "person_id" and v not in (None, "")}
+            try:
+                set_opening_fn(person_id, payload)
+                updated += 1
+            except Exception:
+                # Swallow individual row errors; could add logging
+                continue
+
+    return {
+        "person_account_opening": {
+            "processed_rows": processed,
+            "updated": updated,
+        }
+    }
 
 
 def import_locations_from_csv(

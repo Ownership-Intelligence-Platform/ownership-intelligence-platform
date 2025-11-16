@@ -5,6 +5,7 @@ from app.services.import_service import (
     import_graph_from_csv,
     import_news_from_csv,
     import_accounts_from_csv,
+    import_person_account_opening_from_csv,
     import_locations_from_csv,
     import_transactions_from_csv,
     import_guarantees_from_csv,
@@ -49,6 +50,7 @@ def populate_mock():
         try:
             from app.services.graph_service import (
                 create_account,
+                set_person_account_opening,
                 create_location_links,
                 create_transaction,
                 create_guarantee,
@@ -58,6 +60,16 @@ def populate_mock():
             accounts_csv = os.getenv("ACCOUNTS_CSV_PATH", os.path.join("data", "accounts.csv"))
             try:
                 summary.update(import_accounts_from_csv(accounts_csv, project_root=project_root, create_account_fn=create_account))
+            except FileNotFoundError:
+                pass
+            
+            opening_csv = os.getenv("PERSON_ACCOUNT_OPENING_CSV_PATH", os.path.join("data", "person_account_opening.csv"))
+            try:
+                summary.update(
+                    import_person_account_opening_from_csv(
+                        opening_csv, project_root=project_root, set_opening_fn=set_person_account_opening
+                    )
+                )
             except FileNotFoundError:
                 pass
             locations_csv = os.getenv("LOCATIONS_CSV_PATH", os.path.join("data", "locations.csv"))

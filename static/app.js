@@ -11,6 +11,7 @@ import { loadGuarantees } from "./modules/guarantees.js";
 import { loadSupplyChain } from "./modules/supplyChain.js";
 import { loadEmployment } from "./modules/employment.js";
 import { loadLocations } from "./modules/locations.js";
+import { loadPersonOpening } from "./modules/personOpening.js";
 import { analyzeRisks } from "./modules/risks.js";
 import { resolveEntityInput } from "./modules/utils.js";
 import { initEntityAutocomplete } from "./modules/autocomplete.js";
@@ -121,6 +122,16 @@ document
     document.getElementById("rootId").value = id;
     loadEntityInfo(id);
     loadLocations(id);
+  });
+document
+  .getElementById("loadPersonOpening")
+  ?.addEventListener("click", async () => {
+    const raw = document.getElementById("rootId").value.trim();
+    // For person opening info we assume the provided id is a Person id
+    const id = raw; // do not resolve by name to avoid mismatching to a company
+    if (!id) return;
+    document.getElementById("rootId").value = id;
+    loadPersonOpening(id);
   });
 document.getElementById("loadNews")?.addEventListener("click", async () => {
   const raw = document.getElementById("rootId").value.trim();
