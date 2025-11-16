@@ -31,6 +31,7 @@ from .supply_chain import create_supply_link, get_supply_chain
 from .employment import create_employment, get_employment
 from .news import create_news_item, get_stored_news
 from .person_network import get_person_network
+from .person_info import set_person_account_opening, get_person_account_opening
 
 __all__ = [
     # entities
@@ -61,4 +62,6 @@ __all__ = [
     'create_news_item','get_stored_news',
     # person network
     'get_person_network',
+    # person info
+    'set_person_account_opening','get_person_account_opening',
 ]

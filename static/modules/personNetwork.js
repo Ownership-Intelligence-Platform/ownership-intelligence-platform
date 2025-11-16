@@ -13,6 +13,16 @@ async function fetchNetwork(personId) {
   return await res.json();
 }
 
+async function fetchAccountOpening(personId) {
+  const res = await fetch(
+    `/persons/${encodeURIComponent(personId)}/account-opening`
+  );
+  if (!res.ok) {
+    throw new Error(`Failed to load account opening (${res.status})`);
+  }
+  return await res.json();
+}
+
 function renderGraph(container, data) {
   container.innerHTML = "";
   const width = container.clientWidth;
@@ -187,9 +197,49 @@ async function load() {
   const status = document.getElementById("status");
   status.textContent = "Loading network…";
   try {
-    const data = await fetchNetwork(pid);
+    const [data, ao] = await Promise.all([
+      fetchNetwork(pid),
+      fetchAccountOpening(pid).catch(() => null),
+    ]);
     renderGraph(document.getElementById("graph"), data);
     document.getElementById("raw").textContent = JSON.stringify(data, null, 2);
+
+    // Render account opening info if present
+    const aoBox = document.getElementById("accountOpening");
+    const info = ao && ao.account_opening ? ao.account_opening : null;
+    if (!info) {
+      aoBox.innerHTML = `<span class="text-gray-500">暂无开户信息</span>`;
+    } else {
+      const rows = [
+        ["姓名", info.name || ""],
+        ["银行", info.bank_name || ""],
+        ["账户类型", info.account_type || ""],
+        ["币种", info.currencies || ""],
+        ["账号", info.account_number_masked || ""],
+        ["身份证号", info.id_no_masked || ""],
+        ["手机", info.phone || ""],
+        ["邮箱", info.email || ""],
+        ["地址", info.address || ""],
+        ["职业/单位", info.employer || ""],
+      ];
+      const html = `
+        <div class="overflow-x-auto">
+          <table class="min-w-full text-sm">
+            <tbody>
+              ${rows
+                .map(
+                  ([k, v]) => `
+                <tr class="border-t border-gray-200 dark:border-gray-800">
+                  <td class="px-2 py-1 text-gray-500">${k}</td>
+                  <td class="px-2 py-1">${v || "-"}</td>
+                </tr>`
+                )
+                .join("")}
+            </tbody>
+          </table>
+        </div>`;
+      aoBox.innerHTML = html;
+    }
   } catch (e) {
     document.getElementById("raw").textContent = String(e);
   } finally {
