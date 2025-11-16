@@ -8,7 +8,30 @@ header { padding-top: env(safe-area-inset-top); }
 /* Chat dock positions */
 #chatSection.centered { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
 #chatSection.centered #chatDock { max-width: 48rem; margin-left: auto; margin-right: auto; }
-#chatSection.docked { position: fixed; left: 0; right: 0; bottom: 0; }
+/* Docked chat floats slightly above the bottom with glassmorphism styling */
+#chatSection.docked { position: fixed;
+    left: 0;
+    right: 0;
+    padding: 10px 0;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    bottom: 0;
+ }
+/* Make docked chat narrower than full width and centered */
+#chatSection.docked #chatDock { max-width: 44rem; margin-left: auto; margin-right: auto; }
+/* Glassmorphism look for the chat dock */
+#chatDock {
+	border-radius: 20px; /* larger rounded corners */
+	background: rgba(255, 255, 255, 0.55);
+	box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+	
+	border: 1px solid rgba(255, 255, 255, 0.35);
+}
+.dark #chatDock {
+	background: rgba(17, 24, 39, 0.50); /* gray-900 with opacity */
+	border-color: rgba(255, 255, 255, 0.12);
+	box-shadow: 0 10px 25px rgba(0, 0, 0, 0.45);
+}
 /* Animations */
 @keyframes slideIn { from { transform: translateX(28px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 @keyframes popLeft { from { transform: translateX(-16px) scale(0.985); opacity: 0.95; } to { transform: translateX(0) scale(1); opacity: 1; } }
