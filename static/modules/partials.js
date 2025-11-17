@@ -6,6 +6,7 @@ export async function loadHomePartials() {
     "/static/partials/chatTranscriptSection.html",
     "/static/partials/controlsSection.html",
     "/static/partials/entityInfoSection.html",
+    "/static/partials/externalSection.html",
     "/static/partials/dashboardSection.html",
   ];
   for (const url of files) {

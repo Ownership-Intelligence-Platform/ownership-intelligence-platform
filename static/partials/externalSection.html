@@ -1,0 +1,26 @@
+<!-- External Results Section (shown when no internal match) -->
+<section class="mb-6 hidden" id="externalSection">
+  <div
+    class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm"
+  >
+    <div
+      class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between"
+    >
+      <h2 class="text-base sm:text-lg font-semibold">外部公开信息检索</h2>
+    </div>
+    <div
+      id="externalResults"
+      class="p-4 text-sm text-gray-600 dark:text-gray-300"
+    >
+      当内部数据库没有匹配结果时，这里会展示从公开渠道汇总的基础信息（当前为模拟数据）。
+    </div>
+  </div>
+  <div class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+    提示：真实环境下可对接
+    企查查、天眼查、裁判文书网等平台的开放接口或私有采集服务。
+  </div>
+  <script type="module">
+    // Ensure module is loaded when this section is present
+    import "../modules/external.js";
+  </script>
+</section>
