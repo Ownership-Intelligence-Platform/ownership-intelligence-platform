@@ -108,6 +108,7 @@ function renderExternal(data) {
   wrapper.appendChild(body);
   stream.appendChild(wrapper);
   wrapper.scrollIntoView({ behavior: "smooth", block: "start" });
+  return wrapper;
 }
 
 export async function externalLookup(name, birthdate) {
@@ -122,7 +123,85 @@ export async function externalLookup(name, birthdate) {
       throw new Error(`外部检索失败：${res.status} ${txt}`);
     }
     const data = await res.json();
-    renderExternal(data);
+    const card = renderExternal(data);
+
+    // Then call analysis to enrich with LLM-based summary, income estimate and risk tips
+    try {
+      const ares = await fetch(`/external/analyze`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          birthdate: birthdate || null,
+          use_web_content: false,
+        }),
+      });
+      if (ares.ok) {
+        const a = await ares.json();
+        const analysis = a?.analysis || {};
+        const section = document.createElement("div");
+        section.className =
+          "p-4 border-t border-gray-200 dark:border-gray-800 space-y-3";
+        const refsIncome =
+          (analysis?.income?.references || [])
+            .map(
+              (r) =>
+                `<li><a class=\"text-indigo-600 hover:underline\" target=\"_blank\" href=\"${escapeHtml(
+                  r.url
+                )}\">${escapeHtml(r.title || r.url)}</a></li>`
+            )
+            .join("") || '<li class="text-sm text-gray-500">无</li>';
+        const riskItems =
+          (analysis?.risks?.items || [])
+            .map(
+              (it) =>
+                `<li class=\"mb-1\"><span class=\"font-medium\">[${escapeHtml(
+                  it.type || "?"
+                )}/${escapeHtml(it.severity || "?")}]</span> ${escapeHtml(
+                  it.description || ""
+                )} ${
+                  it.url
+                    ? `<a class=\"text-indigo-600 hover:underline\" target=\"_blank\" href=\"${escapeHtml(
+                        it.url
+                      )}\">链接</a>`
+                    : ""
+                }</li>`
+            )
+            .join("") ||
+          '<li class="text-sm text-gray-500">未发现明确风险（或证据不足）。</li>';
+        section.innerHTML = `
+          <div>
+            <div class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">LLM 总结</div>
+            <div class="text-sm">${escapeHtml(
+              analysis?.summary || "（无）"
+            )}</div>
+          </div>
+          <div>
+            <div class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">收入评估</div>
+            <div class="text-sm">年收入（估）：${escapeHtml(
+              String(analysis?.income?.estimate_cny_per_year ?? "unknown")
+            )}</div>
+            <div class="text-xs text-gray-600 dark:text-gray-400 mt-1">${escapeHtml(
+              analysis?.income?.assumptions || ""
+            )}</div>
+            <div class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 mt-2 mb-1">参考</div>
+            <ul class="list-disc list-inside space-y-1">${refsIncome}</ul>
+          </div>
+          <div>
+            <div class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">风险提示</div>
+            <ul class="list-disc list-inside">${riskItems}</ul>
+            ${
+              analysis?.risks?.notes
+                ? `<div class=\"text-xs text-gray-600 dark:text-gray-400 mt-1\">${escapeHtml(
+                    analysis.risks.notes
+                  )}</div>`
+                : ""
+            }
+          </div>
+        `;
+        card.appendChild(section);
+      }
+    } catch (_) {}
   } catch (e) {
     // Render an error card in stream
     const stream = ensureStreamContainer();

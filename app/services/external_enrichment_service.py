@@ -40,6 +40,7 @@ from typing import Dict, List, Optional
 from datetime import datetime
 
 from .web_search_service import WebSearch
+from .llm_client import get_llm_client  # may raise at runtime; handle in caller
 
 
 def _norm_birthdate(b: Optional[str]) -> Optional[str]:
@@ -187,3 +188,116 @@ def enrich_person(
         "summary": summary,
         "citations": citations,
     }
+
+
+def analyze_enrichment(
+    enrichment: Dict,
+    *,
+    use_web_content: bool = False,
+    max_citations: int = 3,
+) -> Dict:
+    """Run an LLM analysis over the enrichment bundle to produce summary, income estimate, and risk tips.
+
+    Falls back to a deterministic mock when LLM is unavailable.
+    """
+    name = (enrichment.get("query") or {}).get("name") or ""
+    bday = (enrichment.get("query") or {}).get("birthdate") or None
+    providers = enrichment.get("providers") or []
+    citations = (enrichment.get("citations") or [])[: max_citations]
+
+    # Optionally pull minimal content to enrich the context
+    contents: List[str] = []
+    if use_web_content and citations:
+        try:
+            ws = WebSearch(timeout=6.0, provider="auto", max_content_chars=1200)  # type: ignore
+            for c in citations:
+                url = c.get("url")
+                if not url:
+                    continue
+                txt = ws.fetch_content(url)
+                if txt:
+                    contents.append(f"URL: {url}\nContent: {txt}")
+        except Exception:
+            contents = []
+
+    # Try LLM
+    try:
+        client = get_llm_client()
+        # Build compact provider snapshot
+        provider_lines = []
+        for p in providers:
+            pfx = f"- {p.get('name') or 'provider'} ({p.get('type') or ''})"
+            ms = p.get("matches") or []
+            if ms:
+                # include up to 2 matches per provider
+                for m in ms[:2]:
+                    nm = (m.get("name") or "?")
+                    bd = (m.get("birthdate") or "?")
+                    sc = m.get("score")
+                    sm = (m.get("summary") or "")[:180]
+                    provider_lines.append(f"{pfx}: {nm} · {bd} · score={sc} · {sm}")
+            else:
+                provider_lines.append(f"{pfx}: no matches")
+
+        cite_lines = []
+        for c in citations:
+            url = c.get("url")
+            title = c.get("title") or url
+            cite_lines.append(f"- {title} | {url}")
+
+        sys = {
+            "role": "system",
+            "content": (
+                "You are a precise analyst for due diligence. Reply in JSON only. "
+                "Use only the provided facts and citations; do not fabricate links."
+            ),
+        }
+        user = {
+            "role": "user",
+            "content": (
+                f"Target person: {name} {'('+bday+')' if bday else ''}.\n"
+                f"Providers:\n{chr(10).join(provider_lines) or 'none'}\n\n"
+                f"Citations:\n{chr(10).join(cite_lines) or 'none'}\n\n"
+                f"Context extracts (optional):\n{chr(10).join(contents) or 'none'}\n\n"
+                "Task: Return strict JSON with keys: \n"
+                "{\n  'summary': str,\n  'income': { 'estimate_cny_per_year': str, 'assumptions': str, 'references': [{'title': str, 'url': str}] },\n  'risks': { 'items': [ { 'type': 'legal'|'political'|'other', 'description': str, 'severity': 'low'|'medium'|'high', 'url': str } ], 'notes': str }\n}\n"
+                "- If insufficient data, be conservative and say 'unknown' or 'insufficient evidence'.\n"
+                "- Only cite URLs provided in Citations."
+            ),
+        }
+        text, usage, model = client.generate([sys, user], temperature=0.2, max_tokens=900)
+        # Best-effort parse JSON
+        import json
+
+        try:
+            parsed = json.loads(text)
+            if not isinstance(parsed, dict):
+                raise ValueError("not a dict")
+        except Exception:
+            parsed = {
+                "summary": text.strip()[:800],
+                "income": {"estimate_cny_per_year": "unknown", "assumptions": "LLM returned non-JSON.", "references": citations},
+                "risks": {"items": [], "notes": "LLM returned non-JSON."},
+            }
+        return {"ok": True, "model": model, "usage": usage, **parsed}
+    except Exception:
+        # Fallback deterministic mock
+        est = "unknown"
+        assumptions = "Insufficient structured position data; using placeholder (mock)."
+        risks = []
+        notes = "No concrete legal or political risks identified from mock providers."
+        return {
+            "ok": True,
+            "model": "mock",
+            "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
+            "summary": f"关于{name}的摘要（模拟）：基于外部公开检索获取的若干候选与参考链接，暂无可确认的关键信息。",
+            "income": {
+                "estimate_cny_per_year": est,
+                "assumptions": assumptions,
+                "references": citations,
+            },
+            "risks": {
+                "items": risks,
+                "notes": notes,
+            },
+        }
