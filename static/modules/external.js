@@ -9,18 +9,22 @@ function escapeHtml(s) {
     .replace(/'/g, "&#039;");
 }
 
-function hideDashboard() {
-  document.getElementById("dashboardSection")?.classList.add("hidden");
+function hideCanonicalPanels() {
+  ["dashboardSection", "entityInfoSection", "controlsSection"].forEach((id) =>
+    document.getElementById(id)?.classList.add("hidden")
+  );
 }
 
-function hideEntityInfoControls() {
-  document.getElementById("entityInfoSection")?.classList.add("hidden");
-  document.getElementById("controlsSection")?.classList.add("hidden");
-}
-
-function showExternalSection() {
-  const sec = document.getElementById("externalSection");
-  if (sec) sec.classList.remove("hidden");
+function ensureStreamContainer() {
+  let stream = document.getElementById("chatTurnStream");
+  if (!stream) {
+    const right = document.getElementById("rightPanel") || document.body;
+    stream = document.createElement("section");
+    stream.id = "chatTurnStream";
+    stream.className = "flex flex-col gap-4";
+    right.appendChild(stream);
+  }
+  return stream;
 }
 
 function renderProviderCard(p) {
@@ -52,8 +56,25 @@ function renderProviderCard(p) {
 }
 
 function renderExternal(data) {
-  const host = document.getElementById("externalResults");
-  if (!host) return;
+  // Render as a chat-style card appended after the conversation
+  const stream = ensureStreamContainer();
+  const wrapper = document.createElement("section");
+  wrapper.className =
+    "rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm chat-external-card";
+  const head = document.createElement("div");
+  head.className =
+    "px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between";
+  const h = document.createElement("h3");
+  h.className = "text-base font-semibold";
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2, "0");
+  const mm = String(now.getMinutes()).padStart(2, "0");
+  h.textContent = `外部公开信息检索 · ${hh}:${mm}`;
+  head.appendChild(h);
+  wrapper.appendChild(head);
+  const body = document.createElement("div");
+  body.className = "p-4 text-sm text-gray-700 dark:text-gray-200 space-y-4";
+
   const name = escapeHtml(data?.query?.name || "");
   const bd = escapeHtml(data?.query?.birthdate || "");
   const summary = escapeHtml(data?.summary || "");
@@ -69,26 +90,29 @@ function renderExternal(data) {
           )}">${escapeHtml(c.title || c.url)}</a></li>`
       )
       .join("") || '<li class="text-sm text-gray-500">无</li>';
-  host.innerHTML = `
-    <div class="mb-3 text-sm text-gray-600 dark:text-gray-300">查询：<strong>${name}</strong>${
+  body.innerHTML = `
+    <div class="mb-2 text-gray-600 dark:text-gray-300">查询：<strong>${name}</strong>${
     bd ? ` · ${bd}` : ""
-  } · 数据来自公开网络，以下内容为模拟数据以展示界面</div>
-    ${summary ? `<div class="mb-4 text-sm">${summary}</div>` : ""}
+  } · 来自公开渠道（当前为模拟数据）</div>
+    ${
+      summary
+        ? `<div class="text-gray-700 dark:text-gray-200">${summary}</div>`
+        : ""
+    }
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">${provHtml}</div>
-    <div class="mt-4">
+    <div>
       <div class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">参考链接</div>
       <ul class="list-disc list-inside space-y-1">${citeHtml}</ul>
     </div>
   `;
+  wrapper.appendChild(body);
+  stream.appendChild(wrapper);
+  wrapper.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 export async function externalLookup(name, birthdate) {
   try {
-    hideDashboard();
-    hideEntityInfoControls();
-    showExternalSection();
-    const panel = document.getElementById("externalResults");
-    if (panel) panel.textContent = "正在从公开渠道检索（模拟）…";
+    hideCanonicalPanels();
     const u = `/external/lookup?name=${encodeURIComponent(name)}${
       birthdate ? `&birthdate=${encodeURIComponent(birthdate)}` : ""
     }`;
@@ -100,7 +124,13 @@ export async function externalLookup(name, birthdate) {
     const data = await res.json();
     renderExternal(data);
   } catch (e) {
-    const panel = document.getElementById("externalResults");
-    if (panel) panel.textContent = `外部检索出错：${e}`;
+    // Render an error card in stream
+    const stream = ensureStreamContainer();
+    const card = document.createElement("section");
+    card.className =
+      "rounded-lg border border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-900/30 shadow-sm p-4 text-sm text-rose-900 dark:text-rose-100";
+    card.textContent = `外部检索出错：${e}`;
+    stream.appendChild(card);
+    card.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 }
