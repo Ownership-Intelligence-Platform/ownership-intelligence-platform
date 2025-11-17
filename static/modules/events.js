@@ -13,9 +13,10 @@ import { loadEmployment } from "./employment.js";
 import { loadLocations } from "./locations.js";
 import { loadPersonOpening } from "./personOpening.js";
 import { analyzeRisks } from "./risks.js";
-import { resolveEntityInput } from "./utils.js";
+import { resolveEntityInput, tryResolveEntityInput } from "./utils.js";
 import { loadEntityInfo } from "./entities.js";
 import { loadPersonNetwork as loadPersonNetworkEmbed } from "./personNetworkEmbed.js";
+import { externalLookup } from "./external.js";
 
 async function autoLoadDashboardCards(id, rawInput) {
   // Accounts
@@ -94,6 +95,21 @@ async function autoLoadDashboardCards(id, rawInput) {
   } catch (_) {}
 }
 
+function revealUI() {
+  const controls = document.getElementById("controlsSection");
+  const info = document.getElementById("entityInfoSection");
+  const dash = document.getElementById("dashboardSection");
+  const rightPanel = document.getElementById("rightPanel");
+  const chatSection = document.getElementById("chatSection");
+  controls?.classList.remove("hidden");
+  info?.classList.remove("hidden");
+  dash?.classList.remove("hidden");
+  chatSection?.classList.add("motion-pop-left");
+  rightPanel?.classList.add("motion-slide-in");
+  // Hide external section if it was visible
+  document.getElementById("externalSection")?.classList.add("hidden");
+}
+
 export function wireCoreEvents() {
   // Populate / Clear
   document
@@ -104,15 +120,24 @@ export function wireCoreEvents() {
   // Load layers + auto-load dashboard cards
   document.getElementById("loadLayers")?.addEventListener("click", async () => {
     const rawInput = document.getElementById("rootId").value.trim();
-    const id = await resolveEntityInput(rawInput);
-    if (!id) return;
-    document.getElementById("rootId").value = id;
-    // Show entity info panel first for quicker feedback
-    loadEntityInfo(id);
-    // Load core ownership layers
-    loadLayers();
-    // Then auto-load the dashboard cards
-    await autoLoadDashboardCards(id, rawInput);
+    const id = await tryResolveEntityInput(rawInput);
+    if (id) {
+      document.getElementById("rootId").value = id;
+      revealUI();
+      // Show entity info panel first for quicker feedback
+      loadEntityInfo(id);
+      // Load core ownership layers
+      loadLayers();
+      // Then auto-load the dashboard cards
+      await autoLoadDashboardCards(id, rawInput);
+    } else {
+      // Fallback to external lookup (ask for birthdate)
+      const bd = prompt(
+        "未找到内部实体。可从公开来源检索。请输入出生日期 (YYYY-MM-DD，可留空)：",
+        ""
+      );
+      await externalLookup(rawInput, bd || "");
+    }
   });
 
   // Individual cards / views
