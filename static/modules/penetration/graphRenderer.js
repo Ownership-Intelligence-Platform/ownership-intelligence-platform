@@ -33,6 +33,20 @@ export function renderPenetrationGraph(graph, root) {
     .attr("height", height)
     .attr("viewBox", `0 0 ${width} ${height}`);
 
+  // Theme-aware background and border
+  let theme = "light";
+  if (
+    document.body.classList.contains("dark") ||
+    document.body.getAttribute("data-theme") === "dark"
+  ) {
+    theme = "dark";
+  }
+  const bgColor = theme === "dark" ? "#222" : "#fff";
+  const borderColor = theme === "dark" ? "#444" : "#ccc";
+  svg
+    .style("background", bgColor)
+    .style("border", `1px solid ${borderColor}`)
+    .style("border-radius", "8px");
   const g = svg.append("g");
 
   // Zoom/pan
