@@ -69,8 +69,8 @@ export function renderPenetrationGraph(graph, root) {
   // Links
   const link = g
     .append("g")
-    .attr("stroke", "#999")
-    .attr("stroke-opacity", 0.6)
+    .attr("stroke", "#6b7280")
+    .attr("stroke-opacity", 0.5)
     .selectAll("line")
     .data(graph.links)
     .enter()
