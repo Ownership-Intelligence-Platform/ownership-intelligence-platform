@@ -22,8 +22,8 @@ header { padding-top: env(safe-area-inset-top); }
 /* Glassmorphism look for the chat dock */
 #chatDock {
 	border-radius: 40px;
-    background: rgba(255, 255, 255, 0.55);
-    border: 1px solid rgb(181 163 163 / 35%);
+	background: rgba(255, 255, 255, 0.55);
+	border: 1px solid rgb(181 163 163 / 35%);
 }
 .dark #chatDock {
 	background: rgba(17, 24, 39, 0.50); /* gray-900 with opacity */
