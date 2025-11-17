@@ -89,7 +89,11 @@ export function renderPenetrationGraph(graph, root) {
   node
     .append("circle")
     .attr("r", (d) => radius(d.penetration || 0))
-    .attr("fill", (d) => (root && d.id === root.id ? "#1d4ed8" : "#6366f1"))
+    .attr("fill", (d) => {
+      if (root && d.id === root.id) return "#1d4ed8"; // focal
+      if ((d.type || "").toLowerCase() === "company") return "#374151"; // company
+      return "#6366f1"; // person/other
+    })
     .attr("stroke", "#fff")
     .attr("stroke-width", 1.5);
 
