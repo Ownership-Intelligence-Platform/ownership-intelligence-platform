@@ -21,16 +21,41 @@ header { padding-top: env(safe-area-inset-top); }
 #chatSection.docked #chatDock { max-width: 44rem; margin-left: auto; margin-right: auto; }
 /* Glassmorphism look for the chat dock */
 #chatDock {
-	border-radius: 20px; /* larger rounded corners */
+	border-radius: 40px;
 	background: rgba(255, 255, 255, 0.55);
-	box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-	
-	border: 1px solid rgba(255, 255, 255, 0.35);
+	border: 1px solid rgb(181 163 163 / 35%);
 }
 .dark #chatDock {
 	background: rgba(17, 24, 39, 0.50); /* gray-900 with opacity */
 	border-color: rgba(255, 255, 255, 0.12);
 	box-shadow: 0 10px 25px rgba(0, 0, 0, 0.45);
+}
+/* Make the chat input blend with the dock (no visible square, no bg) */
+#chatInput {
+    background: transparent !important;
+    background-color: transparent !important; /* iOS Safari */
+    border: 0 !important;
+    outline: none !important;
+    box-shadow: none !important; /* cancels Tailwind ring */
+    -webkit-appearance: none;
+    appearance: none;
+    border-radius: 9999px; /* pill-like so it doesn't look boxy */
+    color: inherit; /* follow light/dark text */
+}
+
+#chatInput:focus {
+    outline: none !important;
+    box-shadow: none !important; /* keep input itself clean */
+}
+
+/* Placeholder colors for better contrast in light/dark */
+#chatInput::placeholder { color: #6b7280; } /* gray-500 */
+.dark #chatInput::placeholder { color: #9ca3af; } /* gray-400 */
+
+/* Show focus on the dock as a whole instead of the input */
+#chatDock:focus-within {
+    border-color: rgba(99, 102, 241, 0.45); /* indigo-500 @ ~45% */
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.22);
 }
 /* Animations */
 @keyframes slideIn { from { transform: translateX(28px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
