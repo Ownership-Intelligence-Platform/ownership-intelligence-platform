@@ -1,0 +1,16 @@
+[
+  {
+    "name": "张三",
+    "type": "pep",
+    "list": "demo-pep",
+    "risk_level": "medium",
+    "notes": "示例：本地 PEP 名单条目"
+  },
+  {
+    "name": "某某集团有限公司",
+    "type": "sanction",
+    "list": "demo-sanctions",
+    "risk_level": "high",
+    "notes": "示例：本地制裁名单条目"
+  }
+]

@@ -24,6 +24,7 @@ from app.services.graph_service import (
     resolve_entity_identifier,
     search_entities_fuzzy,
 )
+from app.services.name_screening_service import basic_name_scan
 
 router = APIRouter(tags=["entities"])
 
@@ -115,11 +116,46 @@ def api_resolve_entity(q: str):
         res = resolve_entity_identifier(q)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to resolve entity: {exc}")
+    # No direct match: still return a 404, but include basic name scan results for UX.
     if not res:
-        raise HTTPException(status_code=404, detail="Entity not found")
+        scan = basic_name_scan(q)
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "message": "Entity not found",
+                "name_scan": scan,
+            },
+        )
+    # Ambiguous match: include candidates and optional scan info.
     if res.get("ambiguous"):
-        return {"ok": False, "ambiguous": True, "matches": res.get("matches") or []}
-    return {"ok": True, "ambiguous": False, "by": res.get("by"), "entity": res.get("resolved")}
+        return {
+            "ok": False,
+            "ambiguous": True,
+            "matches": res.get("matches") or [],
+            "name_scan": basic_name_scan(q),
+        }
+    # Successfully resolved a single entity; still attach scan info for downstream UX.
+    return {
+        "ok": True,
+        "ambiguous": False,
+        "by": res.get("by"),
+        "entity": res.get("resolved"),
+        "name_scan": basic_name_scan(q),
+    }
+
+
+@router.get("/name-scan")
+def api_name_scan(q: str, limit: int = 5):
+    """Dedicated endpoint for running basic name scanning.
+
+    This is intended for onboarding / KYC flows where a name needs to be
+    screened even if it does not resolve to an existing entity id.
+    """
+    try:
+        scan = basic_name_scan(q, fuzzy_limit=limit)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to run name scan: {exc}")
+    return scan
 
 @router.get("/entities/suggest")
 def api_suggest_entities(q: str, limit: int = 10):
