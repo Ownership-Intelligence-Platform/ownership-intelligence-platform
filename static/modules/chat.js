@@ -67,11 +67,10 @@ function renderNameScanCard(name, scan) {
   } else {
     efm.forEach((m) => {
       const row = document.createElement("div");
-      row.className = "border border-gray-200 dark:border-gray-700 rounded px-2 py-1";
+      row.className =
+        "border border-gray-200 dark:border-gray-700 rounded px-2 py-1";
       const type = m.type ? ` · ${m.type}` : "";
-      const desc = m.description
-        ? `\n${m.description}`
-        : "";
+      const desc = m.description ? `\n${m.description}` : "";
       row.textContent = `${m.name || "(无名称)"} [${m.id}]${type} (score=${
         m.score ?? "-"
       })${desc}`;
@@ -93,7 +92,8 @@ function renderNameScanCard(name, scan) {
   } else {
     hits.forEach((w) => {
       const row = document.createElement("div");
-      row.className = "border border-red-200 dark:border-red-700 rounded px-2 py-1";
+      row.className =
+        "border border-red-200 dark:border-red-700 rounded px-2 py-1";
       const risk = w.risk_level ? `风险等级: ${w.risk_level}` : "";
       const list = w.list ? `名单: ${w.list}` : "";
       const meta = [list, risk].filter(Boolean).join(" · ");
@@ -587,11 +587,11 @@ export function initChat() {
       return;
     }
 
-  // Try to extract a quoted entity name for internal resolution, e.g.:
-  // help me search "Acme Holdings Ltd"
-  // We match any straight or curly quotes.
-  const m = text.match(/["“”'‘’]([^"“”'‘’]+)["“”'‘’]/);
-  const candidate = m ? m[1].trim() : null;
+    // Try to extract a quoted entity name for internal resolution, e.g.:
+    // help me search "Acme Holdings Ltd"
+    // We match any straight or curly quotes.
+    const m = text.match(/["“”'‘’]([^"“”'‘’]+)["“”'‘’]/);
+    const candidate = m ? m[1].trim() : null;
 
     if (candidate) {
       try {
