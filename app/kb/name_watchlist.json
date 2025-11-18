@@ -1,16 +1,20 @@
 [
   {
     "name": "张三",
+    "aliases": ["Zhang San", "San Zhang", "张某"],
+    "lang": ["zh-CN", "en"],
     "type": "pep",
     "list": "demo-pep",
     "risk_level": "medium",
-    "notes": "示例：本地 PEP 名单条目"
+    "notes": "示例：本地 PEP 名单条目，包含拼音与英文写法"
   },
   {
     "name": "某某集团有限公司",
+    "aliases": ["Mou Mou Group", "Moumou Group Co., Ltd."],
+    "lang": ["zh-CN", "en"],
     "type": "sanction",
     "list": "demo-sanctions",
     "risk_level": "high",
-    "notes": "示例：本地制裁名单条目"
+    "notes": "示例：本地制裁名单条目，包含常见英文译名"
   }
 ]

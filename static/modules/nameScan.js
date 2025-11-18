@@ -67,14 +67,17 @@ async function runNameScan() {
   if (entityList) {
     renderList(entityList, data.entity_fuzzy_matches || [], (m) => {
       const type = m.type ? ` · ${m.type}` : "";
+      const matchBy = m.match_by
+        ? `<span class=\"ml-2 inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-800\">${m.match_by}</span>`
+        : "";
       const desc = m.description
         ? `<div class=\"text-xs text-gray-500\">${m.description}</div>`
         : "";
       return `<div><strong>${m.name || "(无名称)"}</strong> [${
         m.id
-      }]${type} <span class=\"ml-2 text-xs text-gray-400\">score=${
+      }]${type} <span class=\"ml-1 text-xs text-gray-400\">score=${
         m.score ?? "-"
-      }</span>${desc}</div>`;
+      }</span> ${matchBy}${desc}</div>`;
     });
   }
 
@@ -83,6 +86,9 @@ async function runNameScan() {
       const risk = w.risk_level ? `风险等级: ${w.risk_level}` : "";
       const list = w.list ? `名单: ${w.list}` : "";
       const meta = [list, risk].filter(Boolean).join(" · ");
+      const matchBy = w.match_by
+        ? `<span class=\"ml-1 inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-red-100 text-red-800\">${w.match_by}</span>`
+        : "";
       const notes = w.notes
         ? `<div class=\"text-xs text-gray-500\">${w.notes}</div>`
         : "";
@@ -90,7 +96,7 @@ async function runNameScan() {
         w.name
       }</strong> <span class=\"ml-2 text-xs text-red-500\">${
         w.type || ""
-      }</span><div class=\"text-xs text-gray-600\">${meta}</div>${notes}</div>`;
+      }</span>${matchBy}<div class=\"text-xs text-gray-600\">${meta}</div>${notes}</div>`;
     });
   }
 

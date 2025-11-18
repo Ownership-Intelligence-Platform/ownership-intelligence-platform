@@ -71,9 +71,10 @@ function renderNameScanCard(name, scan) {
         "border border-gray-200 dark:border-gray-700 rounded px-2 py-1";
       const type = m.type ? ` · ${m.type}` : "";
       const desc = m.description ? `\n${m.description}` : "";
+      const matchBy = m.match_by ? ` · 匹配方式: ${m.match_by}` : "";
       row.textContent = `${m.name || "(无名称)"} [${m.id}]${type} (score=${
         m.score ?? "-"
-      })${desc}`;
+      })${matchBy}${desc}`;
       leftList.appendChild(row);
     });
   }
@@ -97,7 +98,8 @@ function renderNameScanCard(name, scan) {
       const risk = w.risk_level ? `风险等级: ${w.risk_level}` : "";
       const list = w.list ? `名单: ${w.list}` : "";
       const meta = [list, risk].filter(Boolean).join(" · ");
-      row.textContent = `${w.name} (${w.type || ""})${
+      const matchBy = w.match_by ? ` · 匹配方式: ${w.match_by}` : "";
+      row.textContent = `${w.name} (${w.type || ""})${matchBy}${
         meta ? " - " + meta : ""
       }${w.notes ? "\n" + w.notes : ""}`;
       rightList.appendChild(row);
