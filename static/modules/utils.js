@@ -59,3 +59,32 @@ export async function resolveEntityInput(input) {
   if (data && data.id) return data.id;
   return null;
 }
+
+/**
+ * Try to resolve input but do NOT alert on 404; caller decides the fallback UX.
+ * Returns entity id string on success, or null if not found/ambiguous.
+ */
+export async function tryResolveEntityInput(input) {
+  const q = String(input || "").trim();
+  if (!q) return null;
+  const res = await fetch(`/entities/resolve?q=${encodeURIComponent(q)}`);
+  let data = null;
+  try {
+    data = await res.json();
+  } catch {
+    data = null;
+  }
+  if (res.status === 404) {
+    return null;
+  }
+  if (!res.ok && res.status !== 200) {
+    return null;
+  }
+  if (data && data.ambiguous) {
+    // Keep UX simple: return null so caller can decide how to handle
+    return null;
+  }
+  if (data && data.ok && data.entity && data.entity.id) return data.entity.id;
+  if (data && data.id) return data.id;
+  return null;
+}

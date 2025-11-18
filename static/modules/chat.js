@@ -4,7 +4,7 @@
 // lightweight confirmation reply without invoking the LLM. Otherwise,
 // maintain in-memory history and call backend /chat endpoint.
 
-import { resolveEntityInput } from "./utils.js";
+import { resolveEntityInput, tryResolveEntityInput } from "./utils.js";
 import { loadEntityInfo } from "./entities.js";
 import { loadLayers } from "./layers.js";
 import { loadAccounts } from "./accounts.js";
@@ -18,8 +18,37 @@ import { analyzeRisks } from "./risks.js";
 import { loadPenetration } from "./penetration.js";
 import { loadPersonOpening } from "./personOpening.js";
 import { loadPersonNetwork as loadPersonNetworkEmbed } from "./personNetworkEmbed.js";
+import { externalLookup } from "./external.js";
 
 let history = [];
+let pendingExternal = null; // { name: string, askedAt: number }
+
+function extractBirthdate(text) {
+  const t = String(text || "").trim();
+  if (!t) return null;
+  // Try YYYY-MM-DD, YYYY/MM/DD, YYYY.MM.DD
+  let m = t.match(/(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
+  if (m) {
+    const y = m[1];
+    const mo = m[2].padStart(2, "0");
+    const d = m[3].padStart(2, "0");
+    return `${y}-${mo}-${d}`;
+  }
+  // Try YYYYMMDD
+  m = t.match(/\b(\d{4})(\d{2})(\d{2})\b/);
+  if (m) {
+    return `${m[1]}-${m[2]}-${m[3]}`;
+  }
+  // Try Chinese date: 1990年1月2日
+  m = t.match(/(\d{4})年(\d{1,2})月(\d{1,2})日?/);
+  if (m) {
+    const y = m[1];
+    const mo = m[2].padStart(2, "0");
+    const d = m[3].padStart(2, "0");
+    return `${y}-${mo}-${d}`;
+  }
+  return null;
+}
 
 function ensureStreamContainer() {
   let stream = document.getElementById("chatTurnStream");
@@ -445,6 +474,30 @@ export function initChat() {
     // Fire lightweight intents to update dashboard contextually (non-blocking)
     triggerDashboardIntents(text);
 
+    // If awaiting external details, treat this message as extra info and proceed
+    if (pendingExternal && pendingExternal.name) {
+      try {
+        const bd = extractBirthdate(text);
+        // Allow user to skip providing details
+        const isSkip = /^(跳过|不用|skip|no)$/i.test(text);
+        appendMessage(
+          "assistant",
+          bd
+            ? `收到，出生日期为 ${bd}。开始从公开来源检索…`
+            : isSkip
+            ? "好的，跳过出生日期。开始从公开来源检索…"
+            : "收到补充信息。开始从公开来源检索…",
+          targetList
+        );
+        await externalLookup(pendingExternal.name, bd || "");
+      } catch (err) {
+        appendMessage("assistant", `外部检索出错：${err}`, targetList);
+      } finally {
+        pendingExternal = null;
+      }
+      return;
+    }
+
     // Try to extract a quoted entity name for internal resolution, e.g.:
     // help me search "Acme Holdings Ltd"
     // We match any straight or curly quotes.
@@ -453,7 +506,7 @@ export function initChat() {
 
     if (candidate) {
       try {
-        const entityId = await resolveEntityInput(candidate);
+        const entityId = await tryResolveEntityInput(candidate);
         if (entityId) {
           // Update the root input fields
           const root = document.getElementById("rootId");
@@ -491,7 +544,7 @@ export function initChat() {
 
     // No quoted candidate or not resolved: try resolving the whole input as an entity id/name
     try {
-      const entityId2 = await resolveEntityInput(text);
+      const entityId2 = await tryResolveEntityInput(text);
       if (entityId2) {
         const root = document.getElementById("rootId");
         if (root) root.value = entityId2;
@@ -516,7 +569,16 @@ export function initChat() {
       // If still not resolved, continue to LLM/web
     } catch (_) {}
 
-    // Show a temporary placeholder for assistant (LLM or web fallback)
+    // If still not resolved internally, ask for more details naturally and set pending state
+    pendingExternal = { name: candidate || text, askedAt: Date.now() };
+    appendMessage(
+      "assistant",
+      "未找到内部实体。为提高准确性，请补充以下信息（可任意填写或回复“跳过”）：\n- 出生日期（例如 1990-01-02）\n- 可能的户籍/地区\n- 常用别名或相关公司名称",
+      targetList
+    );
+    return;
+
+    // External clarification path not taken: proceed with normal LLM chat flow
     appendMessage("assistant", "…", targetList);
 
     try {
