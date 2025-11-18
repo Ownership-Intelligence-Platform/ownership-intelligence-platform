@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>智网</title>
     <!-- Tailwind CSS via CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
     <script>
       // Tailwind on-the-fly config (optional): enable class-based dark mode
       tailwind.config = { darkMode: "class" };
@@ -13,6 +12,7 @@
     <!-- D3 (local file served via FastAPI static mount) -->
     <script src="/static/d3@7.js"></script>
     <!-- Site styles extracted from inline -->
+    <link rel="stylesheet" href="/static/output.css" />
     <link rel="stylesheet" href="/static/styles/home.css" />
   </head>
   <body
