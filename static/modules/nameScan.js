@@ -100,6 +100,33 @@ async function runNameScan() {
     });
   }
 
+  // Optional: render LLM variants if present
+  const exp = data.variant_expansion || null;
+  const expBox = document.getElementById("nameScanVariants");
+  if (expBox && exp) {
+    const vs = Array.isArray(exp.variants) ? exp.variants : [];
+    if (!vs.length) {
+      expBox.innerHTML = `<div class="text-xs text-gray-500">${
+        exp.error
+          ? `变体生成失败：${exp.error}`
+          : "未生成变体（可能未配置 LLM）"
+      }</div>`;
+    } else {
+      expBox.innerHTML = vs
+        .map(
+          (v) =>
+            `<span class="inline-flex items-center px-2 py-0.5 mr-1 mb-1 rounded-full bg-amber-100 text-amber-900 border border-amber-300 text-[11px]">${
+              v.value
+            }${v.type ? `/${v.type}` : ""}${
+              v.confidence != null
+                ? ` (${Math.round(v.confidence * 100)}%)`
+                : ""
+            }</span>`
+        )
+        .join("");
+    }
+  }
+
   try {
     setStatus("姓名扫描完成", 1);
   } catch {

@@ -25,6 +25,7 @@ from app.services.graph_service import (
     search_entities_fuzzy,
 )
 from app.services.name_screening_service import basic_name_scan
+from app.services.name_variant_service import expand_name_variants, match_watchlist_with_variants
 
 router = APIRouter(tags=["entities"])
 
@@ -153,6 +154,19 @@ def api_name_scan(q: str, limit: int = 5):
     """
     try:
         scan = basic_name_scan(q, fuzzy_limit=limit)
+        # Attach LLM-based variant expansion for richer screening UX (graceful on failure)
+        variant_exp = expand_name_variants(q)
+        scan["variant_expansion"] = {
+            "canonical": variant_exp.get("canonical"),
+            "variants": variant_exp.get("variants", []),
+            "usage": variant_exp.get("usage", {}),
+            "model": variant_exp.get("model"),
+            "trace": variant_exp.get("trace", []),
+            "error": variant_exp.get("error"),
+        }
+        # Re-run watchlist against generated variants to surface additional hits
+        variants = variant_exp.get("variants") or []
+        scan["watchlist_hits_via_variants"] = match_watchlist_with_variants(q, variants) if variants else []
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to run name scan: {exc}")
     return scan

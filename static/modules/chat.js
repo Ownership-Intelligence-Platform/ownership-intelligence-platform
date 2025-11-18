@@ -107,6 +107,94 @@ function renderNameScanCard(name, scan) {
   }
   right.appendChild(rightList);
 
+  // LLM variants rendering (if provided)
+  const exp = scan.variant_expansion || null;
+  if (exp) {
+    const llmBox = document.createElement("div");
+    llmBox.className = "mt-3 space-y-2";
+
+    const vTitle = document.createElement("div");
+    vTitle.className = "text-sm font-medium";
+    vTitle.textContent = "LLM 生成变体";
+    llmBox.appendChild(vTitle);
+
+    const vList = document.createElement("div");
+    vList.className = "flex flex-wrap gap-1 text-[11px]";
+    const vs = Array.isArray(exp.variants) ? exp.variants : [];
+    if (!vs.length) {
+      const span = document.createElement("span");
+      span.className = "text-xs text-gray-500";
+      span.textContent = exp.error
+        ? `变体生成失败：${exp.error}`
+        : "未生成变体（可能未配置 LLM）";
+      vList.appendChild(span);
+    } else {
+      vs.forEach((v) => {
+        const tag = document.createElement("span");
+        tag.className =
+          "inline-flex items-center px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300";
+        const type = v.type ? `/${v.type}` : "";
+        const conf =
+          v.confidence != null ? ` (${Math.round(v.confidence * 100)}%)` : "";
+        tag.textContent = `${v.value}${type}${conf}`;
+        vList.appendChild(tag);
+      });
+    }
+    llmBox.appendChild(vList);
+
+    // Trace details
+    if (Array.isArray(exp.trace) && exp.trace.length) {
+      const details = document.createElement("details");
+      details.className = "text-xs";
+      const summary = document.createElement("summary");
+      summary.textContent = "生成过程";
+      details.appendChild(summary);
+      const log = document.createElement("div");
+      log.className = "mt-1 space-y-0.5";
+      exp.trace.forEach((t) => {
+        const line = document.createElement("div");
+        line.textContent = `• ${t}`;
+        log.appendChild(line);
+      });
+      details.appendChild(log);
+      llmBox.appendChild(details);
+    }
+
+    // Hits via variants
+    const vHits = scan.watchlist_hits_via_variants || [];
+    const vHitTitle = document.createElement("div");
+    vHitTitle.className = "text-sm font-medium";
+    vHitTitle.textContent = "名单命中（按变体）";
+    llmBox.appendChild(vHitTitle);
+    const vHitList = document.createElement("div");
+    vHitList.className = "space-y-1 text-xs text-gray-900 dark:text-gray-50";
+    if (!vHits.length) {
+      const span = document.createElement("span");
+      span.className = "text-xs text-gray-500";
+      span.textContent = "无额外命中";
+      vHitList.appendChild(span);
+    } else {
+      vHits.forEach((w) => {
+        const row = document.createElement("div");
+        row.className =
+          "border border-amber-200 dark:border-amber-700 rounded px-2 py-1";
+        const via = w.via_variant
+          ? ` · 通过变体: ${w.via_variant.value} (${w.via_variant.type || "-"})`
+          : "";
+        const risk = w.risk_level ? `风险等级: ${w.risk_level}` : "";
+        const list = w.list ? `名单: ${w.list}` : "";
+        const meta = [list, risk].filter(Boolean).join(" · ");
+        row.textContent = `${w.name} (${w.type || ""})${via}${
+          meta ? " - " + meta : ""
+        }`;
+        vHitList.appendChild(row);
+      });
+    }
+    llmBox.appendChild(vHitList);
+
+    right.appendChild(llmBox);
+  }
+
   body.appendChild(left);
   body.appendChild(right);
   card.appendChild(body);
