@@ -23,6 +23,95 @@ import { externalLookup } from "./external.js";
 let history = [];
 let pendingExternal = null; // { name: string, askedAt: number }
 
+async function fetchNameScan(name) {
+  const q = String(name || "").trim();
+  if (!q) return null;
+  try {
+    const res = await fetch(`/name-scan?q=${encodeURIComponent(q)}`);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+function renderNameScanCard(name, scan) {
+  if (!scan) return;
+  const stream = ensureStreamContainer();
+  const card = document.createElement("section");
+  card.className =
+    "rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 shadow-sm";
+
+  const head = document.createElement("div");
+  head.className =
+    "px-4 py-3 border-b border-amber-200 dark:border-amber-800 flex items-center justify-between";
+  const h = document.createElement("h3");
+  h.className = "text-base font-semibold text-amber-900 dark:text-amber-50";
+  h.textContent = `姓名扫描：${name}`;
+  head.appendChild(h);
+  card.appendChild(head);
+
+  const body = document.createElement("div");
+  body.className = "p-3 grid grid-cols-1 md:grid-cols-2 gap-3";
+
+  const left = document.createElement("div");
+  const leftTitle = document.createElement("div");
+  leftTitle.className = "text-sm font-medium mb-1";
+  leftTitle.textContent = "内部实体模糊匹配";
+  left.appendChild(leftTitle);
+  const leftList = document.createElement("div");
+  leftList.className = "space-y-1 text-xs text-gray-900 dark:text-gray-50";
+  const efm = scan.entity_fuzzy_matches || [];
+  if (!efm.length) {
+    leftList.textContent = "暂无相似实体";
+  } else {
+    efm.forEach((m) => {
+      const row = document.createElement("div");
+      row.className = "border border-gray-200 dark:border-gray-700 rounded px-2 py-1";
+      const type = m.type ? ` · ${m.type}` : "";
+      const desc = m.description
+        ? `\n${m.description}`
+        : "";
+      row.textContent = `${m.name || "(无名称)"} [${m.id}]${type} (score=${
+        m.score ?? "-"
+      })${desc}`;
+      leftList.appendChild(row);
+    });
+  }
+  left.appendChild(leftList);
+
+  const right = document.createElement("div");
+  const rightTitle = document.createElement("div");
+  rightTitle.className = "text-sm font-medium mb-1";
+  rightTitle.textContent = "本地名单命中";
+  right.appendChild(rightTitle);
+  const rightList = document.createElement("div");
+  rightList.className = "space-y-1 text-xs text-gray-900 dark:text-gray-50";
+  const hits = scan.watchlist_hits || [];
+  if (!hits.length) {
+    rightList.textContent = "暂无名单命中";
+  } else {
+    hits.forEach((w) => {
+      const row = document.createElement("div");
+      row.className = "border border-red-200 dark:border-red-700 rounded px-2 py-1";
+      const risk = w.risk_level ? `风险等级: ${w.risk_level}` : "";
+      const list = w.list ? `名单: ${w.list}` : "";
+      const meta = [list, risk].filter(Boolean).join(" · ");
+      row.textContent = `${w.name} (${w.type || ""})${
+        meta ? " - " + meta : ""
+      }${w.notes ? "\n" + w.notes : ""}`;
+      rightList.appendChild(row);
+    });
+  }
+  right.appendChild(rightList);
+
+  body.appendChild(left);
+  body.appendChild(right);
+  card.appendChild(body);
+  stream.appendChild(card);
+  return card;
+}
+
 function extractBirthdate(text) {
   const t = String(text || "").trim();
   if (!t) return null;
@@ -498,11 +587,11 @@ export function initChat() {
       return;
     }
 
-    // Try to extract a quoted entity name for internal resolution, e.g.:
-    // help me search "Acme Holdings Ltd"
-    // We match any straight or curly quotes.
-    const m = text.match(/["“”'‘’]([^"“”'‘’]+)["“”'‘’]/);
-    const candidate = m ? m[1].trim() : null;
+  // Try to extract a quoted entity name for internal resolution, e.g.:
+  // help me search "Acme Holdings Ltd"
+  // We match any straight or curly quotes.
+  const m = text.match(/["“”'‘’]([^"“”'‘’]+)["“”'‘’]/);
+  const candidate = m ? m[1].trim() : null;
 
     if (candidate) {
       try {
@@ -536,7 +625,7 @@ export function initChat() {
           });
           return; // skip LLM/web flow when resolved internally
         }
-        // If resolution failed (e.g., 404) keep dashboard visible and fall through to LLM/web
+        // If resolution failed (e.g., 404) keep dashboard visible and fall through to name-scan/LLM
       } catch (err) {
         // Non-fatal; keep dashboard visible and fall back to LLM/web chat
       }
@@ -566,14 +655,19 @@ export function initChat() {
         });
         return;
       }
-      // If still not resolved, continue to LLM/web
+      // If still not resolved, continue to name-scan/LLM
     } catch (_) {}
 
-    // If still not resolved internally, ask for more details naturally and set pending state
-    pendingExternal = { name: candidate || text, askedAt: Date.now() };
+    // If still not resolved internally, run basic name scan and show a card inside this turn
+    const nameForScan = candidate || text;
+    const scan = await fetchNameScan(nameForScan);
+    renderNameScanCard(nameForScan, scan);
+
+    // Then ask user for optional extra info for external lookup and set pending state
+    pendingExternal = { name: nameForScan, askedAt: Date.now() };
     appendMessage(
       "assistant",
-      "未找到内部实体。为提高准确性，请补充以下信息（可任意填写或回复“跳过”）：\n- 出生日期（例如 1990-01-02）\n- 可能的户籍/地区\n- 常用别名或相关公司名称",
+      "未找到内部实体，已完成基础姓名扫描（相似客户与本地名单命中已在下方卡片展示）。\n如需进一步从公开来源检索，请补充以下信息（可任意填写或回复“跳过”）：\n- 出生日期（例如 1990-01-02）\n- 可能的户籍/地区\n- 常用别名或相关公司名称",
       targetList
     );
     return;
