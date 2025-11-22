@@ -16,27 +16,29 @@
     <link rel="stylesheet" href="/static/styles/home.css" />
   </head>
   <body
-    class="h-screen w-screen overflow-hidden bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100 font-sans flex flex-col"
+    class="h-screen w-screen overflow-hidden bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 font-sans flex flex-col selection:bg-indigo-500 selection:text-white"
   >
     <!-- Top Bar -->
     <header
-      class="sticky top-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur border-b border-gray-200 dark:border-gray-800"
+      class="sticky top-0 z-50 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors duration-300"
     >
       <div class="w-full px-4 sm:px-6 lg:px-8">
-        <div class="flex items-center justify-between h-14">
-          <div class="flex items-center gap-3">
-            <!-- <div class="h-8 w-8 rounded bg-indigo-600"></div> -->
-            <h1 class="text-lg sm:text-xl font-semibold tracking-tight">
-              <img src="/static/images/logo2.png" width="70px" />
+        <div class="flex items-center justify-between h-16">
+          <div class="flex items-center gap-4">
+            <h1 class="flex items-center gap-2">
+              <img src="/static/images/logo2.png" width="40" class="rounded-lg shadow-sm" />
+              <span class="text-lg font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-violet-600 dark:from-indigo-400 dark:to-violet-400 hidden sm:block">
+                智网
+              </span>
             </h1>
           </div>
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-3">
             <!-- Mobile menu button -->
             <div class="sm:hidden">
               <button
                 id="mobileMenuButton"
                 type="button"
-                class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
+                class="inline-flex items-center justify-center p-2 rounded-md text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 focus:outline-none"
                 aria-controls="mobile-menu"
                 aria-expanded="false"
               >
@@ -79,39 +81,51 @@
             <!-- Desktop menu -->
             <div
               id="desktopMenu"
-              class="hidden sm:flex sm:items-center sm:gap-2"
+              class="hidden sm:flex sm:items-center sm:gap-1"
             >
               <button
                 id="populate"
-                class="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                class="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
-                导入示例数据
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                示例数据
               </button>
 
               <button
                 id="importPersons"
-                class="inline-flex items-center gap-2 rounded-md bg-teal-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                class="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
-                导入人员扩展数据
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                人员扩展
               </button>
-
-              <a
-                href="/static/data_console.html"
-                class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                >打开数据控制台</a
-              >
 
               <button
                 id="clearDb"
-                class="inline-flex items-center gap-2 rounded-md bg-rose-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500"
+                class="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/30 transition-colors"
               >
-                清空导入数据
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                清空
               </button>
+
+              <div class="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-2"></div>
+
+              <a
+                href="/static/data_console.html"
+                class="inline-flex items-center gap-2 rounded-full bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-lg shadow-indigo-500/30 hover:bg-indigo-500 hover:shadow-indigo-500/40 transition-all transform hover:-translate-y-0.5"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg>
+                数据控制台
+              </a>
+
               <button
                 id="themeToggle"
-                class="inline-flex items-center gap-2 rounded-md border border-gray-300 dark:border-gray-700 px-3 py-2 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800"
+                class="ml-2 inline-flex items-center justify-center w-9 h-9 rounded-full text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors"
+                title="切换主题"
               >
-                <span class="hidden sm:inline">切换</span> 主题
+                <!-- Sun icon -->
+                <svg class="w-5 h-5 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                <!-- Moon icon -->
+                <svg class="w-5 h-5 block dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
               </button>
             </div>
           </div>
@@ -165,32 +179,62 @@
     <!-- Main Content -->
     <main class="flex-1 w-full px-4 sm:px-6 lg:px-8 py-4 overflow-y-auto">
       <!-- AI Assistant input dock (bottom fixed). Messages moved to dashboard area. -->
-      <section id="chatSection" class="centered z-40">
-        <div class="w-full px-4 sm:px-6 lg:px-8">
+      <section id="chatSection" class="centered z-40 pointer-events-none">
+        <div class="w-full px-4 sm:px-6 lg:px-8 pointer-events-auto">
           <div
             id="chatDock"
-            class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white/95 dark:bg-gray-900/95"
+            class="group relative rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-2xl shadow-slate-200/50 dark:shadow-black/50 transition-all duration-300 hover:shadow-indigo-500/10 dark:hover:shadow-indigo-500/10"
           >
             <!-- Input only, Grok-style -->
-            <form id="chatForm" class="flex items-center gap-2 p-3">
-              <input
-                id="chatInput"
-                placeholder="请输入问题或实体ID（例如：E1）…"
-                class="flex-1 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-              <button
-                type="submit"
-                class="inline-flex items-center rounded-full bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              >
-                查询
-              </button>
-              <button
-                type="button"
-                id="chatClear"
-                class="inline-flex items-center rounded-full border border-gray-300 dark:border-gray-700 px-3 py-2 text-xs font-medium hover:bg-gray-50 dark:hover:bg-gray-800"
-              >
-                清除
-              </button>
+            <form id="chatForm" class="flex flex-col p-2">
+              <div class="flex items-center gap-2 px-2">
+                <div class="text-slate-400 dark:text-slate-500">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                </div>
+                <input
+                  id="chatInput"
+                  placeholder="请输入问题或实体ID（例如：E1）…"
+                  class="flex-1 bg-transparent border-0 p-3 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:ring-0 text-base"
+                  autocomplete="off"
+                />
+                <button
+                  type="submit"
+                  class="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-indigo-600 text-white shadow-lg shadow-indigo-500/30 hover:bg-indigo-500 hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                </button>
+              </div>
+              
+              <!-- Footer: Options -->
+              <div class="flex items-center justify-between px-3 pb-1 pt-1 border-t border-slate-100 dark:border-slate-800/50">
+                <div class="flex items-center gap-4">
+                  <label class="inline-flex items-center gap-2 cursor-pointer group/toggle">
+                    <div class="relative inline-flex items-center cursor-pointer">
+                      <input type="checkbox" id="chatUseWeb" class="sr-only peer">
+                      <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+                    </div>
+                    <span class="text-xs font-medium text-slate-500 dark:text-slate-400 group-hover/toggle:text-slate-700 dark:group-hover/toggle:text-slate-200 transition-colors">联网搜索</span>
+                  </label>
+                  
+                  <select
+                    id="chatWebProvider"
+                    class="hidden text-xs bg-slate-50 dark:bg-slate-800 border-0 rounded-md py-1 pl-2 pr-6 text-slate-600 dark:text-slate-300 focus:ring-1 focus:ring-indigo-500 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                  >
+                    <option value="auto">自动</option>
+                    <option value="bing">Bing</option>
+                    <option value="ddg">DuckDuckGo</option>
+                  </select>
+                </div>
+
+                <button
+                  type="button"
+                  id="chatClear"
+                  class="text-xs font-medium text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 transition-colors flex items-center gap-1"
+                >
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                  清除对话
+                </button>
+              </div>
             </form>
           </div>
         </div>
@@ -201,5 +245,16 @@
 
     <!-- App logic moved to external ES module -->
     <script type="module" src="/static/app.js"></script>
+    <script>
+      // Show provider select only when web search enabled
+      (function() {
+        const chk = document.getElementById('chatUseWeb');
+        const sel = document.getElementById('chatWebProvider');
+        if (!chk || !sel) return;
+        chk.addEventListener('change', () => {
+          sel.classList.toggle('hidden', !chk.checked);
+        });
+      })();
+    </script>
   </body>
 </html>

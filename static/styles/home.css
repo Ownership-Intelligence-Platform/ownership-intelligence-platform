@@ -19,17 +19,17 @@ header { padding-top: env(safe-area-inset-top); }
  }
 /* Make docked chat narrower than full width and centered */
 #chatSection.docked #chatDock { max-width: 44rem; margin-left: auto; margin-right: auto; }
-/* Glassmorphism look for the chat dock */
-#chatDock {
+/* Glassmorphism look for the chat dock - Handled by Tailwind now */
+/* #chatDock {
 	border-radius: 40px;
 	background: rgba(255, 255, 255, 0.55);
 	border: 1px solid rgb(181 163 163 / 35%);
 }
 .dark #chatDock {
-	background: rgba(17, 24, 39, 0.50); /* gray-900 with opacity */
+	background: rgba(17, 24, 39, 0.50);
 	border-color: rgba(255, 255, 255, 0.12);
 	box-shadow: 0 10px 25px rgba(0, 0, 0, 0.45);
-}
+} */
 /* Make the chat input blend with the dock (no visible square, no bg) */
 #chatInput {
     background: transparent !important;
