@@ -48,48 +48,49 @@ def search_entities_fuzzy(q: str, limit: int = 10) -> List[Dict[str, Any]]:
     """Fuzzy search entities by partial name or id.
 
     Strategy:
-    - Case-insensitive containment match on name OR id.
-    - Compute a simple score: startswith match gets +2, contains gets +1.
-    - Order by score desc, then shorter name, then id.
-    - Return id, name, type and score.
+    - Case-insensitive partial match across id, name, description.
+    - Scoring tiers (higher is better):
+        3: id OR name startswith query
+        2: description startswith query OR id/name contains query
+        1: description contains query
+    - Order by score desc, then shorter name (for readability), then name lowercase, then id.
+    - Return id, name, type, description, score.
 
-    NOTE: Neo4j doesn't have native full-text here (unless indexes configured); this
-    uses toLower + CONTAINS / STARTS WITH for a lightweight approach.
+    NOTE: This remains a lightweight approach (no full-text index). For larger datasets,
+    consider creating a Neo4j full-text index or moving to an external search engine.
     """
     q_norm = (q or "").strip()
     if not q_norm:
         return []
-    # We perform two passes: startswith and contains, then union distinct.
     cypher = (
         "MATCH (e:Entity) "
-        "WHERE toLower(e.name) STARTS WITH toLower($q) OR toLower(e.id) STARTS WITH toLower($q) "
-        "WITH e, 2 AS baseScore "
-        "RETURN e.id AS id, e.name AS name, e.type AS type, e.description AS description, baseScore AS score "
-        "UNION "
-        "MATCH (e:Entity) "
-        "WHERE (toLower(e.name) CONTAINS toLower($q) OR toLower(e.id) CONTAINS toLower($q)) "
-        "AND NOT (toLower(e.name) STARTS WITH toLower($q) OR toLower(e.id) STARTS WITH toLower($q)) "
-        "WITH e, 1 AS baseScore "
-        "RETURN e.id AS id, e.name AS name, e.type AS type, e.description AS description, baseScore AS score"
+        "WITH e, "
+        "toLower(coalesce(e.id,'')) AS eid, "
+        "toLower(coalesce(e.name,'')) AS ename, "
+        "toLower(coalesce(e.description,'')) AS edesc, "
+        "toLower($q) AS q "
+        "WHERE eid CONTAINS q OR ename CONTAINS q OR edesc CONTAINS q "
+        "WITH e, eid, ename, edesc, q, "
+        "CASE "
+        "  WHEN eid STARTS WITH q OR ename STARTS WITH q THEN 3 "
+        "  WHEN edesc STARTS WITH q THEN 2 "
+        "  WHEN eid CONTAINS q OR ename CONTAINS q THEN 2 "
+        "  WHEN edesc CONTAINS q THEN 1 "
+        "  ELSE 0 END AS score "
+        "RETURN e.id AS id, e.name AS name, e.type AS type, e.description AS description, score AS score"
     )
     try:
         rows = run_cypher(cypher, {"q": q_norm}) or []
     except Exception as exc:
-        # Defensive: avoid bubbling driver/connectivity errors into 500 for suggest UX.
-        # Instead, return empty list; front-end treats absence of suggestions gracefully.
-        # Optional: attach a synthetic record for debugging if running in dev mode.
-        # You can enable a simple flag via ENV: OI_DEBUG_SUGGEST=1.
         import os
         if os.getenv("OI_DEBUG_SUGGEST") == "1":
-            return [
-                {
-                    "id": "(error)",
-                    "name": f"Fuzzy search error: {type(exc).__name__}",
-                    "type": None,
-                    "description": str(exc)[:180],
-                    "score": 0,
-                }
-            ]
+            return [{
+                "id": "(error)",
+                "name": f"Fuzzy search error: {type(exc).__name__}",
+                "type": None,
+                "description": str(exc)[:180],
+                "score": 0,
+            }]
         return []
 
     def sort_key(r: Dict[str, Any]):
