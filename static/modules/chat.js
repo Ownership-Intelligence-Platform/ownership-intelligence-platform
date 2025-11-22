@@ -637,16 +637,9 @@ export function initChat() {
       // If still not resolved, continue to name-scan/LLM
     } catch (_) {}
 
-    // If still not resolved internally, run basic name scan and show a card inside this turn
-    const nameForScan = candidate || text;
-    const scan = await fetchNameScan(nameForScan);
-    renderNameScanCard(nameForScan, scan);
-
-    // Then ask user for optional extra info for external lookup and set pending state
-    pendingExternal = { name: nameForScan, askedAt: Date.now() };
-
-    // Also proceed with LLM chat flow enhanced by person resolver / graphRAG so that
-    // serious KYC-style queries benefit from Neo4j context automatically.
+    // First, proceed with LLM chat flow enhanced by person resolver / graphRAG
+    // so that serious KYC-style queries benefit from Neo4j context and show
+    // graph-based candidates *before* auxiliary name-scan information.
     appendMessage("assistant", "…", targetList);
 
     try {
@@ -685,7 +678,7 @@ export function initChat() {
       ) {
         try {
           renderPersonResolverCard(
-            nameForScan,
+            candidate || text,
             data.person_resolver.candidates,
             list
           );
@@ -747,6 +740,25 @@ export function initChat() {
       if (last) last.textContent = msg;
       else appendMessage("assistant", msg, list);
     }
+
+    // After graphRAG / person resolver response, run basic name scan and
+    // show a supplementary card inside this turn. This provides watchlist /
+    // similar-customer context *after* the main graph-based candidates.
+    const nameForScan = candidate || text;
+    try {
+      const scan = await fetchNameScan(nameForScan);
+      renderNameScanCard(nameForScan, scan);
+    } catch (_) {
+      // Name scan failure is non-fatal; keep primary graphRAG answer.
+    }
+
+    // Ask user for optional extra info for external lookup and set pending state
+    pendingExternal = { name: nameForScan, askedAt: Date.now() };
+    appendMessage(
+      "assistant",
+      "已完成基础姓名扫描（相似客户与本地名单命中已在下方卡片展示）。\n如需进一步从公开来源检索，可补充以下信息（也可以回复“跳过”）：\n- 出生日期（例如 1990-01-02）\n- 可能的户籍/地区\n- 常用别名或相关公司名称",
+      targetList
+    );
   });
 
   // Optional: clear button
