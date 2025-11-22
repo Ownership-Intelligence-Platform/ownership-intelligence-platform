@@ -23,6 +23,7 @@ from app.services.graph_service import (
     find_entities_by_name_exact,
     resolve_entity_identifier,
     search_entities_fuzzy,
+    get_person_extended,
 )
 from app.services.name_screening_service import basic_name_scan
 from app.services.name_variant_service import expand_name_variants, match_watchlist_with_variants
@@ -186,4 +187,30 @@ def api_get_entity(entity_id: str):
     ent = get_entity(entity_id)
     if not ent:
         raise HTTPException(status_code=404, detail="Entity not found")
+    # Attach extended person fields if available
+    extended = None
+    try:
+        if (ent.get("type") or "").lower() == "person":
+            ext = get_person_extended(entity_id)
+            if ext:
+                extended = {
+                    k: ext.get(k)
+                    for k in [
+                        "basic_info",
+                        "id_info",
+                        "job_info",
+                        "kyc_info",
+                        "risk_profile",
+                        "network_info",
+                        "geo_profile",
+                        "compliance_info",
+                        "provenance",
+                    ]
+                    if ext.get(k) is not None
+                }
+    except Exception:
+        # Non-fatal; return basic entity only if extended fetch fails
+        extended = None
+    if extended:
+        return {**ent, "extended": extended}
     return ent

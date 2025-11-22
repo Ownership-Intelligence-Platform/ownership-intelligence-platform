@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException
+from fastapi import Body
 import csv
 import os
 from typing import Optional, Dict
@@ -8,7 +9,9 @@ from app.services.graph_service import (
     set_person_account_opening,
     get_person_account_opening,
     create_person_relationship,
+    create_or_update_person_extended,
 )
+from app.services.import_service import import_persons_from_csv
 
 
 router = APIRouter(tags=["persons"])
@@ -88,3 +91,29 @@ def api_create_relationship(person_id: str, payload: RelationshipCreate):
         "related_person": {"id": payload.related_id, "name": payload.related_name},
         "account_opening": stored,
     }
+
+
+@router.post("/persons/import")
+def api_import_persons(
+    csv_path: str = Body(None, embed=True, description="Optional path to persons.csv; defaults to env PERSONS_CSV_PATH or data/persons.csv"),
+):
+    """Import extended person records from a CSV file.
+
+    Body contract: {"csv_path": "optional/custom/path.csv"}
+    If omitted, uses PERSONS_CSV_PATH env var or fallback data/persons.csv.
+    Returns summary including warnings.
+    """
+    path = csv_path or os.environ.get("PERSONS_CSV_PATH") or os.path.join("data", "persons.csv")
+    try:
+        summary = import_persons_from_csv(
+            path,
+            project_root=os.path.abspath(os.getcwd()),
+            upsert_person_fn=create_or_update_person_extended,
+        )
+    except FileNotFoundError as nf:
+        raise HTTPException(status_code=404, detail=str(nf))
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to import persons: {exc}")
+    return {"path": path, **summary}

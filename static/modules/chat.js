@@ -104,9 +104,13 @@ function renderNameScanCard(name, scan) {
       }${w.notes ? "\n" + w.notes : ""}`;
       rightList.appendChild(row);
     });
+    let suggestionItems = []; // current button nodes
+    let activeSuggestIndex = -1;
   }
   right.appendChild(rightList);
 
+  suggestionItems = [];
+  activeSuggestIndex = -1;
   // LLM variants rendering (if provided)
   const exp = scan.variant_expansion || null;
   if (exp) {
@@ -116,6 +120,8 @@ function renderNameScanCard(name, scan) {
     const vTitle = document.createElement("div");
     vTitle.className = "text-sm font-medium";
     vTitle.textContent = "LLM 生成变体";
+    suggestionItems = [];
+    activeSuggestIndex = -1;
     llmBox.appendChild(vTitle);
 
     const vList = document.createElement("div");
@@ -153,9 +159,29 @@ function renderNameScanCard(name, scan) {
       log.className = "mt-1 space-y-0.5";
       exp.trace.forEach((t) => {
         const line = document.createElement("div");
+        suggestionItems.push(row);
         line.textContent = `• ${t}`;
         log.appendChild(line);
+        // Pre-select first item for quicker Enter selection
+        setActiveSuggestIndex(0);
       });
+
+      function setActiveSuggestIndex(i) {
+        if (!suggestionItems.length) {
+          activeSuggestIndex = -1;
+          return;
+        }
+        if (i < 0) i = suggestionItems.length - 1; // wrap upwards
+        if (i >= suggestionItems.length) i = 0; // wrap downwards
+        activeSuggestIndex = i;
+        suggestionItems.forEach((el, idx) => {
+          if (idx === activeSuggestIndex) {
+            el.classList.add("bg-indigo-100", "dark:bg-indigo-800");
+          } else {
+            el.classList.remove("bg-indigo-100", "dark:bg-indigo-800");
+          }
+        });
+      }
       details.appendChild(log);
       llmBox.appendChild(details);
     }
@@ -621,10 +647,364 @@ export function initChat() {
   const webProvider = document.getElementById("chatWebProvider");
   if (!form || !input) return;
 
+  // --- Fuzzy suggestion dropdown (uses /entities/suggest) ---
+  // Lightweight, non-intrusive helper that surfaces internal Entity matches
+  // while user types. Does not alter submit flow; selecting a suggestion
+  // simply fills the input and auto-attempts internal resolution.
+  let suggestionBox = null;
+  let lastSuggestQuery = "";
+  let pendingSuggestAbort = null;
+
+  function ensureSuggestionBox() {
+    if (suggestionBox) return suggestionBox;
+    suggestionBox = document.createElement("div");
+    suggestionBox.id = "chatSuggestions";
+    suggestionBox.className =
+      "absolute left-3 right-28 top-full mt-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded shadow text-sm max-h-60 overflow-y-auto z-50 hidden";
+    // Positioning: make parent relative
+    form.classList.add("relative");
+    form.appendChild(suggestionBox);
+    // Hide on outside click
+    document.addEventListener("click", (e) => {
+      if (!suggestionBox) return;
+      if (suggestionBox.contains(e.target) || e.target === input) return;
+      hideSuggestions();
+    });
+    return suggestionBox;
+  }
+
+  function hideSuggestions() {
+    if (suggestionBox) suggestionBox.classList.add("hidden");
+  }
+
+  function renderSuggestions(items, query) {
+    const box = ensureSuggestionBox();
+    box.innerHTML = "";
+    if (!items?.length) {
+      hideSuggestions();
+      return;
+    }
+    items.forEach((it) => {
+      const row = document.createElement("button");
+      row.type = "button";
+      row.className =
+        "block w-full text-left px-3 py-1.5 hover:bg-indigo-50 dark:hover:bg-indigo-900/40 border-b last:border-b-0 border-gray-100 dark:border-gray-800";
+      const type = it.type ? ` · ${it.type}` : "";
+      const score = it.score != null ? ` (score=${it.score})` : "";
+      // Basic highlight: bold the matching part if name contains the query
+      const name = it.name || it.id;
+      const nameLower = name.toLowerCase();
+      const qLower = query.toLowerCase();
+      let labelHtml = name;
+      const idx = nameLower.indexOf(qLower);
+      if (idx >= 0) {
+        const before = name.slice(0, idx);
+        const match = name.slice(idx, idx + query.length);
+        const after = name.slice(idx + query.length);
+        labelHtml = `${before}<strong class=\"text-indigo-600 dark:text-indigo-300\">${match}</strong>${after}`;
+      }
+      row.innerHTML = `${labelHtml} <span class=\"text-gray-500 dark:text-gray-400\">[${it.id}]${type}${score}</span>`;
+      row.addEventListener("click", async () => {
+        input.value = it.id; // prefer id for deterministic resolution
+        hideSuggestions();
+        input.focus();
+        // Attempt immediate internal resolution & dashboard load (non-blocking)
+        try {
+          const entityId = await tryResolveEntityInput(it.id);
+          if (entityId) {
+            const root = document.getElementById("rootId");
+            if (root) root.value = entityId;
+            const initRoot = document.getElementById("initialRootId");
+            if (initRoot) initRoot.value = entityId;
+            revealDashboard();
+            await loadFullDashboardAndSnapshot(
+              entityId,
+              entityId,
+              "Dashboard 快照"
+            );
+          }
+        } catch (_) {}
+      });
+      box.appendChild(row);
+    });
+    box.classList.remove("hidden");
+  }
+
+  async function fetchSuggestions(q) {
+    const query = (q || "").trim();
+    if (!query || query.length < 2) {
+      hideSuggestions();
+      return;
+    }
+    if (query === lastSuggestQuery) return; // avoid redundant calls
+    lastSuggestQuery = query;
+    if (pendingSuggestAbort) {
+      pendingSuggestAbort.abort();
+    }
+    pendingSuggestAbort = new AbortController();
+    try {
+      const res = await fetch(
+        `/entities/suggest?q=${encodeURIComponent(query)}`,
+        { signal: pendingSuggestAbort.signal }
+      );
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+      renderSuggestions(data.items || [], query);
+    } catch (_) {
+      // Silently ignore (user may be typing fast or aborted)
+    }
+  }
+
+  // Debounce typing + respect IME composition to cut down request volume.
+  const SUGGEST_DEBOUNCE_MS = 250;
+  let suggestTimer = null;
+  let isComposing = false;
+
+  input.addEventListener("compositionstart", () => {
+    isComposing = true;
+  });
+  input.addEventListener("compositionend", () => {
+    isComposing = false;
+    scheduleSuggestionFetch();
+  });
+
+  function scheduleSuggestionFetch() {
+    if (isComposing) return; // wait until IME finished
+    const val = input.value;
+    // Cancel any in-flight debounce
+    if (suggestTimer) clearTimeout(suggestTimer);
+    suggestTimer = setTimeout(() => {
+      fetchSuggestions(val);
+    }, SUGGEST_DEBOUNCE_MS);
+  }
+
+  input.addEventListener("input", () => {
+    scheduleSuggestionFetch();
+  });
+  input.addEventListener("keydown", (e) => {
+    // ESC hides suggestions immediately
+    if (e.key === "Escape") hideSuggestions();
+  });
+
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const text = input.value.trim();
     if (!text) return;
+
+    // --- New: fuzzy match list shown as a chat message before resolution ---
+    // If user entered a probable free-text name (not a direct id like E1/P2), surface
+    // suggestion candidates in the conversation so they can explicitly choose.
+    const idPattern = /^(E\d+|P\d+)$/i;
+    let showedFuzzyList = false;
+    if (!idPattern.test(text)) {
+      try {
+        const res = await fetch(
+          `/entities/suggest?q=${encodeURIComponent(text)}`
+        );
+        if (res.ok) {
+          const data = await res.json();
+          const items = data.items || [];
+          // Only show if we have at least 2 candidates (single candidate can be auto-resolved later)
+          if (items.length >= 2) {
+            // Ensure chat layout is activated prior to appending assistant content
+            const chatSection = document.getElementById("chatSection");
+            const msgsLayout = document.getElementById("chatMessages");
+            if (chatSection && chatSection.classList.contains("centered")) {
+              chatSection.classList.remove("centered");
+              chatSection.classList.add("docked");
+              msgsLayout?.classList.remove("hidden");
+              document.body.classList.add("chat-docked");
+            }
+            revealDashboard();
+            const convo = createConversationCard("对话");
+            const targetList =
+              convo?.messagesEl || document.getElementById("chatMessages");
+            appendMessage("user", text, targetList);
+            history.push({ role: "user", content: text });
+            input.value = "";
+            // Render fuzzy match list as an assistant message card
+            const wrap = document.createElement("div");
+            wrap.className =
+              "px-4 py-3 rounded mb-3 text-xs bg-indigo-50 dark:bg-indigo-900/30 text-indigo-900 dark:text-indigo-100 max-h-72 overflow-y-auto";
+            const heading = document.createElement("div");
+            heading.className = "font-medium mb-1";
+            heading.textContent = "可能匹配的实体：";
+            wrap.appendChild(heading);
+            const listEl = document.createElement("ul");
+            listEl.className =
+              "divide-y divide-gray-200 dark:divide-gray-800 text-[11px] sm:text-xs";
+            // Lazy preview loader inserted under a list item on demand
+            async function ensurePreview(li, entId) {
+              if (li.querySelector(".entity-preview")) return;
+              const preview = document.createElement("div");
+              preview.className =
+                "entity-preview mt-1 ml-1 pl-2 border-l border-indigo-300 dark:border-indigo-700 text-[10px] leading-relaxed animate-fade-in";
+              preview.textContent = "加载中…";
+              li.appendChild(preview);
+              try {
+                const r = await fetch(`/entities/${encodeURIComponent(entId)}`);
+                if (!r.ok) throw new Error("HTTP " + r.status);
+                const ent = await r.json();
+                const parts = [];
+                if (ent.type) parts.push(`类型: ${ent.type}`);
+                if (ent.name && ent.name !== ent.id)
+                  parts.push(`名称: ${ent.name}`);
+                if (ent.description)
+                  parts.push(
+                    `描述: ${String(ent.description).slice(0, 80)}${
+                      ent.description.length > 80 ? "…" : ""
+                    }`
+                  );
+                if (ent.business_info)
+                  parts.push(
+                    `业务: ${String(ent.business_info).slice(0, 60)}${
+                      ent.business_info.length > 60 ? "…" : ""
+                    }`
+                  );
+                if (ent.basic_info)
+                  parts.push(
+                    `基本: ${String(ent.basic_info).slice(0, 60)}${
+                      ent.basic_info.length > 60 ? "…" : ""
+                    }`
+                  );
+                if (Array.isArray(ent.owners))
+                  parts.push(`股东数: ${ent.owners.length}`);
+                if (Array.isArray(ent.owned))
+                  parts.push(`持股对象数: ${ent.owned.length}`);
+                if (Array.isArray(ent.representatives))
+                  parts.push(`法定代表: ${ent.representatives.length}`);
+                // Extended person-centric fields
+                const ext = ent.extended || {};
+                const kyc = ext.kyc_info || {};
+                const risk = ext.risk_profile || {};
+                const chips = [];
+                function esc(s) {
+                  return String(s)
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;");
+                }
+                if (kyc.kyc_status)
+                  chips.push(
+                    `<span class=\"inline-block px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-800 text-indigo-800 dark:text-indigo-100 mr-1\">KYC:${esc(
+                      kyc.kyc_status
+                    )}</span>`
+                  );
+                if (kyc.kyc_risk_level)
+                  chips.push(
+                    `<span class=\"inline-block px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-800 text-amber-800 dark:text-amber-100 mr-1\">风险:${esc(
+                      kyc.kyc_risk_level
+                    )}</span>`
+                  );
+                if (risk.composite_risk_score != null)
+                  chips.push(
+                    `<span class=\"inline-block px-1.5 py-0.5 rounded bg-rose-100 dark:bg-rose-800 text-rose-800 dark:text-rose-100 mr-1\">综合分:${esc(
+                      risk.composite_risk_score
+                    )}</span>`
+                  );
+                const chipsHtml = chips.length
+                  ? `<div class=\"mb-1 flex flex-wrap\">${chips.join("")}</div>`
+                  : "";
+                preview.innerHTML =
+                  chipsHtml + (parts.join(" | ") || "无更多信息");
+              } catch (err) {
+                preview.textContent = "预览加载失败: " + err;
+              }
+            }
+            items.slice(0, 20).forEach((it) => {
+              const li = document.createElement("li");
+              li.className =
+                "py-1.5 px-2 hover:bg-white dark:hover:bg-gray-800 cursor-pointer transition-colors min-h-[110px]";
+              const name = (it.name || it.id || "").trim();
+              const metaParts = [];
+              if (it.type) metaParts.push(it.type);
+              if (it.score != null) metaParts.push(`score=${it.score}`);
+              const meta = metaParts.length
+                ? ` · ${metaParts.join(" · ")}`
+                : "";
+              li.innerHTML = `<span class=\"font-medium\">${name}</span> <span class=\"text-gray-500 dark:text-gray-400\">[${it.id}]${meta}</span>`;
+              // Primary click loads full dashboard
+              li.addEventListener("click", async () => {
+                try {
+                  const entityId = await tryResolveEntityInput(it.id);
+                  if (entityId) {
+                    const root = document.getElementById("rootId");
+                    if (root) root.value = entityId;
+                    const initRoot = document.getElementById("initialRootId");
+                    if (initRoot) initRoot.value = entityId;
+                    revealDashboard();
+                    await loadFullDashboardAndSnapshot(
+                      entityId,
+                      name,
+                      "Dashboard 快照"
+                    );
+                    appendMessage(
+                      "assistant",
+                      `已选择并加载实体: [${entityId}]`,
+                      targetList
+                    );
+                    history.push({
+                      role: "assistant",
+                      content: `已选择并加载实体: [${entityId}]`,
+                    });
+                  } else {
+                    appendMessage(
+                      "assistant",
+                      `未能加载实体: ${it.id}`,
+                      targetList
+                    );
+                  }
+                } catch (err) {
+                  appendMessage(
+                    "assistant",
+                    `加载实体出错: ${err}`,
+                    targetList
+                  );
+                }
+              });
+              // Middle click shows preview without selecting
+              li.addEventListener("auxclick", (ev) => {
+                if (ev.button === 1) {
+                  ev.preventDefault();
+                  ensurePreview(li, it.id);
+                }
+              });
+              // Inline preview button
+              const infoBtn = document.createElement("button");
+              infoBtn.type = "button";
+              infoBtn.title = "展开预览";
+              infoBtn.className =
+                "ml-2 text-indigo-600 dark:text-indigo-300 hover:underline text-[10px]";
+              infoBtn.textContent = "预览";
+              infoBtn.addEventListener("click", (ev) => {
+                ev.stopPropagation();
+                ensurePreview(li, it.id);
+              });
+              li.appendChild(infoBtn);
+              listEl.appendChild(li);
+            });
+            if (items.length > 20) {
+              const more = document.createElement("li");
+              more.className = "py-1 px-2 text-[10px] opacity-70";
+              more.textContent = `其余 ${
+                items.length - 20
+              } 条已省略，请优化关键字以缩小范围。`;
+              listEl.appendChild(more);
+            }
+            wrap.appendChild(listEl);
+            targetList.appendChild(wrap);
+            targetList.parentElement &&
+              (targetList.parentElement.scrollTop =
+                targetList.parentElement.scrollHeight);
+            showedFuzzyList = true;
+            // Stop normal resolution flow; wait for user selection.
+            return;
+          }
+        }
+      } catch (_) {
+        // Ignore fuzzy errors silently; fall through to normal handling.
+      }
+    }
 
     // On first submit, move chat from center to bottom dock and reveal messages
     const chatSection = document.getElementById("chatSection");
@@ -879,5 +1259,7 @@ export function initChat() {
 
     // Keep canonical panels hidden after clear
     hideCanonicalPanels();
+
+    hideSuggestions();
   });
 }
