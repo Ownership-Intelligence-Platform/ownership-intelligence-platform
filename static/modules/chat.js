@@ -236,83 +236,50 @@ export function initChat() {
             const listEl = document.createElement("ul");
             listEl.className =
               "divide-y divide-gray-200 dark:divide-gray-800 text-[11px] sm:text-xs";
-            // Lazy preview loader inserted under a list item on demand
-            async function ensurePreview(li, entId) {
-              if (li.querySelector(".entity-preview")) return;
-              const preview = document.createElement("div");
-              preview.className =
-                "entity-preview mt-1 ml-1 pl-2 border-l border-indigo-300 dark:border-indigo-700 text-[10px] leading-relaxed animate-fade-in";
-              preview.textContent = "加载中…";
-              li.appendChild(preview);
-              try {
-                const r = await fetch(`/entities/${encodeURIComponent(entId)}`);
-                if (!r.ok) throw new Error("HTTP " + r.status);
-                const ent = await r.json();
-                const parts = [];
-                if (ent.type) parts.push(`类型: ${ent.type}`);
-                if (ent.name && ent.name !== ent.id)
-                  parts.push(`名称: ${ent.name}`);
-                if (ent.description)
-                  parts.push(
-                    `描述: ${String(ent.description).slice(0, 80)}${
-                      ent.description.length > 80 ? "…" : ""
-                    }`
-                  );
-                if (ent.business_info)
-                  parts.push(
-                    `业务: ${String(ent.business_info).slice(0, 60)}${
-                      ent.business_info.length > 60 ? "…" : ""
-                    }`
-                  );
-                if (ent.basic_info)
-                  parts.push(
-                    `基本: ${String(ent.basic_info).slice(0, 60)}${
-                      ent.basic_info.length > 60 ? "…" : ""
-                    }`
-                  );
-                if (Array.isArray(ent.owners))
-                  parts.push(`股东数: ${ent.owners.length}`);
-                if (Array.isArray(ent.owned))
-                  parts.push(`持股对象数: ${ent.owned.length}`);
-                if (Array.isArray(ent.representatives))
-                  parts.push(`法定代表: ${ent.representatives.length}`);
-                // Extended person-centric fields
-                const ext = ent.extended || {};
-                const kyc = ext.kyc_info || {};
-                const risk = ext.risk_profile || {};
-                const chips = [];
-                function esc(s) {
-                  return String(s)
-                    .replace(/&/g, "&amp;")
-                    .replace(/</g, "&lt;")
-                    .replace(/>/g, "&gt;");
-                }
-                if (kyc.kyc_status)
-                  chips.push(
-                    `<span class=\"inline-block px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-800 text-indigo-800 dark:text-indigo-100 mr-1\">KYC:${esc(
-                      kyc.kyc_status
-                    )}</span>`
-                  );
-                if (kyc.kyc_risk_level)
-                  chips.push(
-                    `<span class=\"inline-block px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-800 text-amber-800 dark:text-amber-100 mr-1\">风险:${esc(
-                      kyc.kyc_risk_level
-                    )}</span>`
-                  );
-                if (risk.composite_risk_score != null)
-                  chips.push(
-                    `<span class=\"inline-block px-1.5 py-0.5 rounded bg-rose-100 dark:bg-rose-800 text-rose-800 dark:text-rose-100 mr-1\">综合分:${esc(
-                      risk.composite_risk_score
-                    )}</span>`
-                  );
-                const chipsHtml = chips.length
-                  ? `<div class=\"mb-1 flex flex-wrap\">${chips.join("")}</div>`
-                  : "";
-                preview.innerHTML =
-                  chipsHtml + (parts.join(" | ") || "无更多信息");
-              } catch (err) {
-                preview.textContent = "预览加载失败: " + err;
-              }
+            // 直接展示匹配实体的富信息（不再需要“预览”按钮或二次请求）
+            function renderInlineDetails(li, it) {
+              if (li.querySelector(".entity-inline")) return;
+              const box = document.createElement("div");
+              box.className =
+                "entity-inline mt-1 ml-1 pl-2 border-l border-indigo-300 dark:border-indigo-700 text-[10px] leading-relaxed";
+              const parts = [];
+              if (it.type) parts.push(`类型:${it.type}`);
+              if (it.name && it.name !== it.id) parts.push(`名称:${it.name}`);
+              if (it.description)
+                parts.push(
+                  `描述:${String(it.description).slice(0, 60)}${
+                    it.description.length > 60 ? "…" : ""
+                  }`
+                );
+              // 展开人员扩展字段
+              const basic = it.basic_info || {};
+              const kyc = it.kyc_info || {};
+              const risk = it.risk_profile || {};
+              const network = it.network_info || {};
+              const geo = it.geo_profile || {};
+              const provenance = it.provenance || {};
+              if (basic.birth_date) parts.push(`出生日期:${basic.birth_date}`);
+              if (basic.nationality) parts.push(`国籍:${basic.nationality}`);
+              if (kyc.kyc_status) parts.push(`KYC:${kyc.kyc_status}`);
+              if (kyc.kyc_risk_level)
+                parts.push(`风险级别:${kyc.kyc_risk_level}`);
+              if (kyc.pep_status) parts.push(`PEP:${kyc.pep_status}`);
+              if (kyc.sanction_screen_hits != null)
+                parts.push(`制裁命中:${kyc.sanction_screen_hits}`);
+              if (kyc.watchlist_hits != null)
+                parts.push(`监控名单命中:${kyc.watchlist_hits}`);
+              if (risk.composite_risk_score != null)
+                parts.push(`综合风险分:${risk.composite_risk_score}`);
+              if (risk.negative_news_count != null)
+                parts.push(`负面新闻:${risk.negative_news_count}`);
+              if (network.relationship_density_score != null)
+                parts.push(`关系密度:${network.relationship_density_score}`);
+              if (geo.primary_country)
+                parts.push(`主要国家:${geo.primary_country}`);
+              if (provenance.crawler_confidence_score != null)
+                parts.push(`抓取置信度:${provenance.crawler_confidence_score}`);
+              box.textContent = parts.join(" | ") || "无更多信息";
+              li.appendChild(box);
             }
             items.slice(0, 20).forEach((it) => {
               const li = document.createElement("li");
@@ -365,25 +332,8 @@ export function initChat() {
                   );
                 }
               });
-              // Middle click shows preview without selecting
-              li.addEventListener("auxclick", (ev) => {
-                if (ev.button === 1) {
-                  ev.preventDefault();
-                  ensurePreview(li, it.id);
-                }
-              });
-              // Inline preview button
-              const infoBtn = document.createElement("button");
-              infoBtn.type = "button";
-              infoBtn.title = "展开预览";
-              infoBtn.className =
-                "ml-2 text-indigo-600 dark:text-indigo-300 hover:underline text-[10px]";
-              infoBtn.textContent = "预览";
-              infoBtn.addEventListener("click", (ev) => {
-                ev.stopPropagation();
-                ensurePreview(li, it.id);
-              });
-              li.appendChild(infoBtn);
+              // 直接渲染富信息
+              renderInlineDetails(li, it);
               listEl.appendChild(li);
             });
             if (items.length > 20) {

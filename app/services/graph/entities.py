@@ -1,4 +1,5 @@
 from typing import List, Dict, Any, Optional
+import json
 from app.db.neo4j_connector import run_cypher
 
 
@@ -80,7 +81,10 @@ def search_entities_fuzzy(q: str, limit: int = 10) -> List[Dict[str, Any]]:
         "  WHEN eid CONTAINS q OR ename CONTAINS q THEN 2 "
         "  WHEN edesc CONTAINS q THEN 1 "
         "  ELSE 0 END AS score "
-        "RETURN e.id AS id, e.name AS name, e.type AS type, e.description AS description, score AS score"
+        "RETURN e.id AS id, e.name AS name, e.type AS type, e.description AS description, "
+        "e.basic_info AS basic_info, e.id_info AS id_info, e.job_info AS job_info, "
+        "e.kyc_info AS kyc_info, e.risk_profile AS risk_profile, e.network_info AS network_info, "
+        "e.geo_profile AS geo_profile, e.compliance_info AS compliance_info, e.provenance AS provenance, score AS score"
     )
     try:
         rows = run_cypher(cypher, {"q": q_norm}) or []
@@ -99,12 +103,40 @@ def search_entities_fuzzy(q: str, limit: int = 10) -> List[Dict[str, Any]]:
     # Deduplicate by id (some nodes may appear once; MATCH ensures single anyway, safeguard retained)
     seen = set()
     deduped: List[Dict[str, Any]] = []
+    # Helper to parse JSON-like strings back into dict/list
+    def _parse(v):
+        if isinstance(v, str):
+            vs = v.strip()
+            if (vs.startswith('{') and vs.endswith('}')) or (vs.startswith('[') and vs.endswith(']')):
+                try:
+                    return json.loads(vs)
+                except Exception:
+                    return None
+        return v
+
+    json_fields = {
+        "basic_info",
+        "id_info",
+        "job_info",
+        "kyc_info",
+        "risk_profile",
+        "network_info",
+        "geo_profile",
+        "compliance_info",
+        "provenance",
+    }
+
     for r in rows:
         rid = r.get("id")
         if not rid:
             continue
         if rid in seen:
             continue
+        # Parse extended person fields (these may be stored as JSON strings)
+        if (r.get("type") or "").lower() == "person":
+            for f in json_fields:
+                if f in r and r[f] is not None:
+                    r[f] = _parse(r[f])
         seen.add(rid)
         deduped.append(r)
 
