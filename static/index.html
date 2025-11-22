@@ -25,8 +25,30 @@
       <div class="w-full px-4 sm:px-6 lg:px-8">
         <div class="flex items-center justify-between h-16">
           <div class="flex items-center gap-4">
-            <h1 class="flex items-center gap-2">
-              <img src="/static/images/logo2.png" width="40" class="rounded-lg shadow-sm" />
+            <h1 class="flex items-center gap-3">
+              <!-- New Logo: Shield Shape Background -->
+              <div class="relative flex items-center justify-center drop-shadow-md hover:scale-105 transition-transform duration-300">
+                <svg class="w-10 h-10" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <linearGradient id="shieldGradSm" x1="4" y1="2" x2="20" y2="22" gradientUnits="userSpaceOnUse">
+                      <stop stop-color="#4f46e5" />
+                      <stop offset="1" stop-color="#7c3aed" />
+                    </linearGradient>
+                  </defs>
+                  <!-- Shield Background -->
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="url(#shieldGradSm)" />
+                  <!-- Inner Content -->
+                  <g stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <!-- Network -->
+                    <circle cx="12" cy="9" r="1.2" fill="white" stroke="none"/>
+                    <circle cx="8.5" cy="13.5" r="1.2" fill="white" stroke="none"/>
+                    <path d="M12 9L8.5 13.5M12 9l3.5 4.5" />
+                    <!-- Magnifier -->
+                    <circle cx="15.5" cy="13.5" r="2" />
+                    <path d="M17 15l1.5 1.5" />
+                  </g>
+                </svg>
+              </div>
               <span class="text-lg font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-violet-600 dark:from-indigo-400 dark:to-violet-400 hidden sm:block">
                 智网
               </span>
@@ -179,8 +201,47 @@
     <!-- Main Content -->
     <main class="flex-1 w-full px-4 sm:px-6 lg:px-8 py-4 overflow-y-auto">
       <!-- AI Assistant input dock (bottom fixed). Messages moved to dashboard area. -->
-      <section id="chatSection" class="centered z-40 pointer-events-none">
+      <section id="chatSection" class="centered z-40 pointer-events-none group">
         <div class="w-full px-4 sm:px-6 lg:px-8 pointer-events-auto">
+          <!-- Hero Logo Variant (Visible only when centered/not docked) -->
+          <div class="flex flex-col items-center justify-center mb-8 group-[.docked]:hidden transition-all duration-500 opacity-100 translate-y-0 group-[.docked]:opacity-0 group-[.docked]:-translate-y-4 group-[.docked]:absolute">
+            <div class="relative drop-shadow-2xl shadow-indigo-500/50">
+              <!-- Glow effect -->
+              <div class="absolute inset-2 bg-indigo-500 blur-2xl opacity-40 animate-pulse rounded-full"></div>
+              
+              <svg class="relative w-24 h-24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <linearGradient id="shieldGradLg" x1="4" y1="2" x2="20" y2="22" gradientUnits="userSpaceOnUse">
+                    <stop stop-color="#4f46e5" />
+                    <stop offset="1" stop-color="#7c3aed" />
+                  </linearGradient>
+                </defs>
+                <!-- Shield Background -->
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="url(#shieldGradLg)" />
+                
+                <!-- Content -->
+                <g stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <!-- Network Animated -->
+                  <g class="animate-[pulse_3s_ease-in-out_infinite]">
+                    <circle cx="12" cy="8.5" r="1.5" fill="white" stroke="none"/>
+                    <circle cx="8" cy="13" r="1.2" fill="white" stroke="none" opacity="0.9"/>
+                    <path d="M12 8.5L8 13M12 8.5l4 5" />
+                  </g>
+                  <!-- Magnifier -->
+                  <g>
+                    <circle cx="16" cy="13.5" r="2.2" />
+                    <path d="M17.8 15.3l1.5 1.5" />
+                  </g>
+                </g>
+              </svg>
+              
+              <!-- Floating particles decoration -->
+              <div class="absolute top-0 right-1 w-4 h-4 bg-yellow-400 rounded-full border-2 border-white dark:border-slate-900 animate-bounce"></div>
+            </div>
+            <h2 class="mt-6 text-3xl font-bold text-slate-800 dark:text-white tracking-tight">智网 <span class="text-indigo-600 dark:text-indigo-400">AI</span></h2>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-2 font-medium">Ownership Intelligence Platform</p>
+          </div>
+
           <div
             id="chatDock"
             class="group relative rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-2xl shadow-slate-200/50 dark:shadow-black/50 transition-all duration-300 hover:shadow-indigo-500/10 dark:hover:shadow-indigo-500/10"
