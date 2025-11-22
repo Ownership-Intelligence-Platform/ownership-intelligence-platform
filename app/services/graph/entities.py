@@ -72,7 +72,25 @@ def search_entities_fuzzy(q: str, limit: int = 10) -> List[Dict[str, Any]]:
         "WITH e, 1 AS baseScore "
         "RETURN e.id AS id, e.name AS name, e.type AS type, e.description AS description, baseScore AS score"
     )
-    rows = run_cypher(cypher, {"q": q_norm}) or []
+    try:
+        rows = run_cypher(cypher, {"q": q_norm}) or []
+    except Exception as exc:
+        # Defensive: avoid bubbling driver/connectivity errors into 500 for suggest UX.
+        # Instead, return empty list; front-end treats absence of suggestions gracefully.
+        # Optional: attach a synthetic record for debugging if running in dev mode.
+        # You can enable a simple flag via ENV: OI_DEBUG_SUGGEST=1.
+        import os
+        if os.getenv("OI_DEBUG_SUGGEST") == "1":
+            return [
+                {
+                    "id": "(error)",
+                    "name": f"Fuzzy search error: {type(exc).__name__}",
+                    "type": None,
+                    "description": str(exc)[:180],
+                    "score": 0,
+                }
+            ]
+        return []
 
     def sort_key(r: Dict[str, Any]):
         name = (r.get("name") or "")

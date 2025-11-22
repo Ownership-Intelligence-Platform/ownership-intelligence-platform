@@ -104,9 +104,13 @@ function renderNameScanCard(name, scan) {
       }${w.notes ? "\n" + w.notes : ""}`;
       rightList.appendChild(row);
     });
+    let suggestionItems = []; // current button nodes
+    let activeSuggestIndex = -1;
   }
   right.appendChild(rightList);
 
+  suggestionItems = [];
+  activeSuggestIndex = -1;
   // LLM variants rendering (if provided)
   const exp = scan.variant_expansion || null;
   if (exp) {
@@ -116,6 +120,8 @@ function renderNameScanCard(name, scan) {
     const vTitle = document.createElement("div");
     vTitle.className = "text-sm font-medium";
     vTitle.textContent = "LLM 生成变体";
+    suggestionItems = [];
+    activeSuggestIndex = -1;
     llmBox.appendChild(vTitle);
 
     const vList = document.createElement("div");
@@ -153,9 +159,29 @@ function renderNameScanCard(name, scan) {
       log.className = "mt-1 space-y-0.5";
       exp.trace.forEach((t) => {
         const line = document.createElement("div");
+        suggestionItems.push(row);
         line.textContent = `• ${t}`;
         log.appendChild(line);
+        // Pre-select first item for quicker Enter selection
+        setActiveSuggestIndex(0);
       });
+
+      function setActiveSuggestIndex(i) {
+        if (!suggestionItems.length) {
+          activeSuggestIndex = -1;
+          return;
+        }
+        if (i < 0) i = suggestionItems.length - 1; // wrap upwards
+        if (i >= suggestionItems.length) i = 0; // wrap downwards
+        activeSuggestIndex = i;
+        suggestionItems.forEach((el, idx) => {
+          if (idx === activeSuggestIndex) {
+            el.classList.add("bg-indigo-100", "dark:bg-indigo-800");
+          } else {
+            el.classList.remove("bg-indigo-100", "dark:bg-indigo-800");
+          }
+        });
+      }
       details.appendChild(log);
       llmBox.appendChild(details);
     }
@@ -621,6 +647,145 @@ export function initChat() {
   const webProvider = document.getElementById("chatWebProvider");
   if (!form || !input) return;
 
+  // --- Fuzzy suggestion dropdown (uses /entities/suggest) ---
+  // Lightweight, non-intrusive helper that surfaces internal Entity matches
+  // while user types. Does not alter submit flow; selecting a suggestion
+  // simply fills the input and auto-attempts internal resolution.
+  let suggestionBox = null;
+  let lastSuggestQuery = "";
+  let pendingSuggestAbort = null;
+
+  function ensureSuggestionBox() {
+    if (suggestionBox) return suggestionBox;
+    suggestionBox = document.createElement("div");
+    suggestionBox.id = "chatSuggestions";
+    suggestionBox.className =
+      "absolute left-3 right-28 top-full mt-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded shadow text-sm max-h-60 overflow-y-auto z-50 hidden";
+    // Positioning: make parent relative
+    form.classList.add("relative");
+    form.appendChild(suggestionBox);
+    // Hide on outside click
+    document.addEventListener("click", (e) => {
+      if (!suggestionBox) return;
+      if (suggestionBox.contains(e.target) || e.target === input) return;
+      hideSuggestions();
+    });
+    return suggestionBox;
+  }
+
+  function hideSuggestions() {
+    if (suggestionBox) suggestionBox.classList.add("hidden");
+  }
+
+  function renderSuggestions(items, query) {
+    const box = ensureSuggestionBox();
+    box.innerHTML = "";
+    if (!items?.length) {
+      hideSuggestions();
+      return;
+    }
+    items.forEach((it) => {
+      const row = document.createElement("button");
+      row.type = "button";
+      row.className =
+        "block w-full text-left px-3 py-1.5 hover:bg-indigo-50 dark:hover:bg-indigo-900/40 border-b last:border-b-0 border-gray-100 dark:border-gray-800";
+      const type = it.type ? ` · ${it.type}` : "";
+      const score = it.score != null ? ` (score=${it.score})` : "";
+      // Basic highlight: bold the matching part if name contains the query
+      const name = it.name || it.id;
+      const nameLower = name.toLowerCase();
+      const qLower = query.toLowerCase();
+      let labelHtml = name;
+      const idx = nameLower.indexOf(qLower);
+      if (idx >= 0) {
+        const before = name.slice(0, idx);
+        const match = name.slice(idx, idx + query.length);
+        const after = name.slice(idx + query.length);
+        labelHtml = `${before}<strong class=\"text-indigo-600 dark:text-indigo-300\">${match}</strong>${after}`;
+      }
+      row.innerHTML = `${labelHtml} <span class=\"text-gray-500 dark:text-gray-400\">[${it.id}]${type}${score}</span>`;
+      row.addEventListener("click", async () => {
+        input.value = it.id; // prefer id for deterministic resolution
+        hideSuggestions();
+        input.focus();
+        // Attempt immediate internal resolution & dashboard load (non-blocking)
+        try {
+          const entityId = await tryResolveEntityInput(it.id);
+          if (entityId) {
+            const root = document.getElementById("rootId");
+            if (root) root.value = entityId;
+            const initRoot = document.getElementById("initialRootId");
+            if (initRoot) initRoot.value = entityId;
+            revealDashboard();
+            await loadFullDashboardAndSnapshot(
+              entityId,
+              entityId,
+              "Dashboard 快照"
+            );
+          }
+        } catch (_) {}
+      });
+      box.appendChild(row);
+    });
+    box.classList.remove("hidden");
+  }
+
+  async function fetchSuggestions(q) {
+    const query = (q || "").trim();
+    if (!query || query.length < 2) {
+      hideSuggestions();
+      return;
+    }
+    if (query === lastSuggestQuery) return; // avoid redundant calls
+    lastSuggestQuery = query;
+    if (pendingSuggestAbort) {
+      pendingSuggestAbort.abort();
+    }
+    pendingSuggestAbort = new AbortController();
+    try {
+      const res = await fetch(
+        `/entities/suggest?q=${encodeURIComponent(query)}`,
+        { signal: pendingSuggestAbort.signal }
+      );
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+      renderSuggestions(data.items || [], query);
+    } catch (_) {
+      // Silently ignore (user may be typing fast or aborted)
+    }
+  }
+
+  // Debounce typing + respect IME composition to cut down request volume.
+  const SUGGEST_DEBOUNCE_MS = 250;
+  let suggestTimer = null;
+  let isComposing = false;
+
+  input.addEventListener("compositionstart", () => {
+    isComposing = true;
+  });
+  input.addEventListener("compositionend", () => {
+    isComposing = false;
+    scheduleSuggestionFetch();
+  });
+
+  function scheduleSuggestionFetch() {
+    if (isComposing) return; // wait until IME finished
+    const val = input.value;
+    // Cancel any in-flight debounce
+    if (suggestTimer) clearTimeout(suggestTimer);
+    suggestTimer = setTimeout(() => {
+      fetchSuggestions(val);
+    }, SUGGEST_DEBOUNCE_MS);
+  }
+
+  input.addEventListener("input", () => {
+    scheduleSuggestionFetch();
+  });
+  input.addEventListener("keydown", (e) => {
+    // ESC hides suggestions immediately
+    if (e.key === "Escape") hideSuggestions();
+  });
+
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const text = input.value.trim();
@@ -879,5 +1044,7 @@ export function initChat() {
 
     // Keep canonical panels hidden after clear
     hideCanonicalPanels();
+
+    hideSuggestions();
   });
 }
