@@ -4,6 +4,8 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from app.services.llm_client import get_llm_client
+from app.services.query_parser_service import parse_person_query
+from app.services.graph_rag import resolve_graphrag
 
 
 router = APIRouter(tags=["chat"])
@@ -25,6 +27,8 @@ class ChatRequest(BaseModel):
     web_k: Optional[int] = 3
     web_timeout: Optional[float] = 6.0
     web_provider: Optional[str] = "auto"  # auto|ddg|bing
+    # Optional: enable smart person/entity resolution via graphRAG
+    use_person_resolver: Optional[bool] = False
 
 
 @router.post("/chat")
@@ -89,6 +93,38 @@ def chat(req: ChatRequest) -> Dict[str, Any]:
                 # Non-fatal: proceed without web if anything fails
                 web_sources = []
 
+        # Optional: run person/entity resolver to attach structured candidates
+        resolver_result = None
+        if req.use_person_resolver:
+            try:
+                parsed = parse_person_query(req.message)
+                extra = {
+                    "gender": parsed.get("gender"),
+                    "address_keywords": parsed.get("address_keywords"),
+                    "id_number_tail": parsed.get("id_number_tail"),
+                }
+                resolver_result = resolve_graphrag(
+                    name=parsed.get("name"),
+                    birth_date=parsed.get("birth_date"),
+                    extra=extra,
+                    use_semantic=True,
+                    top_k=5,
+                )
+                # Prepend a short system hint with structured resolver outcome for the LLM
+                if resolver_result.get("candidates"):
+                    summary_lines = []
+                    for c in resolver_result["candidates"]:
+                        summary_lines.append(
+                            f"- id={c.get('node_id')} name={c.get('name')} score={c.get('score'):.2f}"
+                        )
+                    resolver_context = (
+                        "系统内的图谱检索为本次查询找到如下候选实体：\n" + "\n".join(summary_lines) +
+                        "\n你可以参考这些候选和它们的网络关系来回答用户的问题。"
+                    )
+                    messages.insert(0, {"role": "system", "content": resolver_context})
+            except Exception:
+                resolver_result = None
+
         client = get_llm_client()
         text, usage, model = client.generate(
             messages,
@@ -100,6 +136,8 @@ def chat(req: ChatRequest) -> Dict[str, Any]:
             "model": model,
             "usage": usage,
         }
+        if resolver_result is not None:
+            resp["person_resolver"] = resolver_result
         if req.use_web:
             # Return lightweight source metadata for UI display
             resp["sources"] = [

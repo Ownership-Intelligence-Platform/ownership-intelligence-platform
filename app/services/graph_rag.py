@@ -1,0 +1,159 @@
+"""Minimal GraphRAG service implementing a hybrid resolver for name+dob queries.
+
+This module provides a small, self-contained MVP that combines the existing
+fuzzy search in `graph_service` with optional embedding-based semantic matching
+using `llm_client`. It does not require an external vector DB: embeddings are
+computed on-the-fly for the small candidate set returned by fuzzy search.
+"""
+from __future__ import annotations
+
+from typing import Any, Dict, List, Optional
+import logging
+import math
+
+from app.services.graph_service import search_entities_fuzzy, get_entity, get_layers
+from app.services.llm_client import get_llm_client
+
+logger = logging.getLogger(__name__)
+
+
+def _cosine(a: List[float], b: List[float]) -> float:
+    if not a or not b:
+        return 0.0
+    na = math.sqrt(sum(x * x for x in a))
+    nb = math.sqrt(sum(x * x for x in b))
+    if na == 0 or nb == 0:
+        return 0.0
+    return sum(x * y for x, y in zip(a, b)) / (na * nb)
+
+
+def _build_node_text(item: Dict[str, Any]) -> str:
+    parts: List[str] = []
+    if item.get("name"):
+        parts.append(str(item.get("name")))
+    for k in ("type", "description", "id", "id_info"):
+        v = item.get(k)
+        if v:
+            parts.append(str(v))
+    # include basic_info if present
+    bi = item.get("basic_info")
+    if bi:
+        try:
+            parts.append(str(bi))
+        except Exception:
+            pass
+    return " | ".join(parts)
+
+
+def resolve_graphrag(
+    *,
+    name: Optional[str] = None,
+    birth_date: Optional[str] = None,
+    extra: Optional[Dict[str, Any]] = None,
+    use_semantic: bool = True,
+    top_k: int = 5,
+) -> Dict[str, Any]:
+    """Resolve a query using fuzzy + optional semantic retrieval.
+
+    Returns a dict with `candidates` (list) and optional `subgraphs` for top items.
+    """
+    # Use name-only for fuzzy search to avoid polluting the query string with DOB or other fields.
+    q_text = (name or "").strip()
+
+    # Step 1: fuzzy search by name/id/description
+    candidates = search_entities_fuzzy(q_text, limit=max(10, top_k * 3)) if q_text else []
+
+    if not candidates:
+        return {
+            "query": {"name": name, "birth_date": birth_date, "extra": extra, "use_semantic": use_semantic},
+            "candidates": [],
+        }
+
+    # compute fuzzy-normalized scores (search_entities_fuzzy uses integer tiers up to 4)
+    for c in candidates:
+        raw = float(c.get("score") or 0.0)
+        c["_fuzzy_norm"] = min(1.0, raw / 4.0)
+
+    sem_sims: Optional[List[float]] = None
+    if use_semantic and candidates:
+        try:
+            client = get_llm_client()
+            query_text = q_text or (name or "")
+            node_texts = [_build_node_text(c) for c in candidates]
+            texts = [query_text] + node_texts
+            embs = client.embed(texts)
+            if embs and len(embs) == len(texts):
+                qvec = embs[0]
+                sem_sims = []
+                for i in range(1, len(embs)):
+                    sim = _cosine(qvec, embs[i])
+                    sem_sims.append(sim)
+            else:
+                logger.warning("Embedding returned empty or unexpected length, falling back to fuzzy only")
+        except Exception as exc:  # pragma: no cover - depends on runtime config
+            logger.exception("Embedding failed, continuing with fuzzy-only: %s", exc)
+            sem_sims = None
+
+    results: List[Dict[str, Any]] = []
+    for idx, c in enumerate(candidates):
+        fuzzy_score = float(c.get("_fuzzy_norm") or 0.0)
+        sem_score = 0.0
+        if sem_sims is not None and idx < len(sem_sims):
+            # cosine ranges [-1,1], map to [0,1]
+            sem_score = (float(sem_sims[idx]) + 1.0) / 2.0
+        # dob bonus: look for exact birth_date match in known fields
+        dob_bonus = 0.0
+        if birth_date:
+            try:
+                # direct property (if importer stored it on the node)
+                if isinstance(c.get("basic_info"), dict):
+                    bi = c["basic_info"]
+                    if str(bi.get("birth_date") or "") == birth_date:
+                        dob_bonus = 0.3
+                # fallback: id_info may embed date or id number with encoded DOB
+                if dob_bonus == 0.0 and isinstance(c.get("id_info"), dict):
+                    ii = c["id_info"]
+                    for v in ii.values():
+                        if isinstance(v, str) and birth_date in v:
+                            dob_bonus = 0.15
+                            break
+            except Exception:
+                dob_bonus = dob_bonus
+
+        # weighting: prefer semantic when available
+        if sem_sims is not None:
+            final = 0.6 * sem_score + 0.4 * fuzzy_score + dob_bonus
+        else:
+            final = 1.0 * fuzzy_score + dob_bonus
+
+        results.append(
+            {
+                "node_id": c.get("id"),
+                "labels": ["Person"] if (c.get("type") or "").lower() == "person" else [c.get("type")],
+                "name": c.get("name"),
+                "score": min(1.0, float(final)),
+                "matched_fields": [],
+                "evidence": _build_node_text(c),
+                "_raw": c,
+            }
+        )
+
+    # sort and pick top_k
+    results = sorted(results, key=lambda r: r.get("score", 0.0), reverse=True)[:top_k]
+
+    # attach small subgraph for top candidate(s)
+    subgraphs: Dict[str, Any] = {}
+    for r in results[: min(2, len(results))]:
+        nid = r.get("node_id")
+        try:
+            # get_layers returns structured layers for UI; use depth=1 for small context
+            sg = get_layers(nid, depth=1)
+            subgraphs[nid] = sg
+        except Exception:
+            subgraphs[nid] = None
+
+    return {
+        "query": {"name": name, "birth_date": birth_date, "extra": extra, "use_semantic": use_semantic},
+        "candidates": results,
+        "subgraphs": subgraphs,
+    }

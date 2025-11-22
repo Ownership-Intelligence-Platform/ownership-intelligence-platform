@@ -87,6 +87,34 @@ class LLMClient:
         usage_dict = usage.model_dump() if hasattr(usage, "model_dump") else (usage or {})
         return text, usage_dict, getattr(resp, "model", payload["model"]) or payload["model"]
 
+    def embed(self, texts: list[str], *, model: Optional[str] = None) -> list[list[float]]:
+        """Return embeddings for a list of input strings.
+
+        Uses the OpenAI-compatible embeddings endpoint when available. The embeddings
+        model can be overridden with the LLM_EMBED_MODEL environment variable or the
+        `model` argument.
+        """
+        # Determine embedding model (env override allowed)
+        embed_model = model or os.getenv("LLM_EMBED_MODEL") or "text-embedding-3-small"
+        # Some OpenAI-compatible clients expose embeddings on `.embeddings.create`
+        try:
+            resp = self._client.embeddings.create(model=embed_model, input=texts)
+        except Exception as exc:  # pragma: no cover - runtime dependent
+            raise RuntimeError(f"Embedding request failed: {exc}")
+        # Response shape: data: [{embedding: [...]}, ...]
+        data = getattr(resp, "data", None) or []
+        embeddings: list[list[float]] = []
+        for item in data:
+            vec = item.get("embedding") if isinstance(item, dict) else getattr(item, "embedding", None)
+            if vec is None:
+                # Try attribute access for client-lib typed objects
+                try:
+                    vec = item.embedding  # type: ignore
+                except Exception:
+                    vec = None
+            embeddings.append(vec or [])
+        return embeddings
+
 
 _client_cache: Optional[LLMClient] = None
 

@@ -42,6 +42,84 @@ import {
 let history = [];
 let pendingExternal = null; // { name: string, askedAt: number }
 
+// Render a compact card showing person resolver / graphRAG candidates returned
+// from the backend /chat endpoint. Each candidate links to the person network
+// view when it looks like a person id (e.g. P123).
+function renderPersonResolverCard(name, candidates, targetList) {
+  if (!candidates || !candidates.length) return;
+  const list =
+    targetList || document.getElementById("chatMessages") || document.body;
+
+  const card = document.createElement("div");
+  card.className =
+    "mt-2 mb-1 border border-emerald-500/40 bg-emerald-50/70 dark:bg-emerald-900/20 dark:border-emerald-500/50 rounded-xl text-xs sm:text-sm text-emerald-900 dark:text-emerald-50 px-3 py-2 shadow-sm max-w-2xl";
+
+  const title = document.createElement("div");
+  title.className = "font-semibold flex items-center gap-1 mb-1";
+  title.innerHTML =
+    '<span class="inline-flex w-4 h-4 items-center justify-center rounded-full bg-emerald-500 text-white text-[10px]">图</span>' +
+    `<span>基于图谱的匹配候选（${name || "查询"}）</span>`;
+  card.appendChild(title);
+
+  const listEl = document.createElement("ul");
+  listEl.className = "space-y-0.5";
+
+  candidates.slice(0, 5).forEach((c) => {
+    const li = document.createElement("li");
+    li.className =
+      "flex items-start justify-between gap-2 border-t border-emerald-100/60 dark:border-emerald-700/60 first:border-t-0 pt-1 first:pt-0 mt-1 first:mt-0";
+
+    const left = document.createElement("div");
+    left.className = "flex-1 min-w-0";
+    const nameSpan = document.createElement("div");
+    nameSpan.className = "font-medium truncate";
+    const label = c.name || c.node_id || "(未命名)";
+    nameSpan.textContent = label;
+    left.appendChild(nameSpan);
+
+    const meta = document.createElement("div");
+    meta.className = "text-[11px] text-emerald-700 dark:text-emerald-200/80";
+    const score =
+      typeof c.score === "number" ? `score=${c.score.toFixed(3)}` : "score=?";
+    const idText = c.node_id ? `[${c.node_id}]` : "";
+    meta.textContent = `${idText} ${score}`.trim();
+    left.appendChild(meta);
+
+    if (c.evidence) {
+      const ev = document.createElement("div");
+      ev.className =
+        "text-[11px] text-emerald-800/80 dark:text-emerald-100/80 line-clamp-2";
+      ev.textContent = c.evidence;
+      left.appendChild(ev);
+    }
+
+    li.appendChild(left);
+
+    // Right side: quick action button to open person network when id looks like Pxxx
+    if (c.node_id && /^P\d+$/i.test(c.node_id)) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className =
+        "shrink-0 inline-flex items-center gap-1 rounded-full bg-emerald-600 text-white px-2.5 py-1 text-[11px] hover:bg-emerald-500 shadow-sm";
+      btn.innerHTML =
+        '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h10M7 12h4m1 4h5m-8 0a4 4 0 11-8 0 4 4 0 018 0zm10-4a4 4 0 11-8 0 4 4 0 018 0zm-10-8a4 4 0 11-8 0 4 4 0 018 0z"/></svg>' +
+        "<span>人物网络</span>";
+      btn.addEventListener("click", () => {
+        const url = `/static/person_network.html?person=${encodeURIComponent(
+          c.node_id
+        )}`;
+        window.open(url, "_blank");
+      });
+      li.appendChild(btn);
+    }
+
+    listEl.appendChild(li);
+  });
+
+  card.appendChild(listEl);
+  list.appendChild(card);
+}
+
 export function initChat() {
   const form = document.getElementById("chatForm");
   const input = document.getElementById("chatInput");
@@ -566,14 +644,9 @@ export function initChat() {
 
     // Then ask user for optional extra info for external lookup and set pending state
     pendingExternal = { name: nameForScan, askedAt: Date.now() };
-    appendMessage(
-      "assistant",
-      "未找到内部实体，已完成基础姓名扫描（相似客户与本地名单命中已在下方卡片展示）。\n如需进一步从公开来源检索，请补充以下信息（可任意填写或回复“跳过”）：\n- 出生日期（例如 1990-01-02）\n- 可能的户籍/地区\n- 常用别名或相关公司名称",
-      targetList
-    );
-    return;
 
-    // External clarification path not taken: proceed with normal LLM chat flow
+    // Also proceed with LLM chat flow enhanced by person resolver / graphRAG so that
+    // serious KYC-style queries benefit from Neo4j context automatically.
     appendMessage("assistant", "…", targetList);
 
     try {
@@ -583,6 +656,8 @@ export function initChat() {
         system_prompt: sys ? sys.value.trim() || undefined : undefined,
         use_web: !!(useWeb && useWeb.checked),
         web_provider: webProvider ? webProvider.value : undefined,
+        // Enable KYC-style person resolver + graphRAG on the backend.
+        use_person_resolver: true,
       };
       const resp = await fetch("/chat", {
         method: "POST",
@@ -600,6 +675,25 @@ export function initChat() {
       if (last) last.textContent = reply;
       else appendMessage("assistant", reply, list);
       history.push({ role: "assistant", content: reply });
+
+      // If backend returned person_resolver candidates (graphRAG-enhanced KYC matches),
+      // render them as a compact card below the assistant reply so the analyst can
+      // quickly pivot into the person network / dashboard.
+      if (
+        data.person_resolver &&
+        Array.isArray(data.person_resolver.candidates)
+      ) {
+        try {
+          renderPersonResolverCard(
+            nameForScan,
+            data.person_resolver.candidates,
+            list
+          );
+        } catch (e) {
+          // Non-fatal: if rendering fails, still keep the main reply.
+          console.error("Failed to render person resolver card", e);
+        }
+      }
 
       // If reply mentions dashboard-intents, render a small hint card and also trigger actions
       const matches = getDashboardMatches(reply);

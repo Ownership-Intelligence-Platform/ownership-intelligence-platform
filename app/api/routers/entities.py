@@ -27,6 +27,8 @@ from app.services.graph_service import (
 )
 from app.services.name_screening_service import basic_name_scan
 from app.services.name_variant_service import expand_name_variants, match_watchlist_with_variants
+from app.services.graph_rag import resolve_graphrag
+from app.models.graph_rag import ResolveRAGRequest, ResolveRAGResponse
 
 router = APIRouter(tags=["entities"])
 
@@ -179,6 +181,27 @@ def api_suggest_entities(q: str, limit: int = 10):
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to search entities: {exc}")
     return {"count": len(items), "items": items}
+
+
+@router.post("/entities/resolve-graphrag")
+def api_resolve_graphrag(payload: ResolveRAGRequest):
+    """Hybrid resolver endpoint (fuzzy + optional semantic embeddings).
+
+    Returns candidate nodes with scores and small subgraph context. This is an
+    MVP integration — embeddings are computed on-the-fly for the fuzzy candidate
+    set when `use_semantic` is true.
+    """
+    try:
+        res = resolve_graphrag(
+            name=payload.name,
+            birth_date=payload.birth_date,
+            extra=payload.extra,
+            use_semantic=bool(payload.use_semantic),
+            top_k=int(payload.top_k or 5),
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"GraphRAG resolution failed: {exc}")
+    return res
 
 @router.get("/entities/{entity_id}")
 def api_get_entity(entity_id: str):
