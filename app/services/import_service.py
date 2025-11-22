@@ -1,6 +1,6 @@
 import csv
 import os
-from typing import Callable, Dict, Tuple, Set, Optional
+from typing import Callable, Dict, Tuple, Set, Optional, Any
 
 from app.services.graph_service import create_entity, create_ownership
 
@@ -646,3 +646,124 @@ def import_relationships_from_csv(
                 continue
 
     return {"relationships": {"processed_rows": processed, "unique_imported": unique}}
+
+
+# --- Phase 1: dedicated persons import with extended fields ---
+
+def import_persons_from_csv(
+    persons_csv: str,
+    *,
+    project_root: str,
+    upsert_person_fn,  # expects signature of create_or_update_person_extended
+) -> Dict:
+    """Import rich person records from a new persons.csv file.
+
+    CSV Contract (flexible): must include 'id' and 'name'. Additional columns mapped into grouped dicts.
+    Grouping logic (by column membership):
+      - basic_info: gender,birth_date,nationality,residential_address,registered_address,language_pref
+      - id_info: id_number,passport_number
+      - job_info: employers,roles
+      - kyc_info: kyc_risk_level,kyc_status,onboarding_date,source_of_funds_declared,source_of_funds_verified,pep_status,sanction_screen_hits,watchlist_hits
+      - risk_profile: composite_risk_score,risk_factors,negative_news_count,adverse_media_last_check,high_risk_txn_ratio
+      - network_info: known_associates,relationship_density_score,cluster_id
+      - geo_profile: primary_country,countries_recent_6m,offshore_exposure,geo_anomaly_score
+      - compliance_info: last_manual_review_date,next_review_due,review_notes,aml_case_open,aml_case_id
+      - provenance: data_source_urls,crawler_last_run,crawler_confidence_score
+
+    Any missing group fields are omitted; empty strings ignored. Comma-separated list fields stored as list.
+    Returns summary with counts & warnings.
+    """
+    pr = os.path.abspath(project_root)
+    path = _resolve_path(persons_csv, pr)
+    if not os.path.isfile(path):
+        raise FileNotFoundError(f"Persons CSV not found: {path}")
+
+    required = {"id", "name"}
+    processed = 0
+    upserted = 0
+    warnings = []
+
+    # Column sets
+    basic_cols = {"gender","birth_date","nationality","residential_address","registered_address","language_pref"}
+    id_cols = {"id_number","passport_number"}
+    job_cols = {"employers","roles"}
+    kyc_cols = {"kyc_risk_level","kyc_status","onboarding_date","source_of_funds_declared","source_of_funds_verified","pep_status","sanction_screen_hits","watchlist_hits"}
+    risk_cols = {"composite_risk_score","risk_factors","negative_news_count","adverse_media_last_check","high_risk_txn_ratio"}
+    network_cols = {"known_associates","relationship_density_score","cluster_id"}
+    geo_cols = {"primary_country","countries_recent_6m","offshore_exposure","geo_anomaly_score"}
+    compliance_cols = {"last_manual_review_date","next_review_due","review_notes","aml_case_open","aml_case_id"}
+    provenance_cols = {"data_source_urls","crawler_last_run","crawler_confidence_score"}
+
+    list_like = {"employers","roles","known_associates","countries_recent_6m","risk_factors","data_source_urls"}
+
+    def build_group(row: Dict[str,str], columns: Set[str]) -> Dict[str, Any]:
+        grp = {}
+        for c in columns:
+            raw = row.get(c)
+            if raw is None or raw == "":
+                continue
+            if c in list_like:
+                grp[c] = [x.strip() for x in raw.split(',') if x.strip()]
+            elif c in {"offshore_exposure","aml_case_open"}:
+                grp[c] = raw.lower() in {"1","true","yes","y"}
+            elif c in {"sanction_screen_hits","watchlist_hits","negative_news_count"}:
+                try:
+                    grp[c] = int(raw)
+                except ValueError:
+                    warnings.append(f"Invalid int for {c}: {raw}")
+            elif c in {"composite_risk_score","high_risk_txn_ratio","crawler_confidence_score","relationship_density_score","geo_anomaly_score"}:
+                try:
+                    grp[c] = float(raw)
+                except ValueError:
+                    warnings.append(f"Invalid float for {c}: {raw}")
+            else:
+                grp[c] = raw
+        return grp
+
+    with open(path, newline='', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        headers = {h.strip() for h in (reader.fieldnames or [])}
+        if not required.issubset(headers):
+            missing = required - headers
+            raise ValueError(f"Persons CSV missing required columns: {', '.join(sorted(missing))}")
+        for row in reader:
+            processed += 1
+            pid = (row.get('id') or '').strip()
+            name = (row.get('name') or '').strip() or None
+            if not pid:
+                continue
+            basic = build_group(row, basic_cols)
+            id_info = build_group(row, id_cols)
+            job_info = build_group(row, job_cols)
+            kyc_info = build_group(row, kyc_cols)
+            risk_profile = build_group(row, risk_cols)
+            network_info = build_group(row, network_cols)
+            geo_profile = build_group(row, geo_cols)
+            compliance_info = build_group(row, compliance_cols)
+            provenance = build_group(row, provenance_cols)
+            try:
+                upsert_person_fn(
+                    pid,
+                    name,
+                    'Person',
+                    basic_info=basic or None,
+                    id_info=id_info or None,
+                    job_info=job_info or None,
+                    kyc_info=kyc_info or None,
+                    risk_profile=risk_profile or None,
+                    network_info=network_info or None,
+                    geo_profile=geo_profile or None,
+                    compliance_info=compliance_info or None,
+                    provenance=provenance or None,
+                )
+                upserted += 1
+            except Exception as exc:
+                warnings.append(f"Failed to upsert {pid}: {exc}")
+
+    return {
+        'persons': {
+            'processed_rows': processed,
+            'upserted': upserted,
+            'warnings': warnings,
+        }
+    }

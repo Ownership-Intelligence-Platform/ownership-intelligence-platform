@@ -873,7 +873,40 @@ export function initChat() {
                   parts.push(`持股对象数: ${ent.owned.length}`);
                 if (Array.isArray(ent.representatives))
                   parts.push(`法定代表: ${ent.representatives.length}`);
-                preview.textContent = parts.join(" | ") || "无更多信息";
+                // Extended person-centric fields
+                const ext = ent.extended || {};
+                const kyc = ext.kyc_info || {};
+                const risk = ext.risk_profile || {};
+                const chips = [];
+                function esc(s) {
+                  return String(s)
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;");
+                }
+                if (kyc.kyc_status)
+                  chips.push(
+                    `<span class=\"inline-block px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-800 text-indigo-800 dark:text-indigo-100 mr-1\">KYC:${esc(
+                      kyc.kyc_status
+                    )}</span>`
+                  );
+                if (kyc.kyc_risk_level)
+                  chips.push(
+                    `<span class=\"inline-block px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-800 text-amber-800 dark:text-amber-100 mr-1\">风险:${esc(
+                      kyc.kyc_risk_level
+                    )}</span>`
+                  );
+                if (risk.composite_risk_score != null)
+                  chips.push(
+                    `<span class=\"inline-block px-1.5 py-0.5 rounded bg-rose-100 dark:bg-rose-800 text-rose-800 dark:text-rose-100 mr-1\">综合分:${esc(
+                      risk.composite_risk_score
+                    )}</span>`
+                  );
+                const chipsHtml = chips.length
+                  ? `<div class=\"mb-1 flex flex-wrap\">${chips.join("")}</div>`
+                  : "";
+                preview.innerHTML =
+                  chipsHtml + (parts.join(" | ") || "无更多信息");
               } catch (err) {
                 preview.textContent = "预览加载失败: " + err;
               }
@@ -881,7 +914,7 @@ export function initChat() {
             items.slice(0, 20).forEach((it) => {
               const li = document.createElement("li");
               li.className =
-                "py-1.5 px-2 hover:bg-white dark:hover:bg-gray-800 cursor-pointer transition-colors";
+                "py-1.5 px-2 hover:bg-white dark:hover:bg-gray-800 cursor-pointer transition-colors min-h-[110px]";
               const name = (it.name || it.id || "").trim();
               const metaParts = [];
               if (it.type) metaParts.push(it.type);

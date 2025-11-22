@@ -22,6 +22,8 @@ from .legal import (
     get_representatives,
     create_person,
     create_company,
+    create_or_update_person_extended,
+    get_person_extended,
 )
 from .accounts import create_account, get_accounts
 from .locations import create_location_links, get_locations
@@ -47,6 +49,7 @@ __all__ = [
     'clear_database',
     # legal & reps
     'create_legal_rep','get_representatives','create_person','create_company',
+    'create_or_update_person_extended','get_person_extended',
     # accounts
     'create_account','get_accounts',
     # locations

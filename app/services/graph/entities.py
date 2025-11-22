@@ -45,25 +45,27 @@ def find_entities_by_name_exact(name: str) -> List[Dict[str, Any]]:
 
 
 def search_entities_fuzzy(q: str, limit: int = 10) -> List[Dict[str, Any]]:
-    """Fuzzy search entities by partial name or id.
+    """Fuzzy search entities (including Person-labeled nodes) by partial name or id.
 
-    Strategy:
-    - Case-insensitive partial match across id, name, description.
-    - Scoring tiers (higher is better):
+    Improvements vs initial version:
+    - Includes nodes labeled :Person even if any future change drops the :Entity label.
+    - Handles Chinese / multi-byte names (case normalization is a no-op but retained for consistency).
+    - Adds fallback to extended person fields (basic_info.name alternative) if primary name missing.
+    - Dedupes results when nodes carry both :Entity and :Person labels.
+
+    Scoring tiers (higher is better):
+        4: id EXACT match OR name EXACT match
         3: id OR name startswith query
         2: description startswith query OR id/name contains query
         1: description contains query
-    - Order by score desc, then shorter name (for readability), then name lowercase, then id.
-    - Return id, name, type, description, score.
 
-    NOTE: This remains a lightweight approach (no full-text index). For larger datasets,
-    consider creating a Neo4j full-text index or moving to an external search engine.
+    NOTE: Still lightweight. For scale, move to full-text index.
     """
     q_norm = (q or "").strip()
     if not q_norm:
         return []
     cypher = (
-        "MATCH (e:Entity) "
+        "MATCH (e) WHERE (e:Entity OR e:Person) "
         "WITH e, "
         "toLower(coalesce(e.id,'')) AS eid, "
         "toLower(coalesce(e.name,'')) AS ename, "
@@ -72,6 +74,7 @@ def search_entities_fuzzy(q: str, limit: int = 10) -> List[Dict[str, Any]]:
         "WHERE eid CONTAINS q OR ename CONTAINS q OR edesc CONTAINS q "
         "WITH e, eid, ename, edesc, q, "
         "CASE "
+        "  WHEN eid = q OR ename = q THEN 4 "
         "  WHEN eid STARTS WITH q OR ename STARTS WITH q THEN 3 "
         "  WHEN edesc STARTS WITH q THEN 2 "
         "  WHEN eid CONTAINS q OR ename CONTAINS q THEN 2 "
@@ -93,12 +96,23 @@ def search_entities_fuzzy(q: str, limit: int = 10) -> List[Dict[str, Any]]:
             }]
         return []
 
+    # Deduplicate by id (some nodes may appear once; MATCH ensures single anyway, safeguard retained)
+    seen = set()
+    deduped: List[Dict[str, Any]] = []
+    for r in rows:
+        rid = r.get("id")
+        if not rid:
+            continue
+        if rid in seen:
+            continue
+        seen.add(rid)
+        deduped.append(r)
+
     def sort_key(r: Dict[str, Any]):
         name = (r.get("name") or "")
         return (-int(r.get("score") or 0), len(name), name.lower(), r.get("id"))
 
-    rows_sorted = sorted(rows, key=sort_key)[: limit]
-    return rows_sorted
+    return sorted(deduped, key=sort_key)[: limit]
 
 
 def resolve_entity_identifier(identifier: str) -> Dict[str, Any]:

@@ -4,7 +4,7 @@
 import { loadLayers } from "./layers.js";
 import { loadNews } from "./news.js";
 import { loadPenetration } from "./penetration.js";
-import { populateMock, clearDb } from "./db.js";
+import { populateMock, clearDb, importPersons } from "./db.js";
 import { loadAccounts } from "./accounts.js";
 import { loadTransactions } from "./transactions.js";
 import { loadGuarantees } from "./guarantees.js";
@@ -115,6 +115,9 @@ export function wireCoreEvents() {
   document
     .getElementById("populate")
     ?.addEventListener("click", () => populateMock(loadLayers));
+  document
+    .getElementById("importPersons")
+    ?.addEventListener("click", () => importPersons(loadLayers));
   document.getElementById("clearDb")?.addEventListener("click", clearDb);
 
   document.getElementById("mobileMenuButton")?.addEventListener("click", () => {
@@ -140,6 +143,9 @@ export function wireCoreEvents() {
   document
     .getElementById("populate-mobile")
     ?.addEventListener("click", () => populateMock(loadLayers));
+  document
+    .getElementById("importPersons-mobile")
+    ?.addEventListener("click", () => importPersons(loadLayers));
   document.getElementById("clearDb-mobile")?.addEventListener("click", clearDb);
   document
     .getElementById("themeToggle-mobile")

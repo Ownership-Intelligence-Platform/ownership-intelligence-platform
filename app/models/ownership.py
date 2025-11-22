@@ -67,6 +67,31 @@ class PersonCreate(BaseModel):
     job_info: Optional[Dict[str, Any]] = Field(
         default=None, description="Occupation info (position, employer, sector)"
     )
+    # Phase 1 extended KYC / Risk / Network fields (all optional dicts for flexibility)
+    kyc_info: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="KYC onboarding & screening info (status, pep, watchlist hits, source of funds)",
+    )
+    risk_profile: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Aggregated risk scoring metrics (composite score, factors, negative news counts)",
+    )
+    network_info: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Social / business network metrics (associates, employers, cluster, density)",
+    )
+    geo_profile: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Geographical exposure & anomalies (primary country, recent countries, offshore exposure)",
+    )
+    compliance_info: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Compliance review metadata (last review, next due, AML case flags)",
+    )
+    provenance: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Data source & crawler provenance (urls, last run, confidence score)",
+    )
 
 
 class CompanyCreate(BaseModel):
