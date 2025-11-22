@@ -6,6 +6,7 @@ import { wireCoreEvents } from "./modules/events.js";
 import { wireKbUi } from "./modules/kbUi.js";
 import { wireReportHandlers } from "./modules/report.js";
 import { initHomeReveal } from "./modules/homeReveal.js";
+import { initMcpPanel } from "./modules/mcp.js";
 
 // Load page partials first to ensure DOM elements exist before wiring
 await loadHomePartials();
@@ -16,6 +17,7 @@ wireCoreEvents();
 wireKbUi();
 wireReportHandlers();
 initHomeReveal();
+initMcpPanel();
 
 // Optional: expose selected functions for manual debugging in the browser console
 import { loadLayers } from "./modules/layers.js";
