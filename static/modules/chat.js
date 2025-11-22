@@ -78,6 +78,24 @@ export function initChat() {
 
   function hideSuggestions() {
     if (suggestionBox) suggestionBox.classList.add("hidden");
+    // When suggestions are hidden, ensure any temporary tall state is cleared
+    setLastConversationTall(false);
+  }
+
+  // Helper: toggle the 'tall' state on the last conversation card created for the chat
+  // This adjusts the inner messages container max-height and adds a semantic wrapper class
+  function setLastConversationTall(isTall) {
+    // Simpler: only toggle the wrapper state class. CSS will control inner max-height.
+    try {
+      const lastCard = document.querySelector(
+        "#chatTurnStream .chat-conversation-card:last-of-type"
+      );
+      if (!lastCard) return;
+      if (isTall) lastCard.classList.add("chat-conversation-card--tall");
+      else lastCard.classList.remove("chat-conversation-card--tall");
+    } catch (e) {
+      // noop
+    }
   }
 
   function renderSuggestions(items, query) {
@@ -109,6 +127,7 @@ export function initChat() {
       row.innerHTML = `${labelHtml} <span class=\"text-gray-500 dark:text-gray-400\">[${it.id}]${type}${score}</span>`;
       row.addEventListener("click", async () => {
         input.value = it.id; // prefer id for deterministic resolution
+        // hide suggestions and clear tall state for conversation card
         hideSuggestions();
         input.focus();
         // Attempt immediate internal resolution & dashboard load (non-blocking)
@@ -125,6 +144,8 @@ export function initChat() {
               entityId,
               "Dashboard 快照"
             );
+            // after selecting a suggestion, collapse the tall conversation
+            setLastConversationTall(false);
           }
         } catch (_) {}
       });
@@ -364,6 +385,8 @@ export function initChat() {
                       role: "assistant",
                       content: `已选择并加载实体: [${entityId}]`,
                     });
+                    // user selected an entity from the fuzzy list; remove tall state
+                    setLastConversationTall(false);
                   } else {
                     appendMessage(
                       "assistant",
@@ -394,6 +417,8 @@ export function initChat() {
             }
             wrap.appendChild(listEl);
             targetList.appendChild(wrap);
+            // Ensure the conversation card is expanded to show the fuzzy list
+            setLastConversationTall(true);
             targetList.parentElement &&
               (targetList.parentElement.scrollTop =
                 targetList.parentElement.scrollHeight);
@@ -423,6 +448,11 @@ export function initChat() {
 
     // Create a fresh conversation card for this turn
     const convo = createConversationCard("对话");
+    // If fuzzy list was shown earlier, mark the conversation card as 'tall'.
+    // Visual size is controlled by CSS via the wrapper class.
+    if (showedFuzzyList) {
+      setLastConversationTall(true);
+    }
     const targetList =
       convo?.messagesEl || document.getElementById("chatMessages");
 

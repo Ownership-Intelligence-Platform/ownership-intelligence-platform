@@ -30,7 +30,9 @@ export function createConversationCard(titleText) {
   header.appendChild(h);
   wrapper.appendChild(header);
   const body = document.createElement("div");
-  body.className = "max-h-[28vh] overflow-y-auto p-3 space-y-2";
+  // Give the messages container a stable class so JS/CSS can target it reliably
+  body.className =
+    "chat-conversation-messages max-h-[28vh] overflow-y-auto p-3 space-y-2";
   wrapper.appendChild(body);
   stream.appendChild(wrapper);
   return { cardEl: wrapper, messagesEl: body };

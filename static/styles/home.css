@@ -62,3 +62,12 @@ header { padding-top: env(safe-area-inset-top); }
 @keyframes popLeft { from { transform: translateX(-16px) scale(0.985); opacity: 0.95; } to { transform: translateX(0) scale(1); opacity: 1; } }
 .motion-slide-in { animation: slideIn 520ms cubic-bezier(0.22, 1, 0.36, 1) both; }
 .motion-pop-left { animation: popLeft 460ms ease-out both; }
+
+/* Conversation card messages: default and tall variants */
+.chat-conversation-messages {
+    max-height: 28vh; /* default compact height */
+    transition: max-height 220ms ease;
+}
+.chat-conversation-card--tall .chat-conversation-messages {
+    max-height: 42vh; /* taller when fuzzy matches shown */
+}
