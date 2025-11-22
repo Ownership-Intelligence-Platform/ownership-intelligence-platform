@@ -117,6 +117,36 @@ export function wireCoreEvents() {
     ?.addEventListener("click", () => populateMock(loadLayers));
   document.getElementById("clearDb")?.addEventListener("click", clearDb);
 
+  document.getElementById("mobileMenuButton")?.addEventListener("click", () => {
+    const menu = document.getElementById("mobileMenu");
+    const iconOpen = document.querySelector(
+      "#mobileMenuButton svg:first-of-type"
+    );
+    const iconClose = document.querySelector(
+      "#mobileMenuButton svg:last-of-type"
+    );
+    if (menu.classList.contains("hidden")) {
+      menu.classList.remove("hidden");
+      iconOpen.classList.add("hidden");
+      iconClose.classList.remove("hidden");
+    } else {
+      menu.classList.add("hidden");
+      iconOpen.classList.remove("hidden");
+      iconClose.classList.add("hidden");
+    }
+  });
+
+  // Mobile menu buttons
+  document
+    .getElementById("populate-mobile")
+    ?.addEventListener("click", () => populateMock(loadLayers));
+  document.getElementById("clearDb-mobile")?.addEventListener("click", clearDb);
+  document
+    .getElementById("themeToggle-mobile")
+    ?.addEventListener("click", () =>
+      document.getElementById("themeToggle").click()
+    );
+
   // Load layers + auto-load dashboard cards
   document.getElementById("loadLayers")?.addEventListener("click", async () => {
     const rawInput = document.getElementById("rootId").value.trim();

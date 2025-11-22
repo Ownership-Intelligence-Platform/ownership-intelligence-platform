@@ -52,6 +52,13 @@ Quickstart (development)
 python -m venv .venv; .\.venv\Scripts\Activate.ps1; pip install -r requirements.txt
 ```
 
+linux
+
+```
+source .venv/bin/activate
+
+```
+
 2. Start Neo4j locally (docker-compose):
 
 ```powershell
