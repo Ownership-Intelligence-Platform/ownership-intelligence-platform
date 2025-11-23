@@ -1,5 +1,7 @@
 // chat/personResolverCard.js
 // Renders the compact person resolver candidate card.
+import { revealDashboard, loadFullDashboardAndSnapshot } from "./dashboard.js";
+
 export function renderPersonResolverCard(name, candidates, targetList) {
   if (!candidates || !candidates.length) return;
   const list =
@@ -87,6 +89,38 @@ export function renderPersonResolverCard(name, candidates, targetList) {
     }
     li.appendChild(left);
     if (c.node_id && /^P\d+$/i.test(c.node_id)) {
+      // For the top candidate add a prominent primary action to view the Dashboard snapshot
+      if (idx === 0) {
+        const primary = document.createElement("button");
+        primary.type = "button";
+        primary.className =
+          "shrink-0 inline-flex items-center gap-2 rounded-md bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 text-sm shadow-sm";
+        primary.innerHTML =
+          '<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h18M3 12h18M3 17h18"/></svg>' +
+          "<span>查看 Dashboard</span>";
+        primary.addEventListener("click", async () => {
+          try {
+            // Reveal canonical dashboard area and load a snapshot for this candidate
+            revealDashboard();
+            const snap = await loadFullDashboardAndSnapshot(
+              c.node_id,
+              c.name || c.node_id,
+              "Dashboard 快照"
+            );
+            if (snap && typeof snap.scrollIntoView === "function") {
+              // Smoothly scroll the snapshot into view
+              snap.scrollIntoView({ behavior: "smooth", block: "center" });
+              // briefly highlight
+              snap.classList.add("ring-2", "ring-blue-300");
+              setTimeout(() => snap.classList.remove("ring-2", "ring-blue-300"), 1800);
+            }
+          } catch (err) {
+            console.error("Failed to load dashboard snapshot:", err);
+          }
+        });
+        li.appendChild(primary);
+      }
+
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className =
