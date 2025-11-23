@@ -101,8 +101,10 @@ def resolve_graphrag(
         if sem_sims is not None and idx < len(sem_sims):
             # cosine ranges [-1,1], map to [0,1]
             sem_score = (float(sem_sims[idx]) + 1.0) / 2.0
-        # dob bonus: look for exact birth_date match in known fields
+        # dob and address bonuses: look for exact birth_date and address keyword matches
         dob_bonus = 0.0
+        address_bonus = 0.0
+        matched_fields: List[str] = []
         if birth_date:
             try:
                 # direct property (if importer stored it on the node)
@@ -110,21 +112,73 @@ def resolve_graphrag(
                     bi = c["basic_info"]
                     if str(bi.get("birth_date") or "") == birth_date:
                         dob_bonus = 0.3
+                        matched_fields.append("birth_date")
                 # fallback: id_info may embed date or id number with encoded DOB
                 if dob_bonus == 0.0 and isinstance(c.get("id_info"), dict):
                     ii = c["id_info"]
                     for v in ii.values():
                         if isinstance(v, str) and birth_date in v:
                             dob_bonus = 0.15
+                            matched_fields.append("id_info_match")
                             break
             except Exception:
                 dob_bonus = dob_bonus
 
+        # address keyword matching (from extra.address_keywords)
+        try:
+            kws = []
+            if extra and isinstance(extra.get("address_keywords"), list):
+                kws = [str(x).strip().lower() for x in extra.get("address_keywords") if x]
+            if kws:
+                # check residential address and geo_profile countries
+                ra = ""
+                if isinstance(c.get("basic_info"), dict):
+                    ra = str(c["basic_info"].get("residential_address") or "").lower()
+                geo_countries = []
+                if isinstance(c.get("geo_profile"), dict):
+                    geo_countries = [str(x).lower() for x in (c["geo_profile"].get("countries_recent_6m") or [])]
+                # track keyword -> source for friendlier matched_fields
+                matched_addr = {}
+                for kw in kws:
+                    if not kw:
+                        continue
+                    if kw in ra:
+                        matched_addr[kw] = "basic_info"
+                        continue
+                    for ct in geo_countries:
+                        if kw in ct:
+                            matched_addr[kw] = "geo_profile"
+                            break
+                if matched_addr:
+                    # small bonus per matched keyword, capped
+                    address_bonus = 0.1 * len(matched_addr)
+                    if address_bonus > 0.3:
+                        address_bonus = 0.3
+                    for m in sorted(matched_addr.keys()):
+                        src = matched_addr.get(m) or "unknown"
+                        # append a friendlier entry with source info
+                        matched_fields.append(f"address:{m} ({src})")
+        except Exception:
+            address_bonus = 0.0
+
         # weighting: prefer semantic when available
         if sem_sims is not None:
-            final = 0.6 * sem_score + 0.4 * fuzzy_score + dob_bonus
+            final = 0.6 * sem_score + 0.4 * fuzzy_score + dob_bonus + address_bonus
         else:
-            final = 1.0 * fuzzy_score + dob_bonus
+            final = 1.0 * fuzzy_score + dob_bonus + address_bonus
+
+        # Normalize composite into a stable 0..1 range for UI (max possible
+        # final value is ~1.6 when dob_bonus=0.3, address_bonus=0.3 and other
+        # scores are near 1.0).
+        max_possible = 1.6
+        try:
+            normalized_score = float(final) / float(max_possible) if max_possible else float(final)
+        except Exception:
+            normalized_score = float(final)
+        if normalized_score < 0:
+            normalized_score = 0.0
+        if normalized_score > 1.0:
+            normalized_score = 1.0
 
         results.append(
             {
@@ -132,14 +186,28 @@ def resolve_graphrag(
                 "labels": ["Person"] if (c.get("type") or "").lower() == "person" else [c.get("type")],
                 "name": c.get("name"),
                 "score": min(1.0, float(final)),
-                "matched_fields": [],
+                "fuzzy_score": float(fuzzy_score),
+                "semantic_score": float(sem_score),
+                "composite_score": float(final),
+                "normalized_score": float(normalized_score),
+                "matched_fields": matched_fields,
                 "evidence": _build_node_text(c),
                 "_raw": c,
             }
         )
 
     # sort and pick top_k
-    results = sorted(results, key=lambda r: r.get("score", 0.0), reverse=True)[:top_k]
+    # Sort primarily by normalized_score (0..1) to surface candidates that
+    # rank higher after accounting for DOB bonuses and semantic similarity.
+    # Use composite_score as a tiebreaker for stability.
+    results = sorted(
+        results,
+        key=lambda r: (
+            float(r.get("normalized_score", 0.0)),
+            float(r.get("composite_score", 0.0)),
+        ),
+        reverse=True,
+    )[:top_k]
 
     # attach small subgraph for top candidate(s)
     subgraphs: Dict[str, Any] = {}
