@@ -15,6 +15,7 @@ import {
 } from "./state.js";
 import { maybeRenderFuzzyList } from "./fuzzyList.js";
 import { resolveQuotedCandidate, resolveWholeInput } from "./fastpaths.js";
+import { showLoading, hideLoading } from "../utils.js";
 // LLM and post-processing disabled for graph-only mode per user preference.
 // import { runLLM } from "./llm.js";
 // import { processReply } from "./postReply.js";
@@ -89,6 +90,7 @@ export async function handleChatSubmit({
   // LLM-generated explanatory text — only the resolver candidates.
   const noGraphMatch = !(quotedHandled || wholeHandled);
   if (noGraphMatch) {
+    showLoading("正在智能解析...");
     try {
       const resp = await fetch("/entities/parse-and-resolve", {
         method: "POST",
@@ -186,6 +188,8 @@ export async function handleChatSubmit({
         `解析/检索出错：${err}。请重试或只输入姓名进行匹配。`,
         targetList
       );
+    } finally {
+      hideLoading();
     }
   }
 
@@ -229,10 +233,12 @@ async function processPendingExternal(text, targetList) {
         : "收到补充信息。开始从公开来源检索…",
       targetList
     );
+    showLoading("正在检索公开信息...");
     await externalLookup(pending.name, bd || "");
   } catch (err) {
     appendMessage("assistant", `外部检索出错：${err}`, targetList);
   } finally {
+    hideLoading();
     consumePendingExternal();
   }
   return true;

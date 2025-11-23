@@ -7,8 +7,29 @@
     <!-- Tailwind CSS via CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-      // Tailwind on-the-fly config (optional): enable class-based dark mode
-      tailwind.config = { darkMode: "class" };
+      // Tailwind on-the-fly config: enable class-based dark mode and custom animations
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            keyframes: {
+              breath: {
+                '0%, 100%': { transform: 'scale(1)', filter: 'brightness(1)' },
+                '50%': { transform: 'scale(1.05)', filter: 'brightness(1.1)' },
+              },
+              scan: {
+                '0%, 100%': { transform: 'rotate(0deg) translateX(0)' },
+                '25%': { transform: 'rotate(-15deg) translateX(-3px)' },
+                '75%': { transform: 'rotate(15deg) translateX(3px)' },
+              }
+            },
+            animation: {
+              breath: 'breath 3s ease-in-out infinite',
+              scan: 'scan 2.5s ease-in-out infinite',
+            }
+          }
+        }
+      };
     </script>
     <!-- D3 (local file served via FastAPI static mount) -->
     <script src="/static/d3@7.js"></script>
@@ -338,6 +359,52 @@
         <div class="text-xs text-slate-500 dark:text-slate-400 text-center">
           已启用 <span id="mcpActiveCount" class="font-bold text-indigo-600 dark:text-indigo-400">0</span> 个服务
         </div>
+      </div>
+    </div>
+
+    <!-- Global Loading Overlay -->
+    <div id="globalLoader" class="fixed inset-0 z-[100] bg-slate-50/80 dark:bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center transition-opacity duration-300 opacity-0 pointer-events-none">
+      <div class="relative">
+        <!-- Outer Glow -->
+        <div class="absolute inset-0 bg-indigo-500 blur-3xl opacity-20 animate-pulse rounded-full"></div>
+        
+        <svg class="relative w-32 h-32 drop-shadow-2xl" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="shieldGradLoader" x1="4" y1="2" x2="20" y2="22" gradientUnits="userSpaceOnUse">
+              <stop stop-color="#4f46e5" />
+              <stop offset="1" stop-color="#7c3aed" />
+            </linearGradient>
+          </defs>
+          
+          <!-- Shield Background with breathing animation -->
+          <g class="origin-center animate-[breath_3s_ease-in-out_infinite]">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="url(#shieldGradLoader)" />
+          </g>
+          
+          <!-- Inner Content -->
+          <g stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <!-- Network Nodes with sequential pulsing -->
+            <g>
+              <circle cx="12" cy="9" r="1.2" fill="white" stroke="none" class="animate-[ping_2s_cubic-bezier(0,0,0.2,1)_infinite]" style="animation-delay: 0s; transform-origin: 12px 9px;" />
+              <circle cx="12" cy="9" r="1.2" fill="white" stroke="none" />
+              
+              <circle cx="8.5" cy="13.5" r="1.2" fill="white" stroke="none" class="animate-[ping_2s_cubic-bezier(0,0,0.2,1)_infinite]" style="animation-delay: 0.5s; transform-origin: 8.5px 13.5px;" />
+              <circle cx="8.5" cy="13.5" r="1.2" fill="white" stroke="none" />
+              
+              <path d="M12 9L8.5 13.5M12 9l3.5 4.5" class="opacity-80" />
+            </g>
+            
+            <!-- Magnifier with scanning animation -->
+            <g class="origin-[15.5px_13.5px] animate-[scan_2.5s_ease-in-out_infinite]">
+              <circle cx="15.5" cy="13.5" r="2" />
+              <path d="M17 15l1.5 1.5" />
+            </g>
+          </g>
+        </svg>
+      </div>
+      <div class="mt-8 flex flex-col items-center gap-2">
+        <h3 class="text-xl font-bold text-slate-800 dark:text-white tracking-tight">智网 AI</h3>
+        <p class="text-sm text-indigo-600 dark:text-indigo-400 font-medium animate-pulse">正在分析数据...</p>
       </div>
     </div>
 

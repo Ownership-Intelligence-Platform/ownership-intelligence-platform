@@ -2,6 +2,7 @@
 // All comments are in English to keep consistency with backend code.
 
 import { loadLayers } from "./layers.js";
+import { showLoading, hideLoading } from "./utils.js";
 
 function val(id) {
   const el = document.getElementById(id);
@@ -14,21 +15,26 @@ function num(id) {
   return isNaN(n) ? null : n;
 }
 async function postJson(url, body) {
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body || {}),
-  });
-  const text = await res.text();
-  let data = null;
+  showLoading("正在提交数据...");
   try {
-    data = JSON.parse(text);
-  } catch {
-    data = text;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body || {}),
+    });
+    const text = await res.text();
+    let data = null;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = text;
+    }
+    if (!res.ok)
+      throw new Error(typeof data === "string" ? data : JSON.stringify(data));
+    return data;
+  } finally {
+    hideLoading();
   }
-  if (!res.ok)
-    throw new Error(typeof data === "string" ? data : JSON.stringify(data));
-  return data;
 }
 function setStatus(msg, timeout = 2000) {
   const el = document.getElementById("status");

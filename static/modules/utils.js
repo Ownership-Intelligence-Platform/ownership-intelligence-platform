@@ -52,12 +52,8 @@ export async function resolveEntityInput(input) {
     }
     return matches[idx].id;
   }
-  if (data && data.ok && data.entity && data.entity.id) {
-    return data.entity.id;
-  }
-  // Fallback: if the server returned plain entity
-  if (data && data.id) return data.id;
-  return null;
+  // Exact match
+  return data.id;
 }
 
 /**
@@ -87,4 +83,27 @@ export async function tryResolveEntityInput(input) {
   if (data && data.ok && data.entity && data.entity.id) return data.entity.id;
   if (data && data.id) return data.id;
   return null;
+}
+
+/**
+ * Show the global loading overlay with optional message.
+ */
+export function showLoading(message = "正在分析数据...") {
+  const loader = document.getElementById("globalLoader");
+  if (!loader) return;
+
+  // Update message if provided
+  const msgEl = loader.querySelector("p");
+  if (msgEl) msgEl.textContent = message;
+
+  loader.classList.remove("opacity-0", "pointer-events-none");
+}
+
+/**
+ * Hide the global loading overlay.
+ */
+export function hideLoading() {
+  const loader = document.getElementById("globalLoader");
+  if (!loader) return;
+  loader.classList.add("opacity-0", "pointer-events-none");
 }

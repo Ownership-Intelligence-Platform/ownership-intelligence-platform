@@ -1,15 +1,19 @@
 // DB actions (populate & clear)
 
+import { showLoading, hideLoading } from "./utils.js";
+
 /** Populate mock data via backend endpoint, then refresh layers UI. */
 export async function populateMock(onAfterPopulate) {
   const statusEl = document.getElementById("status");
   statusEl.textContent = "Populating...";
+  showLoading("正在生成示例数据...");
   const res = await fetch("/populate-mock", { method: "POST" });
   const txt = await res.json().catch(() => ({ message: res.statusText }));
   statusEl.textContent = JSON.stringify(txt);
   try {
     if (typeof onAfterPopulate === "function") await onAfterPopulate();
   } catch {}
+  hideLoading();
   setTimeout(() => (statusEl.textContent = ""), 3000);
 }
 
@@ -17,6 +21,7 @@ export async function populateMock(onAfterPopulate) {
 export async function importPersons(onAfterImport) {
   const statusEl = document.getElementById("status");
   statusEl.textContent = "Importing persons...";
+  showLoading("正在导入人员扩展数据...");
   try {
     const res = await fetch("/persons/import", {
       method: "POST",
@@ -30,6 +35,7 @@ export async function importPersons(onAfterImport) {
   } catch (e) {
     statusEl.textContent = `Failed persons import: ${e}`;
   } finally {
+    hideLoading();
     setTimeout(() => (statusEl.textContent = ""), 4000);
   }
 }
@@ -42,6 +48,7 @@ export async function clearDb() {
     return;
   const statusEl = document.getElementById("status");
   statusEl.textContent = "Clearing database…";
+  showLoading("正在清空数据库...");
   try {
     const res = await fetch("/clear-db", { method: "POST" });
     const data = await res.json().catch(() => ({ message: res.statusText }));
@@ -53,6 +60,7 @@ export async function clearDb() {
   } catch (e) {
     statusEl.textContent = `Failed to clear: ${e}`;
   } finally {
+    hideLoading();
     setTimeout(() => (statusEl.textContent = ""), 3000);
   }
 }

@@ -5,6 +5,8 @@
 // - Other/person nodes: circle with fill #6366f1
 // - SHARE_COMPANY link color: #6b7280 (others vary by relation)
 
+import { showLoading, hideLoading } from "./utils.js";
+
 function getParam(name) {
   const params = new URLSearchParams(window.location.search);
   return params.get(name);
@@ -203,6 +205,7 @@ async function load() {
   }
   const status = document.getElementById("status");
   status.textContent = "Loading network…";
+  showLoading("正在分析人物关系...");
   try {
     const [data, ao] = await Promise.all([
       fetchNetwork(pid),
@@ -251,6 +254,7 @@ async function load() {
   } catch (e) {
     document.getElementById("raw").textContent = String(e);
   } finally {
+    hideLoading();
     setTimeout(() => (status.textContent = ""), 1500);
   }
 }

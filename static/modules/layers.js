@@ -2,7 +2,7 @@
 import { buildTreeFromPaths, renderTree } from "./tree.js";
 import { loadRepresentatives } from "./representatives.js";
 import { loadNews } from "./news.js";
-import { resolveEntityInput } from "./utils.js";
+import { resolveEntityInput, showLoading, hideLoading } from "./utils.js";
 
 /** Load ownership layers and then representatives + news for the root. */
 export async function loadLayers() {
@@ -18,6 +18,7 @@ export async function loadLayers() {
   const treeEl = document.getElementById("layersTree");
   const statusEl = document.getElementById("status");
   statusEl.textContent = "Loading layers…";
+  showLoading("正在分析股权结构...");
   try {
     const res = await fetch(
       `/layers/${encodeURIComponent(rootId)}?depth=${depth}`
@@ -39,6 +40,7 @@ export async function loadLayers() {
   } catch (e) {
     treeEl.textContent = `Error: ${e}`;
   } finally {
+    hideLoading();
     setTimeout(() => (statusEl.textContent = ""), 1500);
   }
 }
