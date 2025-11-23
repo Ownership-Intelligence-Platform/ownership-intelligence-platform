@@ -65,7 +65,6 @@ header { padding-top: env(safe-area-inset-top); }
 
 /* Conversation card messages: default and tall variants */
 .chat-conversation-messages {
-    max-height: 28vh; /* default compact height */
     transition: max-height 220ms ease;
 }
 .chat-conversation-card--tall .chat-conversation-messages {
