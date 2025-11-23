@@ -24,16 +24,28 @@ export function renderPersonResolverCard(name, candidates, targetList) {
   card.appendChild(title);
   const listEl = document.createElement("ul");
   listEl.className = "space-y-0.5";
-  candidates.slice(0, 5).forEach((c) => {
+  candidates.slice(0, 5).forEach((c, idx) => {
     const li = document.createElement("li");
+    // Highlight the top candidate visually
+    const baseClass =
+      "flex items-start justify-between gap-2 border-t first:border-t-0 pt-1 first:pt-0 mt-1 first:mt-0";
     li.className =
-      "flex items-start justify-between gap-2 border-t border-emerald-100/60 dark:border-emerald-700/60 first:border-t-0 pt-1 first:pt-0 mt-1 first:mt-0";
+      idx === 0
+        ? baseClass + " border-indigo-500 bg-indigo-50/40 dark:bg-indigo-900/20"
+        : baseClass + " border-emerald-100/60 dark:border-emerald-700/60";
     const left = document.createElement("div");
     left.className = "flex-1 min-w-0";
     const nameSpan = document.createElement("div");
-    nameSpan.className = "font-medium truncate";
+    nameSpan.className = "font-medium truncate flex items-center gap-2";
     const label = c.name || c.node_id || "(未命名)";
     nameSpan.textContent = label;
+    if (idx === 0) {
+      const badge = document.createElement("span");
+      badge.className =
+        "ml-2 inline-flex items-center rounded-full bg-indigo-600 text-white px-2 py-0.5 text-[10px]";
+      badge.textContent = "最匹配";
+      nameSpan.appendChild(badge);
+    }
     left.appendChild(nameSpan);
     const meta = document.createElement("div");
     meta.className = "text-[11px] text-emerald-700 dark:text-emerald-200/80";
