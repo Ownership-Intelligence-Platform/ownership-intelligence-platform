@@ -80,7 +80,17 @@ export async function handleChatSubmit({
   await processReply({ data, reply, candidate: candidate || text, targetList });
 
   // 9. Supplementary name scan & external prompt staging
-  await supplementaryScanAndStageExternal(candidate || text, targetList);
+  // Only perform the supplementary name scan when a confirmed person
+  // has been selected (rootId present and looks like a person id `P...`).
+  // This avoids showing name-scan information when no person was chosen.
+  try {
+    const rootVal = document.getElementById("rootId")?.value?.trim();
+    if (rootVal && /^P\w+/i.test(rootVal)) {
+      await supplementaryScanAndStageExternal(candidate || text, targetList);
+    }
+  } catch (_) {
+    // swallow and continue
+  }
 }
 
 function activateDockLayout() {
