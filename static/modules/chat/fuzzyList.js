@@ -30,7 +30,6 @@ export async function maybeRenderFuzzyList(text) {
     msgsLayout?.classList.remove("hidden");
     document.body.classList.add("chat-docked");
   }
-  revealDashboard();
   const convo = createConversationCard("对话");
   const targetList =
     convo?.messagesEl || document.getElementById("chatMessages");

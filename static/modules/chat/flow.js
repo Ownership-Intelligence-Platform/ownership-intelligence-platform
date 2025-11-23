@@ -42,7 +42,6 @@ export async function handleChatSubmit({
 
   // 2. Layout activation & base user message
   activateDockLayout();
-  revealDashboard();
   const convo = createConversationCard("对话");
   const targetList =
     convo?.messagesEl || document.getElementById("chatMessages");

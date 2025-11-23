@@ -35,12 +35,10 @@ export async function processReply({ data, reply, candidate, targetList }) {
   // Extract entity IDs
   const ids = extractEntityIds(reply);
   if (ids.length) {
+    // Attach clickable chips for any detected entity IDs. Loading the full
+    // dashboard snapshot must be an explicit user action (clicking a chip)
+    // so we avoid auto-displaying snapshots based solely on LLM output.
     attachIdChipsBelowLastAssistant(ids, list);
-    const first = ids[0];
-    const root = document.getElementById("rootId");
-    if (root) root.value = first;
-    revealDashboard();
-    await loadFullDashboardAndSnapshot(first, first, "Dashboard 快照");
   }
 
   // Sources list
