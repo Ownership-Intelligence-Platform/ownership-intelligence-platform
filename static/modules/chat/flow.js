@@ -5,6 +5,7 @@ import { fetchNameScan, renderNameScanCard, extractBirthdate } from "./scan.js";
 import { revealDashboard } from "./dashboard.js";
 import { createConversationCard, appendMessage } from "./conversation.js";
 import { renderPersonResolverCard } from "./personResolverCard.js";
+import { renderMcpResults } from "./mcpRenderer.js";
 import { triggerDashboardIntents } from "./intents.js";
 import {
   chatState,
@@ -112,15 +113,57 @@ export async function handleChatSubmit({
             console.error("Failed to render person resolver card", e);
           }
         } else {
+          // No internal graph candidates: fallback to querying configured MCPs (mocked)
           appendMessage(
             "assistant",
-            "未在内部图谱中找到候选（或已出现歧义）。请尝试仅输入姓名或使用建议列表以获取候选。",
+            "未在内部图谱中找到候选。已尝试从公开来源进行联查（来自配置的 MCP）。",
             targetList
           );
           pushHistory(
             "assistant",
-            "未在内部图谱中找到候选，已用 LLM 仅做抽取（无候选）。"
+            "未在内部图谱中找到候选，开始从 MCP 联查（mock）。"
           );
+          try {
+            const mcpResp = await fetch("/entities/mcp-search", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                query: text,
+                parsed: parsed || {},
+                top_k: 6,
+              }),
+            });
+            if (mcpResp.ok) {
+              const mcpData = await mcpResp.json();
+              const results = mcpData.results || [];
+              if (results.length) {
+                // Render MCP results card
+                try {
+                  renderMcpResults(parsed.name || text, results, targetList);
+                  pushHistory(
+                    "assistant",
+                    `从公开来源检索到 ${results.length} 条候选（mock）。`
+                  );
+                } catch (e) {
+                  console.error("Failed to render MCP results", e);
+                }
+              } else {
+                appendMessage(
+                  "assistant",
+                  "公开来源也未返回匹配结果。",
+                  targetList
+                );
+              }
+            } else {
+              appendMessage(
+                "assistant",
+                "调用公开来源检索失败（MCP）。",
+                targetList
+              );
+            }
+          } catch (err) {
+            console.error("MCP search error", err);
+          }
         }
       }
     } catch (err) {

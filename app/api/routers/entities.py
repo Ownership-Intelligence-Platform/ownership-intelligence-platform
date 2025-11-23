@@ -31,6 +31,10 @@ from app.services.name_variant_service import expand_name_variants, match_watchl
 from app.services.graph_rag import resolve_graphrag
 from app.models.graph_rag import ResolveRAGRequest, ResolveRAGResponse
 from app.services.query_parser_service import parse_person_query
+from app.services.mcp_mock import mcp_search
+from app.services.graph import create_or_update_person_extended, get_person_extended
+import time
+from typing import List
 
 router = APIRouter(tags=["entities"])
 
@@ -238,6 +242,60 @@ def api_parse_and_resolve(payload: Dict[str, Any]):
         raise
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Parse-and-resolve failed: {exc}")
+
+
+@router.post("/entities/mcp-search")
+def api_entities_mcp_search(payload: Dict[str, Any]):
+    """Search configured external MCPs (mock) and return aggregated results.
+
+    Payload: { "query": "...", "parsed": {...}, "sources": ["qichacha","tianyancha"], "top_k": 5 }
+    """
+    try:
+        query = str(payload.get("query") or "").strip()
+        parsed = payload.get("parsed") or {}
+        top_k = int(payload.get("top_k") or 5)
+        sources = payload.get("sources")
+        results = mcp_search(query=query, parsed=parsed, sources=sources, top_k=top_k)
+        return {"count": len(results), "results": results}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"MCP search failed: {exc}")
+
+
+@router.post("/entities/import-mcp")
+def api_entities_import_mcp(payload: Dict[str, Any]):
+    """Import selected MCP records as a new or updated Person entity.
+
+    Payload: { records: [...], name?: str, id?: str }
+    Returns the created/updated entity (extended) including id.
+    """
+    try:
+        records: List[Dict] = payload.get("records") or []
+        name = str(payload.get("name") or (records[0].get("name") if records else "未知"))
+        provided_id = payload.get("id")
+        person_id = provided_id or f"P{int(time.time() * 1000)}"
+
+        # Build provenance and basic_info from selected records (lightweight)
+        provenance = {
+            "mcp_import": {
+                "imported_at": int(time.time()),
+                "sources": list({r.get("source") for r in records if r.get("source")}),
+                "records": records,
+            }
+        }
+        basic_info = {"name_variants": [name], "source_summaries": [r.get("snippet") for r in records]}
+
+        # Create or update person with extended fields
+        create_or_update_person_extended(
+            person_id,
+            name=name,
+            type_="person",
+            basic_info=basic_info,
+            provenance=provenance,
+        )
+        ent = get_person_extended(person_id)
+        return {"ok": True, "entity": ent}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"MCP import failed: {exc}")
 
 @router.get("/entities/{entity_id}")
 def api_get_entity(entity_id: str):
