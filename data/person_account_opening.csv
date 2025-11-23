@@ -1,3 +1,4 @@
 person_id,name,id_no,phone,email,address,employer,bank_name,account_type,currencies,account_number
 P1,张伟,110101199001011234,13800138000,zhangwei@example.com,北京市朝阳区建国路 100 号,ABC 科技有限公司 / 软件工程师,HSBC,卓越理财账户,"CNY",6217861234567890
 P2,王刚,110101197512128765,13900139000,wanggang@example.com,北京市海淀区学院路 88 号,退休,ICBC,个人结算账户,"CNY",6222029876543210
+P2006,李晨,5101**********0006,13800666006,lichen.p2006@example.com,成都市武侯区人民南路 88 号,B6,Sichuan Bank,个人结算账户,"CNY",6217862006000006
