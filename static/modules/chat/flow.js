@@ -39,9 +39,23 @@ export async function handleChatSubmit({
   if (!text) return;
   const input = document.getElementById("chatInput");
 
-  // 1. Fuzzy multi-candidate pre-display (early return if card rendered)
-  const fuzzyHandled = await maybeRenderFuzzyList(text);
-  if (fuzzyHandled) return;
+  // Heuristic: detect short/simple name queries (e.g. "李晨") and skip the
+  // fuzzy pre-display so they follow the same parse-and-resolve -> graphRAG/MCP
+  // path as longer contextual queries such as "西安市的李晨". This makes
+  // the displayed candidate card consistent between short names and contextual
+  // queries.
+  const trimmed = String(text || "").trim();
+  const isChineseName = /^[\u4e00-\u9fff·•]{2,6}$/.test(trimmed);
+  const isLatinShortName =
+    /^[A-Za-z .,'-]{2,40}$/.test(trimmed) && trimmed.split(/\s+/).length <= 3;
+  const isShortName = isChineseName || isLatinShortName;
+
+  let fuzzyHandled = false;
+  if (!isShortName) {
+    // preserve existing fuzzy-list behavior for longer or complex queries
+    fuzzyHandled = await maybeRenderFuzzyList(text);
+    if (fuzzyHandled) return;
+  }
 
   // 2. Layout activation & base user message
   activateDockLayout();
