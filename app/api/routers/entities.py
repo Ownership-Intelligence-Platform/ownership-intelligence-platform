@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException
+from typing import Any, Dict
 from app.models.ownership import (
     EntityCreate,
     OwnershipCreate,
@@ -29,6 +30,7 @@ from app.services.name_screening_service import basic_name_scan
 from app.services.name_variant_service import expand_name_variants, match_watchlist_with_variants
 from app.services.graph_rag import resolve_graphrag
 from app.models.graph_rag import ResolveRAGRequest, ResolveRAGResponse
+from app.services.query_parser_service import parse_person_query
 
 router = APIRouter(tags=["entities"])
 
@@ -202,6 +204,40 @@ def api_resolve_graphrag(payload: ResolveRAGRequest):
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"GraphRAG resolution failed: {exc}")
     return res
+
+
+@router.post("/entities/parse-and-resolve")
+def api_parse_and_resolve(payload: Dict[str, Any]):
+    """Run LLM-powered parsing on free-form text, then resolve via graphRAG.
+
+    Expected payload: { "text": "...", "use_semantic": bool, "top_k": int }
+    Returns the raw resolver result (candidates, scores, metadata) plus the
+    parsed fields for transparency. Does not return LLM-generated explanatory text.
+    """
+    try:
+        text = str(payload.get("text") or "").strip()
+        if not text:
+            raise HTTPException(status_code=400, detail="Missing text field")
+        parsed = parse_person_query(text)
+        extra = {
+            "gender": parsed.get("gender"),
+            "address_keywords": parsed.get("address_keywords"),
+            "id_number_tail": parsed.get("id_number_tail"),
+        }
+        use_semantic = bool(payload.get("use_semantic", True))
+        top_k = int(payload.get("top_k") or 5)
+        res = resolve_graphrag(
+            name=parsed.get("name"),
+            birth_date=parsed.get("birth_date"),
+            extra=extra,
+            use_semantic=use_semantic,
+            top_k=top_k,
+        )
+        return {"parsed": parsed, "resolver": res}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Parse-and-resolve failed: {exc}")
 
 @router.get("/entities/{entity_id}")
 def api_get_entity(entity_id: str):

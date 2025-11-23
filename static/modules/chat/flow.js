@@ -4,6 +4,7 @@ import { externalLookup } from "../external.js";
 import { fetchNameScan, renderNameScanCard, extractBirthdate } from "./scan.js";
 import { revealDashboard } from "./dashboard.js";
 import { createConversationCard, appendMessage } from "./conversation.js";
+import { renderPersonResolverCard } from "./personResolverCard.js";
 import { triggerDashboardIntents } from "./intents.js";
 import {
   chatState,
@@ -13,8 +14,9 @@ import {
 } from "./state.js";
 import { maybeRenderFuzzyList } from "./fuzzyList.js";
 import { resolveQuotedCandidate, resolveWholeInput } from "./fastpaths.js";
-import { runLLM } from "./llm.js";
-import { processReply } from "./postReply.js";
+// LLM and post-processing disabled for graph-only mode per user preference.
+// import { runLLM } from "./llm.js";
+// import { processReply } from "./postReply.js";
 
 // Utility for toggling tall conversation card class (shared by fuzzy list)
 export function setLastConversationTall(isTall) {
@@ -66,18 +68,69 @@ export async function handleChatSubmit({
   const wholeHandled = await resolveWholeInput(text, targetList);
   if (wholeHandled) return;
 
-  // 7. LLM / graphRAG inference
-  const data = await runLLM({
-    text,
-    sysEl,
-    useWebEl,
-    webProviderEl,
-    targetList,
-  });
-  const reply = data.reply || "";
-
-  // 8. Reply post-processing (person resolver, hints, chips, sources)
-  await processReply({ data, reply, candidate: candidate || text, targetList });
+  // 7. Use LLM only for structured extraction: call backend parse-and-resolve
+  // endpoint which runs parse_person_query (LLM) then resolve_graphrag and
+  // returns structured candidates. We deliberately do not display any
+  // LLM-generated explanatory text — only the resolver candidates.
+  const noGraphMatch = !(quotedHandled || wholeHandled);
+  if (noGraphMatch) {
+    try {
+      const resp = await fetch("/entities/parse-and-resolve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, use_semantic: true, top_k: 5 }),
+      });
+      if (!resp.ok) {
+        // If parse-and-resolve fails or returns 404-like, fall back to UX msg
+        appendMessage(
+          "assistant",
+          "未在内部图谱中找到候选（或解析失败）。请尝试只输入姓名或使用建议列表。",
+          targetList
+        );
+        pushHistory("assistant", "图谱解析失败或无候选（parse-and-resolve）。");
+      } else {
+        const data = await resp.json();
+        const parsed = data.parsed || {};
+        const resolver = data.resolver || {};
+        const candidates = resolver.candidates || resolver["candidates"] || [];
+        if (candidates && candidates.length) {
+          // Render compact person resolver card (graph-only candidates)
+          try {
+            renderPersonResolverCard(
+              parsed.name || text,
+              candidates,
+              targetList
+            );
+            pushHistory(
+              "assistant",
+              `图谱匹配到 ${candidates.length} 个候选（仅显示前 ${Math.min(
+                5,
+                candidates.length
+              )} 条）。`
+            );
+          } catch (e) {
+            console.error("Failed to render person resolver card", e);
+          }
+        } else {
+          appendMessage(
+            "assistant",
+            "未在内部图谱中找到候选（或已出现歧义）。请尝试仅输入姓名或使用建议列表以获取候选。",
+            targetList
+          );
+          pushHistory(
+            "assistant",
+            "未在内部图谱中找到候选，已用 LLM 仅做抽取（无候选）。"
+          );
+        }
+      }
+    } catch (err) {
+      appendMessage(
+        "assistant",
+        `解析/检索出错：${err}。请重试或只输入姓名进行匹配。`,
+        targetList
+      );
+    }
+  }
 
   // 9. Supplementary name scan & external prompt staging
   // Only perform the supplementary name scan when a confirmed person
