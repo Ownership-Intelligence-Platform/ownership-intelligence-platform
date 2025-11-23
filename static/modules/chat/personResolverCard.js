@@ -112,7 +112,10 @@ export function renderPersonResolverCard(name, candidates, targetList) {
               snap.scrollIntoView({ behavior: "smooth", block: "center" });
               // briefly highlight
               snap.classList.add("ring-2", "ring-blue-300");
-              setTimeout(() => snap.classList.remove("ring-2", "ring-blue-300"), 1800);
+              setTimeout(
+                () => snap.classList.remove("ring-2", "ring-blue-300"),
+                1800
+              );
             }
           } catch (err) {
             console.error("Failed to load dashboard snapshot:", err);
