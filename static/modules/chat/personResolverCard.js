@@ -1,6 +1,7 @@
 // chat/personResolverCard.js
 // Renders the compact person resolver candidate card.
 import { revealDashboard, loadFullDashboardAndSnapshot } from "./dashboard.js";
+import { showLoading, hideLoading } from "../utils.js";
 
 export function renderPersonResolverCard(name, candidates, targetList) {
   if (!candidates || !candidates.length) return;
@@ -99,6 +100,7 @@ export function renderPersonResolverCard(name, candidates, targetList) {
           '<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h18M3 12h18M3 17h18"/></svg>' +
           "<span>查看 Dashboard</span>";
         primary.addEventListener("click", async () => {
+          showLoading("正在加载 Dashboard...");
           try {
             // Reveal canonical dashboard area and load a snapshot for this candidate
             revealDashboard();
@@ -119,6 +121,8 @@ export function renderPersonResolverCard(name, candidates, targetList) {
             }
           } catch (err) {
             console.error("Failed to load dashboard snapshot:", err);
+          } finally {
+            hideLoading();
           }
         });
         li.appendChild(primary);
