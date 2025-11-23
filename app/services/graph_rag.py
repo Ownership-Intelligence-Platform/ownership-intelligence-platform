@@ -103,6 +103,7 @@ def resolve_graphrag(
             sem_score = (float(sem_sims[idx]) + 1.0) / 2.0
         # dob bonus: look for exact birth_date match in known fields
         dob_bonus = 0.0
+        matched_fields: List[str] = []
         if birth_date:
             try:
                 # direct property (if importer stored it on the node)
@@ -110,12 +111,14 @@ def resolve_graphrag(
                     bi = c["basic_info"]
                     if str(bi.get("birth_date") or "") == birth_date:
                         dob_bonus = 0.3
+                        matched_fields.append("birth_date")
                 # fallback: id_info may embed date or id number with encoded DOB
                 if dob_bonus == 0.0 and isinstance(c.get("id_info"), dict):
                     ii = c["id_info"]
                     for v in ii.values():
                         if isinstance(v, str) and birth_date in v:
                             dob_bonus = 0.15
+                            matched_fields.append("id_info_match")
                             break
             except Exception:
                 dob_bonus = dob_bonus
@@ -126,20 +129,46 @@ def resolve_graphrag(
         else:
             final = 1.0 * fuzzy_score + dob_bonus
 
+        # Normalize composite into a stable 0..1 range for UI (max possible
+        # final value is 1.3 when dob_bonus=0.3 and other scores are 1.0).
+        max_possible = 1.3
+        try:
+            normalized_score = float(final) / float(max_possible) if max_possible else float(final)
+        except Exception:
+            normalized_score = float(final)
+        if normalized_score < 0:
+            normalized_score = 0.0
+        if normalized_score > 1.0:
+            normalized_score = 1.0
+
         results.append(
             {
                 "node_id": c.get("id"),
                 "labels": ["Person"] if (c.get("type") or "").lower() == "person" else [c.get("type")],
                 "name": c.get("name"),
                 "score": min(1.0, float(final)),
-                "matched_fields": [],
+                "fuzzy_score": float(fuzzy_score),
+                "semantic_score": float(sem_score),
+                "composite_score": float(final),
+                "normalized_score": float(normalized_score),
+                "matched_fields": matched_fields,
                 "evidence": _build_node_text(c),
                 "_raw": c,
             }
         )
 
     # sort and pick top_k
-    results = sorted(results, key=lambda r: r.get("score", 0.0), reverse=True)[:top_k]
+    # Sort primarily by normalized_score (0..1) to surface candidates that
+    # rank higher after accounting for DOB bonuses and semantic similarity.
+    # Use composite_score as a tiebreaker for stability.
+    results = sorted(
+        results,
+        key=lambda r: (
+            float(r.get("normalized_score", 0.0)),
+            float(r.get("composite_score", 0.0)),
+        ),
+        reverse=True,
+    )[:top_k]
 
     # attach small subgraph for top candidate(s)
     subgraphs: Dict[str, Any] = {}
