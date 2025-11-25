@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from app.services.llm_client import get_llm_client
 from app.services.query_parser_service import parse_person_query
 from app.services.graph_rag import resolve_graphrag
+from app.services.youtu_service import ask_youtu
 
 
 router = APIRouter(tags=["chat"])
@@ -29,10 +30,12 @@ class ChatRequest(BaseModel):
     web_provider: Optional[str] = "auto"  # auto|ddg|bing
     # Optional: enable smart person/entity resolution via graphRAG
     use_person_resolver: Optional[bool] = False
+    # Optional: enable Youtu GraphRAG
+    use_youtu: Optional[bool] = False
 
 
 @router.post("/chat")
-def chat(req: ChatRequest) -> Dict[str, Any]:
+async def chat(req: ChatRequest) -> Dict[str, Any]:
     """Simple chat endpoint backed by the LLM client.
 
     Request JSON:
@@ -42,6 +45,15 @@ def chat(req: ChatRequest) -> Dict[str, Any]:
     - temperature, max_tokens: optional generation controls
     """
     try:
+        if req.use_youtu:
+            youtu_resp = await ask_youtu(req.message)
+            return {
+                "reply": youtu_resp.get("answer", ""),
+                "model": "youtu-graphrag",
+                "usage": {},
+                "youtu_data": youtu_resp
+            }
+
         messages: List[Dict[str, str]] = []
         if req.system_prompt:
             messages.append({"role": "system", "content": req.system_prompt})

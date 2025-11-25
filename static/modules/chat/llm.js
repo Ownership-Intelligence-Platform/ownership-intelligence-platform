@@ -9,6 +9,7 @@ export async function runLLM({
   useWebEl,
   webProviderEl,
   targetList,
+  useYoutu = false,
 }) {
   appendMessage("assistant", "…", targetList);
   try {
@@ -19,6 +20,7 @@ export async function runLLM({
       use_web: !!(useWebEl && useWebEl.checked),
       web_provider: webProviderEl ? webProviderEl.value : undefined,
       use_person_resolver: true,
+      use_youtu: useYoutu,
     };
     const resp = await fetch("/chat", {
       method: "POST",

@@ -17,7 +17,7 @@ import { maybeRenderFuzzyList } from "./fuzzyList.js";
 import { resolveQuotedCandidate, resolveWholeInput } from "./fastpaths.js";
 import { showLoading, hideLoading } from "../utils.js";
 // LLM and post-processing disabled for graph-only mode per user preference.
-// import { runLLM } from "./llm.js";
+import { runLLM } from "./llm.js";
 // import { processReply } from "./postReply.js";
 
 // Utility for toggling tall conversation card class (shared by fuzzy list)
@@ -66,6 +66,25 @@ export async function handleChatSubmit({
   appendMessage("user", text, targetList);
   pushHistory("user", text);
   if (input) input.value = "";
+
+  // Check Youtu toggle
+  const useYoutuEl = document.getElementById("chatUseYoutu");
+  if (useYoutuEl && useYoutuEl.checked) {
+    showLoading("正在调用 Youtu GraphRAG...");
+    try {
+      await runLLM({
+        text,
+        sysEl,
+        useWebEl,
+        webProviderEl,
+        targetList,
+        useYoutu: true,
+      });
+    } finally {
+      hideLoading();
+    }
+    return;
+  }
 
   // 3. Lightweight dashboard intents
   triggerDashboardIntents(text);
