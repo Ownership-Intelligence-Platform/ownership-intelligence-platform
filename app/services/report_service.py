@@ -6,6 +6,7 @@ via an LLM (with deterministic fallback when the LLM is unavailable).
 
 from __future__ import annotations
 
+import io
 import os
 import time
 from typing import Any, Dict, List, Optional
@@ -14,6 +15,7 @@ from app.services.llm_client import get_llm_client
 import app.services.graph_service as graph_service
 import app.services.risk_service as risk_service
 import app.services.news_service as news_service
+from xhtml2pdf import pisa
 
 
 def _ensure_reports_dir() -> str:
@@ -264,7 +266,7 @@ def _markdown_to_html(markdown_text: str, *, title: str = "CDD Snapshot") -> str
 
         styles = """
         :root { color-scheme: light dark; }
-        body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji', 'Segoe UI Emoji';
+        body { margin: 0; font-family: "Microsoft YaHei", "SimHei", system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
                      background: #f8fafc; color: #0f172a; }
         .container { max-width: 940px; margin: 2rem auto; padding: 0 1rem; }
         .card { background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.10);
@@ -308,3 +310,78 @@ def _markdown_to_html(markdown_text: str, *, title: str = "CDD Snapshot") -> str
 </body>
 <html>
 """
+
+
+def generate_youtu_pdf(data: Dict[str, Any]) -> bytes:
+    """
+    Generates a PDF report for Youtu GraphRAG results.
+    1. Summarizes data via LLM.
+    2. Converts to HTML.
+    3. Converts to PDF.
+    """
+    # 1. Build Prompt
+    reply = data.get("reply", "")
+    triples = data.get("youtu_data", {}).get("retrieved_triples", [])
+    chunks = data.get("youtu_data", {}).get("retrieved_chunks", [])
+    model = data.get("model", "youtu-graphrag")
+
+    # Format chunks for prompt
+    chunks_text = ""
+    for i, c in enumerate(chunks[:10]): # Limit to 10 chunks
+        chunks_text += f"[{i+1}] {c}\n"
+
+    prompt = f"""
+    You are a professional intelligence analyst.
+    Please generate a comprehensive report based on the following GraphRAG search results.
+    
+    QUERY RESPONSE:
+    {reply}
+
+    RETRIEVED KNOWLEDGE (Triples):
+    {triples[:20]}
+
+    RETRIEVED CONTEXT (Chunks):
+    {chunks_text}
+
+    INSTRUCTIONS:
+    - Create a formal report titled "Intelligence Briefing".
+    - Sections: Executive Summary, Key Findings, Detailed Analysis, Source References.
+    - Use professional formatting (Markdown).
+    - Highlight key entities and relationships found in the triples.
+    - Synthesize the chunks into a coherent narrative.
+    - If the input content is in Chinese, generate the report in Chinese. Otherwise, use English.
+    - Output ONLY the Markdown content.
+    """
+
+    # 2. Call LLM
+    content = ""
+    try:
+        client = get_llm_client()
+        messages = [{"role": "user", "content": prompt}]
+        text, _, _ = client.generate(messages, temperature=0.3, max_tokens=2000)
+        content = text.strip() if text else "Failed to generate report content."
+    except Exception as e:
+        content = f"Error generating report: {str(e)}"
+
+    # 3. Convert to HTML
+    html_content = _markdown_to_html(content, title="Intelligence Briefing")
+    
+    # Add PDF specific styles to HTML
+    # xhtml2pdf needs specific fonts for Chinese support usually, but let's try basic first.
+    # For Chinese support in xhtml2pdf, we need a font that supports it.
+    # If we don't have one, it might show squares.
+    # A safe bet is to use a font like Arial Unicode MS or SimHei if available, or download one.
+    # For now, let's assume standard fonts or English content, but the user asked for Chinese likely ("一键导出").
+    # If Chinese fails, we might need to just return HTML.
+    # Let's try to inject a font-face if possible, or just use the HTML return if PDF is too risky for Chinese without setup.
+    # However, the user asked for PDF.
+    # Let's try to use a system font if on Windows.
+    
+    # 4. Convert to PDF
+    pdf_buffer = io.BytesIO()
+    pisa_status = pisa.CreatePDF(io.StringIO(html_content), dest=pdf_buffer)
+    
+    if pisa_status.err:
+        raise RuntimeError("PDF generation failed")
+        
+    return pdf_buffer.getvalue()

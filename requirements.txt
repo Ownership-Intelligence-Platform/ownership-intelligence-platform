@@ -12,3 +12,5 @@ lxml>=4.9.3
 selectolax>=0.3.21
 APScheduler>=3.10.4
 tenacity>=8.2.3
+markdown>=3.4.0
+xhtml2pdf>=0.2.11

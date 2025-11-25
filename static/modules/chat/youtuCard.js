@@ -16,16 +16,61 @@ export function renderYoutuCard(data, targetList) {
   const header = document.createElement("div");
   header.className =
     "px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 flex items-center justify-between";
+
+  const btnId = `btn-export-pdf-${Date.now()}-${Math.floor(
+    Math.random() * 1000
+  )}`;
   header.innerHTML = `
     <div class="flex items-center gap-2">
       <span class="flex h-2 w-2 rounded-full bg-indigo-500"></span>
       <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-200">Youtu GraphRAG 结果</h3>
     </div>
-    <span class="text-xs text-slate-500 dark:text-slate-400">Model: ${
-      data.model || "youtu-graphrag"
-    }</span>
+    <div class="flex items-center gap-3">
+        <button id="${btnId}" class="text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 px-2 py-1 rounded shadow-sm transition-colors flex items-center gap-1">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            Export PDF
+        </button>
+        <span class="text-xs text-slate-500 dark:text-slate-400">Model: ${
+          data.model || "youtu-graphrag"
+        }</span>
+    </div>
   `;
   card.appendChild(header);
+
+  // Event Listener for PDF Export
+  setTimeout(() => {
+    const btn = document.getElementById(btnId);
+    if (btn) {
+      btn.addEventListener("click", async () => {
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<span class="animate-spin">↻</span> Generating...';
+        btn.disabled = true;
+        try {
+          const response = await fetch("/reports/youtu-pdf", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data),
+          });
+          if (!response.ok) throw new Error("Export failed");
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `intelligence_briefing_${Date.now()}.pdf`;
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(url);
+          a.remove();
+        } catch (e) {
+          console.error(e);
+          alert("Failed to generate PDF");
+        } finally {
+          btn.innerHTML = originalText;
+          btn.disabled = false;
+        }
+      });
+    }
+  }, 0);
 
   // Content Body
   const body = document.createElement("div");
