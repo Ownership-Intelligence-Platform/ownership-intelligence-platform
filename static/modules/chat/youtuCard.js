@@ -20,6 +20,12 @@ export function renderYoutuCard(data, targetList) {
   const btnId = `btn-export-pdf-${Date.now()}-${Math.floor(
     Math.random() * 1000
   )}`;
+
+  const modelLabel = data.model || "youtu-graphrag";
+  const agentLabel = data.agent_type
+    ? ` • ${data.agent_type.toUpperCase()} AGENT`
+    : "";
+
   header.innerHTML = `
     <div class="flex items-center gap-2">
       <span class="flex h-2 w-2 rounded-full bg-indigo-500"></span>
@@ -30,9 +36,7 @@ export function renderYoutuCard(data, targetList) {
             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
             Export PDF
         </button>
-        <span class="text-xs text-slate-500 dark:text-slate-400">Model: ${
-          data.model || "youtu-graphrag"
-        }</span>
+        <span class="text-xs text-slate-500 dark:text-slate-400">${modelLabel}${agentLabel}</span>
     </div>
   `;
   card.appendChild(header);
@@ -85,40 +89,67 @@ export function renderYoutuCard(data, targetList) {
     body.appendChild(answerDiv);
   }
 
-  // 2. Visualization (Triples Graph)
-  const triples = data.youtu_data?.retrieved_triples || [];
-  if (triples.length > 0) {
-    const graphWrapper = document.createElement("div");
-    graphWrapper.className =
-      "relative w-full rounded border border-slate-200 dark:border-slate-700 overflow-hidden bg-slate-50 dark:bg-slate-900";
+  // 2. Visualization (Triples Graph) - Multiple Graphs Support
+  const graphs = data.graphs || [];
+  // Fallback for legacy single graph response
+  if (graphs.length === 0 && data.youtu_data?.retrieved_triples?.length > 0) {
+    graphs.push({
+      title: "Knowledge Graph",
+      triples: data.youtu_data.retrieved_triples,
+    });
+  }
 
-    // Increased height for better visibility
-    const graphContainer = document.createElement("div");
-    graphContainer.className = "h-96 w-full";
-    graphWrapper.appendChild(graphContainer);
+  if (graphs.length > 0) {
+    graphs.forEach((graphData, index) => {
+      if (!graphData.triples || graphData.triples.length === 0) return;
 
-    // Legend Overlay
-    const legendDiv = document.createElement("div");
-    legendDiv.className =
-      "absolute top-2 left-2 bg-white/90 dark:bg-slate-800/90 p-2 rounded border border-slate-200 dark:border-slate-700 text-xs shadow-sm pointer-events-none";
-    legendDiv.innerHTML = `
-      <div class="flex items-center gap-2 mb-1"><span class="w-2 h-2 rounded-full bg-indigo-500"></span> Person (人物)</div>
-      <div class="flex items-center gap-2 mb-1"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Organization (机构)</div>
-      <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-amber-500"></span> Other (其他)</div>
-    `;
-    graphWrapper.appendChild(legendDiv);
+      const graphWrapper = document.createElement("div");
+      graphWrapper.className =
+        "relative w-full rounded border border-slate-200 dark:border-slate-700 overflow-hidden bg-slate-50 dark:bg-slate-900 mb-6";
 
-    // Help Text Overlay
-    const helpDiv = document.createElement("div");
-    helpDiv.className =
-      "absolute bottom-2 right-2 text-[10px] text-slate-400 pointer-events-none select-none";
-    helpDiv.textContent = "支持拖拽节点 · 滚轮缩放 · 双击复位";
-    graphWrapper.appendChild(helpDiv);
+      // Graph Title
+      if (graphData.title) {
+        const titleDiv = document.createElement("div");
+        titleDiv.className =
+          "px-3 py-2 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide";
+        titleDiv.textContent = graphData.title;
+        graphWrapper.appendChild(titleDiv);
+      }
 
-    body.appendChild(graphWrapper);
+      // Increased height for better visibility
+      const graphContainer = document.createElement("div");
+      graphContainer.className = "h-96 w-full";
+      graphWrapper.appendChild(graphContainer);
 
-    // Defer graph rendering slightly to ensure container has dimensions
-    setTimeout(() => renderTriplesGraph(graphContainer, triples), 50);
+      // Legend Overlay
+      const legendDiv = document.createElement("div");
+      legendDiv.className =
+        "absolute top-2 left-2 bg-white/90 dark:bg-slate-800/90 p-2 rounded border border-slate-200 dark:border-slate-700 text-xs shadow-sm pointer-events-none z-10";
+      legendDiv.innerHTML = `
+          <div class="flex items-center gap-2 mb-1"><span class="w-2 h-2 rounded-full bg-indigo-500"></span> Person (人物)</div>
+          <div class="flex items-center gap-2 mb-1"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Organization (机构)</div>
+          <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-amber-500"></span> Other (其他)</div>
+        `;
+      if (graphData.title) {
+        legendDiv.style.top = "40px";
+      }
+      graphWrapper.appendChild(legendDiv);
+
+      // Help Text Overlay
+      const helpDiv = document.createElement("div");
+      helpDiv.className =
+        "absolute bottom-2 right-2 text-[10px] text-slate-400 pointer-events-none select-none";
+      helpDiv.textContent = "支持拖拽节点 · 滚轮缩放 · 双击复位";
+      graphWrapper.appendChild(helpDiv);
+
+      body.appendChild(graphWrapper);
+
+      // Defer graph rendering slightly to ensure container has dimensions
+      setTimeout(
+        () => renderTriplesGraph(graphContainer, graphData.triples),
+        50 + index * 100
+      );
+    });
   }
 
   // 3. Sources / Chunks

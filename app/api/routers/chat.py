@@ -7,6 +7,7 @@ from app.services.llm_client import get_llm_client
 from app.services.query_parser_service import parse_person_query
 from app.services.graph_rag import resolve_graphrag
 from app.services.youtu_service import ask_youtu
+from app.services.agent_service import classify_intent, run_person_agent, run_company_agent, run_general_agent
 
 
 router = APIRouter(tags=["chat"])
@@ -46,13 +47,13 @@ async def chat(req: ChatRequest) -> Dict[str, Any]:
     """
     try:
         if req.use_youtu:
-            youtu_resp = await ask_youtu(req.message)
-            return {
-                "reply": youtu_resp.get("answer", ""),
-                "model": "youtu-graphrag",
-                "usage": {},
-                "youtu_data": youtu_resp
-            }
+            intent = await classify_intent(req.message)
+            if intent == "person":
+                return await run_person_agent(req.message)
+            elif intent == "company":
+                return await run_company_agent(req.message)
+            else:
+                return await run_general_agent(req.message)
 
         messages: List[Dict[str, str]] = []
         if req.system_prompt:
