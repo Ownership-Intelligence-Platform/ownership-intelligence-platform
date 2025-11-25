@@ -15,14 +15,85 @@ from app.services.llm_client import get_llm_client
 import app.services.graph_service as graph_service
 import app.services.risk_service as risk_service
 import app.services.news_service as news_service
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 from xhtml2pdf import pisa
+from xhtml2pdf.default import DEFAULT_FONT
+
+
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+STATIC_FONTS_DIR = os.path.join(ROOT_DIR, "static", "fonts")
 
 
 def _ensure_reports_dir() -> str:
-    root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-    out_dir = os.path.join(root, "reports")
+    out_dir = os.path.join(ROOT_DIR, "reports")
     os.makedirs(out_dir, exist_ok=True)
     return out_dir
+
+
+def _get_static_file(*parts: str) -> str:
+    return os.path.join(ROOT_DIR, *parts)
+
+
+def _register_pdf_fonts() -> None:
+    if getattr(_register_pdf_fonts, "_done", False):
+        return
+
+    fonts = [
+        ("SimHei", "Simhei.ttf"),
+        ("MicrosoftYaHei", "msyh.ttf"),
+    ]
+    for family, filename in fonts:
+        font_path = os.path.join(STATIC_FONTS_DIR, filename)
+        if not os.path.isfile(font_path):
+            continue
+        try:
+            if family not in pdfmetrics.getRegisteredFontNames():
+                pdfmetrics.registerFont(TTFont(family, font_path))
+            DEFAULT_FONT[family.lower()] = family
+            DEFAULT_FONT[family.replace("YaHei", " YaHei").lower()] = family
+            if family == "MicrosoftYaHei":
+                DEFAULT_FONT["microsoft yahei"] = family
+                DEFAULT_FONT["yahei"] = family
+            if family == "SimHei":
+                DEFAULT_FONT["simhei"] = family
+                DEFAULT_FONT["sim hei"] = family
+        except Exception:
+            continue
+
+    _register_pdf_fonts._done = True
+
+
+def _xhtml2pdf_link_callback(uri: str, rel: str) -> str:
+    if uri.startswith("file://"):
+        from urllib.parse import urlparse, unquote
+
+        parsed = urlparse(uri)
+        path = unquote(parsed.path)
+        if os.name == "nt" and path.startswith("/"):
+            path = path[1:]
+        return path
+
+    if uri.startswith("http://") or uri.startswith("https://"):
+        return uri
+
+    abs_path = _get_static_file(uri)
+    if os.path.isfile(abs_path):
+        return abs_path
+    return uri
+
+
+def _render_pdf_with_xhtml2pdf(html_content: str) -> bytes:
+    pdf_buffer = io.BytesIO()
+    pisa_status = pisa.CreatePDF(
+        io.StringIO(html_content),
+        dest=pdf_buffer,
+        encoding="utf-8",
+        link_callback=_xhtml2pdf_link_callback,
+    )
+    if pisa_status.err:
+        raise RuntimeError("PDF generation failed")
+    return pdf_buffer.getvalue()
 
 
 def _build_bundle(entity_id: str, *, depth: int = 3, news_limit: int = 10) -> Dict[str, Any]:
@@ -247,49 +318,49 @@ def generate_cdd_report(
 
 
 def _markdown_to_html(markdown_text: str, *, title: str = "CDD Snapshot") -> str:
-        """Convert Markdown to a standalone HTML document with minimal styling.
+    """Convert Markdown to a standalone HTML document with minimal styling."""
 
-        Uses the 'markdown' package if available; otherwise falls back to preformatted output.
-        """
-        doc_body: str
-        try:
-                import markdown  # type: ignore
-                doc_body = markdown.markdown(
-                        markdown_text,
-                        extensions=["extra", "sane_lists", "toc"],
-                        output_format="html5",
-                )
-        except Exception:
-                import html as _html
-                escaped = _html.escape(markdown_text)
-                doc_body = f"<pre>{escaped}</pre>"
+    doc_body: str
+    try:
+        import markdown  # type: ignore
 
-        styles = """
-        :root { color-scheme: light dark; }
-        body { margin: 0; font-family: "Microsoft YaHei", "SimHei", system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-                     background: #f8fafc; color: #0f172a; }
-        .container { max-width: 940px; margin: 2rem auto; padding: 0 1rem; }
-        .card { background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.10);
-                        padding: 24px; border: 1px solid #e5e7eb; }
-        h1, h2, h3 { color: #0f172a; }
-        h1 { font-size: 1.75rem; margin-top: 0; }
-        h2 { font-size: 1.25rem; margin-top: 1.5rem; }
-        h3 { font-size: 1.1rem; margin-top: 1.25rem; }
-        p { line-height: 1.5; }
-        code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
-        pre { background: #0b1220; color: #e2e8f0; padding: 12px; border-radius: 8px; overflow: auto; }
-        ul, ol { padding-left: 1.25rem; }
-        a { color: #2563eb; text-decoration: none; }
-        a:hover { text-decoration: underline; }
-        @media (prefers-color-scheme: dark) {
-            body { background: #0b1220; color: #e5e7eb; }
-            .card { background: #0f172a; border-color: #1f2937; }
-            h1, h2, h3 { color: #e5e7eb; }
-            a { color: #93c5fd; }
-        }
-        """
+        doc_body = markdown.markdown(
+            markdown_text,
+            extensions=["extra", "sane_lists", "toc"],
+            output_format="html5",
+        )
+    except Exception:
+        import html as _html
 
-        return f"""
+        escaped = _html.escape(markdown_text)
+        doc_body = f"<pre>{escaped}</pre>"
+
+    styles = """
+    :root { color-scheme: light dark; }
+    body { margin: 0; font-family: "Microsoft YaHei", "SimHei", system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+                 background: #f8fafc; color: #0f172a; }
+    .container { max-width: 940px; margin: 2rem auto; padding: 0 1rem; }
+    .card { background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.10);
+                    padding: 24px; border: 1px solid #e5e7eb; }
+    h1, h2, h3 { color: #0f172a; }
+    h1 { font-size: 1.75rem; margin-top: 0; }
+    h2 { font-size: 1.25rem; margin-top: 1.5rem; }
+    h3 { font-size: 1.1rem; margin-top: 1.25rem; }
+    p { line-height: 1.5; }
+    code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    pre { background: #0b1220; color: #e2e8f0; padding: 12px; border-radius: 8px; overflow: auto; }
+    ul, ol { padding-left: 1.25rem; }
+    a { color: #2563eb; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    @media (prefers-color-scheme: dark) {
+        body { background: #0b1220; color: #e5e7eb; }
+        .card { background: #0f172a; border-color: #1f2937; }
+        h1, h2, h3 { color: #e5e7eb; }
+        a { color: #93c5fd; }
+    }
+    """
+
+    return f"""
 <!doctype html>
 <html lang=\"en\">
 <head>
@@ -310,6 +381,131 @@ def _markdown_to_html(markdown_text: str, *, title: str = "CDD Snapshot") -> str
 </body>
 <html>
 """
+
+
+def _markdown_to_pdf_ready_html(markdown_text: str, *, title: str) -> str:
+    try:
+        import markdown  # type: ignore
+
+        html_body = markdown.markdown(
+            markdown_text,
+            extensions=["extra", "sane_lists"],
+            output_format="html5",
+        )
+    except Exception:
+        import html as _html
+
+        html_body = f"<pre>{_html.escape(markdown_text)}</pre>"
+
+    _register_pdf_fonts()
+    font_stack = "'SimHei', 'MicrosoftYaHei', 'PingFang SC', 'Noto Sans CJK SC', 'Microsoft JhengHei', 'Heiti SC', 'Arial Unicode MS', sans-serif"
+    styles = """
+    @page {
+        size: A4;
+        margin: 2cm;
+    }
+
+    body {
+        font-size: 11pt;
+        line-height: 1.6;
+        background: #ffffff;
+        color: #111827;
+        font-family: FONT_STACK;
+    }
+
+    h1, h2, h3 {
+        color: #111827;
+        margin-top: 1.2em;
+        margin-bottom: 0.4em;
+        font-family: inherit;
+    }
+
+    h1 { font-size: 18pt; }
+    h2 { font-size: 14pt; }
+    h3 { font-size: 12pt; }
+
+    p { margin: 0 0 0.8em 0; }
+    ul, ol { margin: 0 0 0.8em 1.4em; }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 1em 0;
+        font-size: 10pt;
+    }
+
+    th, td {
+        border: 1px solid #e5e7eb;
+        padding: 4px 6px;
+    }
+
+    code, pre {
+        font-family: "Courier New", Courier, monospace;
+        font-size: 9pt;
+    }
+
+    pre {
+        white-space: pre-wrap;
+        background: #f3f4f6;
+        border-radius: 4px;
+        padding: 6px 8px;
+    }
+    """
+
+    return f"""<!doctype html>
+<html lang=\"zh-CN\">
+<head>
+    <meta charset=\"utf-8\" />
+    <title>{title}</title>
+    <style>
+        {styles.replace("FONT_STACK", font_stack)}
+    </style>
+</head>
+<body>
+    <h1>{title}</h1>
+    {html_body}
+</body>
+</html>
+"""
+
+
+def _render_youtu_markdown_fallback(data: Dict[str, Any], *, error: Optional[str] = None) -> str:
+    reply = (data.get("reply") or "").strip()
+    youtu = data.get("youtu_data", {}) or {}
+    triples = youtu.get("retrieved_triples", []) or []
+    chunks = youtu.get("retrieved_chunks", []) or []
+    model = data.get("model") or "未知模型"
+
+    lines = ["# Intelligence Briefing（本地摘要）", ""]
+    if error:
+        lines.append(f"> ⚠️ 无法连接 LLM：{error}\n")
+
+    lines.append("## Query Response / 查询回答")
+    lines.append(reply or "（无可用摘要，可能仅有结构化数据）")
+    lines.append("")
+
+    lines.append("## Key Triples / 关键三元组")
+    if triples:
+        for h, r, t in triples[:20]:
+            lines.append(f"- {h} —{r}→ {t}")
+    else:
+        lines.append("- （未检索到关联三元组）")
+    lines.append("")
+
+    lines.append("## Context Chunks / 背景片段")
+    if chunks:
+        for idx, chunk in enumerate(chunks[:10], start=1):
+            lines.append(f"{idx}. {chunk}")
+    else:
+        lines.append("- （暂无文本片段）")
+    lines.append("")
+
+    lines.append("## Source & Model")
+    lines.append(f"- Model / 模型: {model}")
+    if error:
+        lines.append("- 说明: 已使用本地数据生成简要报告，建议稍后重试 LLM。")
+
+    return "\n".join(lines)
 
 
 def generate_youtu_pdf(data: Dict[str, Any]) -> bytes:
@@ -355,33 +551,23 @@ def generate_youtu_pdf(data: Dict[str, Any]) -> bytes:
 
     # 2. Call LLM
     content = ""
+    fallback_error: Optional[str] = None
     try:
         client = get_llm_client()
         messages = [{"role": "user", "content": prompt}]
         text, _, _ = client.generate(messages, temperature=0.3, max_tokens=2000)
-        content = text.strip() if text else "Failed to generate report content."
+        content = text.strip() if text else ""
+        if not content:
+            fallback_error = "LLM returned empty content"
     except Exception as e:
-        content = f"Error generating report: {str(e)}"
+        fallback_error = str(e)
+        content = ""
 
-    # 3. Convert to HTML
-    html_content = _markdown_to_html(content, title="Intelligence Briefing")
-    
-    # Add PDF specific styles to HTML
-    # xhtml2pdf needs specific fonts for Chinese support usually, but let's try basic first.
-    # For Chinese support in xhtml2pdf, we need a font that supports it.
-    # If we don't have one, it might show squares.
-    # A safe bet is to use a font like Arial Unicode MS or SimHei if available, or download one.
-    # For now, let's assume standard fonts or English content, but the user asked for Chinese likely ("一键导出").
-    # If Chinese fails, we might need to just return HTML.
-    # Let's try to inject a font-face if possible, or just use the HTML return if PDF is too risky for Chinese without setup.
-    # However, the user asked for PDF.
-    # Let's try to use a system font if on Windows.
-    
-    # 4. Convert to PDF
-    pdf_buffer = io.BytesIO()
-    pisa_status = pisa.CreatePDF(io.StringIO(html_content), dest=pdf_buffer)
-    
-    if pisa_status.err:
-        raise RuntimeError("PDF generation failed")
-        
-    return pdf_buffer.getvalue()
+    if not content:
+        content = _render_youtu_markdown_fallback(data, error=fallback_error)
+
+    # 3. Convert to HTML with embedded fonts suitable for Chinese text
+    html_content = _markdown_to_pdf_ready_html(content, title="Intelligence Briefing")
+
+    # 4. Convert to PDF through xhtml2pdf with link callback/font-face support
+    return _render_pdf_with_xhtml2pdf(html_content)

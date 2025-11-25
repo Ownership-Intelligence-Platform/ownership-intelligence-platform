@@ -10,6 +10,7 @@ dependencies = [
     "fastapi>=0.121.0",
     "httpx>=0.28.1",
     "lxml>=6.0.2",
+    "markdown>=3.10",
     "neo4j>=6.0.3",
     "openai>=2.7.1",
     "pydantic>=2.12.4",
