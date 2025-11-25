@@ -2,6 +2,7 @@
 // Encapsulates LLM / graphRAG call.
 import { appendMessage } from "./conversation.js";
 import { chatState, pushHistory } from "./state.js";
+import { renderYoutuCard } from "./youtuCard.js";
 
 export async function runLLM({
   text,
@@ -9,6 +10,7 @@ export async function runLLM({
   useWebEl,
   webProviderEl,
   targetList,
+  useYoutu = false,
 }) {
   appendMessage("assistant", "…", targetList);
   try {
@@ -19,6 +21,7 @@ export async function runLLM({
       use_web: !!(useWebEl && useWebEl.checked),
       web_provider: webProviderEl ? webProviderEl.value : undefined,
       use_person_resolver: true,
+      use_youtu: useYoutu,
     };
     const resp = await fetch("/chat", {
       method: "POST",
@@ -27,6 +30,13 @@ export async function runLLM({
     });
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const data = await resp.json();
+
+    if (useYoutu && data.youtu_data) {
+      renderYoutuCard(data, targetList);
+      pushHistory("assistant", data.reply || "Youtu GraphRAG Result");
+      return data;
+    }
+
     const last = targetList?.lastElementChild;
     const reply = data.reply || "";
     if (last) last.textContent = reply;
