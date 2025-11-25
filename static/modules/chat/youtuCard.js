@@ -8,8 +8,9 @@ export function renderYoutuCard(data, targetList) {
   }
 
   const card = document.createElement("div");
+  // Changed max-w-3xl to w-full to use full available width
   card.className =
-    "bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden mb-4 w-full max-w-3xl";
+    "bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden mb-4 w-full";
 
   // Header
   const header = document.createElement("div");
@@ -34,7 +35,7 @@ export function renderYoutuCard(data, targetList) {
   if (data.reply) {
     const answerDiv = document.createElement("div");
     answerDiv.className =
-      "prose dark:prose-invert text-sm max-w-none text-slate-700 dark:text-slate-300";
+      "prose dark:prose-invert text-sm max-w-none text-slate-700 dark:text-slate-300 leading-relaxed";
     answerDiv.innerHTML = `<p>${data.reply}</p>`;
     body.appendChild(answerDiv);
   }
@@ -42,10 +43,34 @@ export function renderYoutuCard(data, targetList) {
   // 2. Visualization (Triples Graph)
   const triples = data.youtu_data?.retrieved_triples || [];
   if (triples.length > 0) {
+    const graphWrapper = document.createElement("div");
+    graphWrapper.className =
+      "relative w-full rounded border border-slate-200 dark:border-slate-700 overflow-hidden bg-slate-50 dark:bg-slate-900";
+
+    // Increased height for better visibility
     const graphContainer = document.createElement("div");
-    graphContainer.className =
-      "h-64 w-full bg-slate-50 dark:bg-slate-900 rounded border border-slate-200 dark:border-slate-700 relative";
-    body.appendChild(graphContainer);
+    graphContainer.className = "h-96 w-full";
+    graphWrapper.appendChild(graphContainer);
+
+    // Legend Overlay
+    const legendDiv = document.createElement("div");
+    legendDiv.className =
+      "absolute top-2 left-2 bg-white/90 dark:bg-slate-800/90 p-2 rounded border border-slate-200 dark:border-slate-700 text-xs shadow-sm pointer-events-none";
+    legendDiv.innerHTML = `
+      <div class="flex items-center gap-2 mb-1"><span class="w-2 h-2 rounded-full bg-indigo-500"></span> Person (人物)</div>
+      <div class="flex items-center gap-2 mb-1"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Organization (机构)</div>
+      <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-amber-500"></span> Other (其他)</div>
+    `;
+    graphWrapper.appendChild(legendDiv);
+
+    // Help Text Overlay
+    const helpDiv = document.createElement("div");
+    helpDiv.className =
+      "absolute bottom-2 right-2 text-[10px] text-slate-400 pointer-events-none select-none";
+    helpDiv.textContent = "支持拖拽节点 · 滚轮缩放 · 双击复位";
+    graphWrapper.appendChild(helpDiv);
+
+    body.appendChild(graphWrapper);
 
     // Defer graph rendering slightly to ensure container has dimensions
     setTimeout(() => renderTriplesGraph(graphContainer, triples), 50);
@@ -65,34 +90,29 @@ export function renderYoutuCard(data, targetList) {
     sourcesDiv.appendChild(sourcesHeader);
 
     const sourcesList = document.createElement("ul");
-    sourcesList.className = "space-y-2";
+    sourcesList.className = "grid grid-cols-1 md:grid-cols-2 gap-2"; // Grid layout for sources
 
-    chunks.slice(0, 3).forEach((chunkStr, idx) => {
-      // Limit to top 3 to save space
+    chunks.slice(0, 4).forEach((chunkStr, idx) => {
       let chunk = {};
       try {
-        // Handle Python-style string representation of dict if necessary, or just parse JSON
-        // The example output shows Python repr string: "{'title': ...}" which is not valid JSON.
-        // We'll do a simple heuristic parse or just display raw text if parsing fails.
-        const fixedJson = chunkStr.replace(/'/g, '"').replace(/\\n/g, " "); // Very rough fix for demo
+        const fixedJson = chunkStr.replace(/'/g, '"').replace(/\\n/g, " ");
         chunk = JSON.parse(fixedJson);
       } catch (e) {
-        // Fallback: treat as raw string or try regex extraction
         chunk = { text: chunkStr };
       }
 
       const li = document.createElement("li");
       li.className =
-        "text-xs bg-slate-50 dark:bg-slate-800/50 p-2 rounded border border-slate-100 dark:border-slate-700/50";
+        "text-xs bg-slate-50 dark:bg-slate-800/50 p-2 rounded border border-slate-100 dark:border-slate-700/50 flex flex-col h-full";
 
       const title = chunk.title
-        ? `<div class="font-medium text-indigo-600 dark:text-indigo-400 mb-1">${chunk.title}</div>`
+        ? `<div class="font-medium text-indigo-600 dark:text-indigo-400 mb-1 truncate" title="${chunk.title}">${chunk.title}</div>`
         : "";
       const text = chunk.text || chunkStr;
 
       li.innerHTML = `
         ${title}
-        <div class="text-slate-600 dark:text-slate-400 line-clamp-2" title="${text.replace(
+        <div class="text-slate-600 dark:text-slate-400 line-clamp-3 flex-1" title="${text.replace(
           /"/g,
           "&quot;"
         )}">${text}</div>
@@ -100,10 +120,11 @@ export function renderYoutuCard(data, targetList) {
       sourcesList.appendChild(li);
     });
 
-    if (chunks.length > 3) {
+    if (chunks.length > 4) {
       const more = document.createElement("div");
-      more.className = "text-xs text-center text-slate-400 mt-1 italic";
-      more.textContent = `... 还有 ${chunks.length - 3} 条相关片段`;
+      more.className =
+        "col-span-full text-xs text-center text-slate-400 mt-1 italic";
+      more.textContent = `... 还有 ${chunks.length - 4} 条相关片段`;
       sourcesList.appendChild(more);
     }
 
@@ -120,18 +141,12 @@ export function renderYoutuCard(data, targetList) {
 
 function renderTriplesGraph(container, triplesRaw) {
   // Parse triples: "(Subject [type], predicate, Object [type]) [score]"
-  // Regex to extract parts. This is a simplified parser.
   const nodes = new Map();
   const links = [];
 
   triplesRaw.forEach((t) => {
-    // Remove score for parsing
     const clean = t.replace(/\[score:.*?\]$/, "").trim();
-    // Remove outer parens
     const content = clean.substring(1, clean.length - 1);
-
-    // Split by comma, but be careful about commas inside []
-    // Simple approach: split by ", " which seems consistent in the output
     const parts = content.split(/,\s+(?![^\[]*\])/);
 
     if (parts.length >= 3) {
@@ -167,16 +182,32 @@ function renderTriplesGraph(container, triplesRaw) {
     links: links,
   };
 
-  // D3 Force Graph
   const width = container.clientWidth;
   const height = container.clientHeight;
 
   const svg = d3
     .select(container)
     .append("svg")
-    .attr("width", width)
-    .attr("height", height)
-    .attr("viewBox", [0, 0, width, height]);
+    .attr("width", "100%")
+    .attr("height", "100%")
+    .attr("viewBox", [0, 0, width, height])
+    .style("cursor", "grab");
+
+  // Add Zoom behavior
+  const g = svg.append("g");
+
+  const zoom = d3
+    .zoom()
+    .scaleExtent([0.1, 4])
+    .on("zoom", (event) => {
+      g.attr("transform", event.transform);
+    });
+
+  svg
+    .call(zoom)
+    .on("dblclick.zoom", () =>
+      svg.transition().duration(750).call(zoom.transform, d3.zoomIdentity)
+    );
 
   const simulation = d3
     .forceSimulation(graphData.nodes)
@@ -185,11 +216,11 @@ function renderTriplesGraph(container, triplesRaw) {
       d3
         .forceLink(graphData.links)
         .id((d) => d.id)
-        .distance(100)
+        .distance(120)
     )
-    .force("charge", d3.forceManyBody().strength(-200))
+    .force("charge", d3.forceManyBody().strength(-300))
     .force("center", d3.forceCenter(width / 2, height / 2))
-    .force("collide", d3.forceCollide().radius(30));
+    .force("collide", d3.forceCollide().radius(40));
 
   // Arrow marker
   svg
@@ -200,7 +231,7 @@ function renderTriplesGraph(container, triplesRaw) {
     .append("marker")
     .attr("id", "arrow")
     .attr("viewBox", "0 -5 10 10")
-    .attr("refX", 25) // Adjust based on node radius
+    .attr("refX", 28) // Adjusted for larger node radius
     .attr("refY", 0)
     .attr("markerWidth", 6)
     .attr("markerHeight", 6)
@@ -209,7 +240,7 @@ function renderTriplesGraph(container, triplesRaw) {
     .attr("d", "M0,-5L10,0L0,5")
     .attr("fill", "#94a3b8");
 
-  const link = svg
+  const link = g
     .append("g")
     .selectAll("line")
     .data(graphData.links)
@@ -218,18 +249,20 @@ function renderTriplesGraph(container, triplesRaw) {
     .attr("stroke-width", 1.5)
     .attr("marker-end", "url(#arrow)");
 
-  const linkLabel = svg
+  const linkLabel = g
     .append("g")
     .selectAll("text")
     .data(graphData.links)
     .join("text")
-    .attr("dy", -3)
+    .attr("dy", -4)
     .attr("font-size", "10px")
     .attr("fill", "#64748b")
     .attr("text-anchor", "middle")
+    .style("pointer-events", "none") // Let clicks pass through
+    .style("text-shadow", "0 1px 2px rgba(255,255,255,0.8)")
     .text((d) => d.label);
 
-  const node = svg
+  const node = g
     .append("g")
     .selectAll("g")
     .data(graphData.nodes)
@@ -244,21 +277,24 @@ function renderTriplesGraph(container, triplesRaw) {
 
   node
     .append("circle")
-    .attr("r", 8)
+    .attr("r", 10) // Slightly larger nodes
     .attr("fill", (d) =>
       d.group === 1 ? "#6366f1" : d.group === 2 ? "#10b981" : "#f59e0b"
     )
     .attr("stroke", "#fff")
-    .attr("stroke-width", 1.5);
+    .attr("stroke-width", 2)
+    .style("cursor", "pointer");
 
   node
     .append("text")
-    .attr("dx", 12)
+    .attr("dx", 14)
     .attr("dy", 4)
     .text((d) => d.id)
-    .attr("font-size", "10px")
-    .attr("fill", "#334155")
-    .style("pointer-events", "none");
+    .attr("font-size", "11px")
+    .attr("font-weight", "500")
+    .attr("fill", "#1e293b")
+    .style("pointer-events", "none")
+    .style("text-shadow", "0 1px 4px rgba(255,255,255,0.9)");
 
   simulation.on("tick", () => {
     link
@@ -278,6 +314,7 @@ function renderTriplesGraph(container, triplesRaw) {
     if (!event.active) simulation.alphaTarget(0.3).restart();
     d.fx = d.x;
     d.fy = d.y;
+    svg.style("cursor", "grabbing");
   }
 
   function dragged(event, d) {
@@ -289,6 +326,7 @@ function renderTriplesGraph(container, triplesRaw) {
     if (!event.active) simulation.alphaTarget(0);
     d.fx = null;
     d.fy = null;
+    svg.style("cursor", "grab");
   }
 }
 
