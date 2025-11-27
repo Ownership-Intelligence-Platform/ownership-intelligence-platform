@@ -40,9 +40,9 @@ export async function handleChatSubmit({
   if (!text) return;
   const input = document.getElementById("chatInput");
 
-  // Heuristic: detect short/simple name queries (e.g. "李晨") and skip the
+  // Heuristic: detect short/simple name queries (e.g. "李辉") and skip the
   // fuzzy pre-display so they follow the same parse-and-resolve -> graphRAG/MCP
-  // path as longer contextual queries such as "西安市的李晨". This makes
+  // path as longer contextual queries such as "西安市的李辉". This makes
   // the displayed candidate card consistent between short names and contextual
   // queries.
   const trimmed = String(text || "").trim();

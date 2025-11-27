@@ -2,7 +2,7 @@ from __future__ import annotations
 
 """LLM-powered query parser for person/entity resolution.
 
-This module takes free-form user text (e.g. "李晨 1992-03-25 杭州西湖那位") and
+This module takes free-form user text (e.g. "李辉 1992-03-25 杭州西湖那位") and
 extracts structured fields that can be used as filters for graphRAG
 (`resolve_graphrag`).
 """

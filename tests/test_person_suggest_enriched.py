@@ -7,7 +7,7 @@ def test_suggest_returns_enriched_person(monkeypatch):
     # Upsert an extended person
     create_or_update_person_extended(
         person_id="P_TEST_ENRICHED",
-        name="李晨扩展",
+        name="李辉扩展",
         type_="Person",
         basic_info={"nationality": "中国", "birth_date": "1990-05-12"},
         kyc_info={"kyc_status": "approved", "kyc_risk_level": "medium", "watchlist_hits": 1},
@@ -17,7 +17,7 @@ def test_suggest_returns_enriched_person(monkeypatch):
         provenance={"crawler_confidence_score": 0.87},
     )
 
-    resp = api_suggest_entities(q="李晨扩展", limit=5)
+    resp = api_suggest_entities(q="李辉扩展", limit=5)
     items = resp.get("items") or []
     target = next((it for it in items if it.get("id") == "P_TEST_ENRICHED"), None)
     assert target is not None, f"Enriched person not found in suggestions: {items}"
