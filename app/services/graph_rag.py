@@ -192,6 +192,18 @@ def resolve_graphrag(
                 "normalized_score": float(normalized_score),
                 "matched_fields": matched_fields,
                 "evidence": _build_node_text(c),
+                "details": {
+                    "basic_info": c.get("basic_info"),
+                    "id_info": c.get("id_info"),
+                    "job_info": c.get("job_info"),
+                    "kyc_info": c.get("kyc_info"),
+                    "risk_profile": c.get("risk_profile"),
+                    "network_info": c.get("network_info"),
+                    "geo_profile": c.get("geo_profile"),
+                    "compliance_info": c.get("compliance_info"),
+                    "provenance": c.get("provenance"),
+                    "description": c.get("description"),
+                },
                 "_raw": c,
             }
         )
