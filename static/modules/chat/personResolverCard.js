@@ -7,102 +7,178 @@ export function renderPersonResolverCard(name, candidates, targetList) {
   if (!candidates || !candidates.length) return;
   const list =
     targetList || document.getElementById("chatMessages") || document.body;
+
   const card = document.createElement("div");
+  // Updated: Wider card (w-full, max-w-4xl), professional styling (white bg, shadow, rounded)
   card.className =
-    "mt-2 mb-1 border border-emerald-500/40 bg-emerald-50/70 dark:bg-emerald-900/20 dark:border-emerald-500/50 rounded-xl text-xs sm:text-sm text-emerald-900 dark:text-emerald-50 px-3 py-2 shadow-sm max-w-2xl";
-  const title = document.createElement("div");
-  title.className = "font-semibold flex items-center gap-1 mb-1";
-  // Add a small info tooltip explaining diagnostic fields (f/s/c/n and matched_fields)
+    "mt-4 mb-4 w-full  mx-auto border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden font-sans";
+
+  // Header Section
+  const header = document.createElement("div");
+  header.className =
+    "px-4 py-3 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 flex items-center justify-between";
+
+  const titleGroup = document.createElement("div");
+  titleGroup.className = "flex items-center gap-2";
+  titleGroup.innerHTML = `
+    <div class="p-1.5 bg-emerald-100 dark:bg-emerald-900/30 rounded-md text-emerald-600 dark:text-emerald-400">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+    </div>
+    <div>
+      <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">实体匹配结果</h3>
+      <p class="text-xs text-gray-500 dark:text-gray-400">查询: "${
+        name || "未知"
+      }" · 找到 ${candidates.length} 个相关结果</p>
+    </div>
+  `;
+  header.appendChild(titleGroup);
+
+  // Diagnostic tooltip
   const infoTitle =
-    "诊断说明：f=归一化模糊分(0..1)，s=语义相似度(0..1)，c=合成分数(未归一化)，n=归一化合成分数(0..1)。matched_fields 列出触发加分的字段（例如 birth_date）。仅供分析参考。";
-  title.innerHTML =
-    '<span class="inline-flex w-4 h-4 items-center justify-center rounded-full bg-emerald-500 text-white text-[10px]">图</span>' +
-    `<span>基于图谱的匹配候选（${name || "查询"}）</span>` +
-    ` <button type="button" aria-label="诊断说明" title="${infoTitle.replace(
-      /\"/g,
-      "&quot;"
-    )}" class="ml-2 text-xs text-emerald-600/80 dark:text-emerald-300/80 hover:underline">` +
-    '<svg class="w-3 h-3 inline-block" viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M12 20c4.418 0 8-3.582 8-8s-3.582-8-8-8-8 3.582-8 8 3.582 8 8 8z"/></svg>' +
-    "</button>";
-  card.appendChild(title);
-  const listEl = document.createElement("ul");
-  listEl.className = "space-y-0.5";
+    "诊断说明：f=归一化模糊分(0..1)，s=语义相似度(0..1)，c=合成分数(未归一化)，n=归一化合成分数(0..1)。matched_fields 列出触发加分的字段。";
+  const helpBtn = document.createElement("button");
+  helpBtn.type = "button";
+  helpBtn.className =
+    "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors";
+  helpBtn.title = infoTitle;
+  helpBtn.innerHTML =
+    '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M12 20c4.418 0 8-3.582 8-8s-3.582-8-8-8-8 3.582-8 8 3.582 8 8 8z"/></svg>';
+  header.appendChild(helpBtn);
+
+  card.appendChild(header);
+
+  // Content List
+  const listEl = document.createElement("div");
+  listEl.className = "divide-y divide-gray-100 dark:divide-gray-700";
+
   candidates.slice(0, 5).forEach((c, idx) => {
-    const li = document.createElement("li");
-    // Highlight the top candidate visually
-    const baseClass =
-      "flex items-start justify-between gap-2 border-t first:border-t-0 pt-1 first:pt-0 mt-1 first:mt-0";
-    li.className =
-      idx === 0
-        ? baseClass + " border-indigo-500 bg-indigo-50/40 dark:bg-indigo-900/20"
-        : baseClass + " border-emerald-100/60 dark:border-emerald-700/60";
-    const left = document.createElement("div");
-    left.className = "flex-1 min-w-0";
-    const nameSpan = document.createElement("div");
-    nameSpan.className = "font-medium truncate flex items-center gap-2";
-    const label = c.name || c.node_id || "(未命名)";
-    nameSpan.textContent = label;
-    if (idx === 0) {
+    const isTop = idx === 0;
+    const item = document.createElement("div");
+    // Highlight top candidate
+    item.className = isTop
+      ? "p-4 bg-blue-50/40 dark:bg-blue-900/10"
+      : "p-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors";
+
+    const grid = document.createElement("div");
+    grid.className = "flex flex-col sm:flex-row gap-4";
+
+    // Left Column: Info
+    const infoCol = document.createElement("div");
+    infoCol.className = "flex-1 min-w-0";
+
+    // Name & ID
+    const nameRow = document.createElement("div");
+    nameRow.className = "flex items-center flex-wrap gap-2 mb-1";
+
+    const nameEl = document.createElement("span");
+    nameEl.className = isTop
+      ? "text-base font-bold text-gray-900 dark:text-white"
+      : "text-sm font-medium text-gray-800 dark:text-gray-200";
+    nameEl.textContent = c.name || c.node_id || "(未命名)";
+    nameRow.appendChild(nameEl);
+
+    if (isTop) {
       const badge = document.createElement("span");
       badge.className =
-        "ml-2 inline-flex items-center rounded-full bg-indigo-600 text-white px-2 py-0.5 text-[10px]";
-      badge.textContent = "最匹配";
-      nameSpan.appendChild(badge);
+        "px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 text-[10px] font-bold uppercase tracking-wide";
+      badge.textContent = "Best Match";
+      nameRow.appendChild(badge);
     }
-    left.appendChild(nameSpan);
-    const meta = document.createElement("div");
-    meta.className = "text-[11px] text-emerald-700 dark:text-emerald-200/80";
-    const score =
-      typeof c.score === "number" ? `score=${c.score.toFixed(3)}` : "score=?";
-    // include optional diagnostic fields when available
-    const fuzzy =
-      typeof c.fuzzy_score === "number"
-        ? `f=${c.fuzzy_score.toFixed(3)}`
-        : null;
-    const sem =
-      typeof c.semantic_score === "number"
-        ? `s=${c.semantic_score.toFixed(3)}`
-        : null;
-    const comp =
-      typeof c.composite_score === "number"
-        ? `c=${c.composite_score.toFixed(3)}`
-        : null;
-    const norm =
-      typeof c.normalized_score === "number"
-        ? `n=${c.normalized_score.toFixed(3)}`
-        : null;
-    const diag = [fuzzy, sem, comp, norm].filter(Boolean).join(" ");
-    const idText = c.node_id ? `[${c.node_id}]` : "";
-    meta.textContent = `${idText} ${score}`.trim() + (diag ? ` · ${diag}` : "");
-    left.appendChild(meta);
+
+    const idBadge = document.createElement("span");
+    idBadge.className =
+      "font-mono text-[10px] text-gray-500 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded border border-gray-200 dark:border-gray-600";
+    idBadge.textContent = c.node_id;
+    nameRow.appendChild(idBadge);
+
+    infoCol.appendChild(nameRow);
+
+    // Details: Score & Matched Fields
+    const detailsRow = document.createElement("div");
+    detailsRow.className =
+      "mt-2 flex flex-wrap items-center gap-y-2 gap-x-4 text-xs text-gray-600 dark:text-gray-400";
+
+    // Score
+    const scoreVal = typeof c.score === "number" ? c.score.toFixed(3) : "?";
+    const scoreEl = document.createElement("div");
+    scoreEl.className = "flex items-center gap-1.5";
+    scoreEl.innerHTML = `
+      <div class="w-16 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+        <div class="h-full ${
+          isTop ? "bg-blue-500" : "bg-emerald-500"
+        }" style="width: ${Math.min((c.score || 0) * 100, 100)}%"></div>
+      </div>
+      <span class="font-medium">Score: ${scoreVal}</span>
+    `;
+    detailsRow.appendChild(scoreEl);
+
+    // Matched Fields
     if (Array.isArray(c.matched_fields) && c.matched_fields.length) {
-      const mf = document.createElement("div");
-      mf.className = "text-[11px] text-emerald-700/70 dark:text-emerald-200/60";
-      mf.textContent = `matched: ${c.matched_fields.join(", ")}`;
-      left.appendChild(mf);
+      const matchEl = document.createElement("div");
+      matchEl.className = "flex items-center gap-1";
+      matchEl.innerHTML = `<span class="text-gray-400">Matched:</span>`;
+      c.matched_fields.forEach((f) => {
+        const tag = document.createElement("span");
+        tag.className =
+          "px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50 text-[10px]";
+        tag.textContent = f;
+        matchEl.appendChild(tag);
+      });
+      detailsRow.appendChild(matchEl);
     }
+    infoCol.appendChild(detailsRow);
+
+    // Diagnostic Scores (Subtle)
+    const diag = [
+      typeof c.fuzzy_score === "number"
+        ? `F=${c.fuzzy_score.toFixed(2)}`
+        : null,
+      typeof c.semantic_score === "number"
+        ? `S=${c.semantic_score.toFixed(2)}`
+        : null,
+      typeof c.normalized_score === "number"
+        ? `N=${c.normalized_score.toFixed(2)}`
+        : null,
+    ]
+      .filter(Boolean)
+      .join(" · ");
+
+    if (diag) {
+      const diagRow = document.createElement("div");
+      diagRow.className = "mt-1 text-[10px] text-gray-400 font-mono opacity-75";
+      diagRow.textContent = diag;
+      infoCol.appendChild(diagRow);
+    }
+
+    // Evidence
     if (c.evidence) {
-      const ev = document.createElement("div");
-      ev.className =
-        "text-[11px] text-emerald-800/80 dark:text-emerald-100/80 line-clamp-2";
-      ev.textContent = c.evidence;
-      left.appendChild(ev);
+      const evRow = document.createElement("div");
+      evRow.className =
+        "mt-2 text-xs text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-800/50 p-2 rounded border border-gray-100 dark:border-gray-700 leading-relaxed";
+      evRow.innerHTML = `<span class="font-semibold text-gray-700 dark:text-gray-200">Evidence:</span> ${c.evidence}`;
+      infoCol.appendChild(evRow);
     }
-    li.appendChild(left);
+
+    grid.appendChild(infoCol);
+
+    // Right Column: Actions
     if (c.node_id && /^P\d+$/i.test(c.node_id)) {
-      // For the top candidate add a prominent primary action to view the Dashboard snapshot
-      if (idx === 0) {
-        const primary = document.createElement("button");
-        primary.type = "button";
-        primary.className =
-          "shrink-0 inline-flex items-center gap-2 rounded-md bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 text-sm shadow-sm";
-        primary.innerHTML =
-          '<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h18M3 12h18M3 17h18"/></svg>' +
-          "<span>查看 Dashboard</span>";
-        primary.addEventListener("click", async () => {
+      const actionCol = document.createElement("div");
+      actionCol.className =
+        "flex flex-row sm:flex-col gap-2 items-start sm:items-end justify-start sm:justify-center min-w-[130px]";
+
+      if (isTop) {
+        const dashboardBtn = document.createElement("button");
+        dashboardBtn.type = "button";
+        dashboardBtn.className =
+          "w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-md shadow-sm transition-colors";
+        dashboardBtn.innerHTML = `
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                <span>Dashboard</span>
+            `;
+        dashboardBtn.addEventListener("click", async () => {
           showLoading("正在加载 Dashboard...");
           try {
-            // Reveal canonical dashboard area and load a snapshot for this candidate
             revealDashboard();
             const snap = await loadFullDashboardAndSnapshot(
               c.node_id,
@@ -110,9 +186,7 @@ export function renderPersonResolverCard(name, candidates, targetList) {
               "Dashboard 快照"
             );
             if (snap && typeof snap.scrollIntoView === "function") {
-              // Smoothly scroll the snapshot into view
               snap.scrollIntoView({ behavior: "smooth", block: "center" });
-              // briefly highlight
               snap.classList.add("ring-2", "ring-blue-300");
               setTimeout(
                 () => snap.classList.remove("ring-2", "ring-blue-300"),
@@ -125,26 +199,36 @@ export function renderPersonResolverCard(name, candidates, targetList) {
             hideLoading();
           }
         });
-        li.appendChild(primary);
+        actionCol.appendChild(dashboardBtn);
       }
 
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className =
-        "shrink-0 inline-flex items-center gap-1 rounded-full bg-emerald-600 text-white px-2.5 py-1 text-[11px] hover:bg-emerald-500 shadow-sm";
-      btn.innerHTML =
-        '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h10M7 12h4m1 4h5m-8 0a4 4 0 11-8 0 4 4 0 018 0zm10-4a4 4 0 11-8 0 4 4 0 018 0zm-10-8a4 4 0 11-8 0 4 4 0 018 0z"/></svg>' +
-        "<span>人物网络</span>";
-      btn.addEventListener("click", () => {
+      const networkBtn = document.createElement("button");
+      networkBtn.type = "button";
+      // If top, secondary style. If not top, primary style (emerald)
+      networkBtn.className = `w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 ${
+        isTop
+          ? "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
+          : "bg-emerald-600 text-white hover:bg-emerald-700"
+      } text-xs font-medium rounded-md shadow-sm transition-colors`;
+      networkBtn.innerHTML = `
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+            <span>关系图谱</span>
+        `;
+      networkBtn.addEventListener("click", () => {
         const url = `/static/person_network.html?person=${encodeURIComponent(
           c.node_id
         )}`;
         window.open(url, "_blank");
       });
-      li.appendChild(btn);
+      actionCol.appendChild(networkBtn);
+
+      grid.appendChild(actionCol);
     }
-    listEl.appendChild(li);
+
+    item.appendChild(grid);
+    listEl.appendChild(item);
   });
+
   card.appendChild(listEl);
   list.appendChild(card);
 }

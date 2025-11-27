@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e" pages="2">
     <diagram id="741Cp-2g2Y2Gq2YpmyrU" name="user journey">
-        <mxGraphModel dx="2067" dy="1339" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+        <mxGraphModel dx="2073" dy="1231" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -9,14 +9,6 @@
                 </mxCell>
                 <mxCell id="oqdsjj5kim39hrGe59Us-2" value="Actor" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;" parent="1" vertex="1">
                     <mxGeometry x="-530" y="80" width="30" height="60" as="geometry"/>
-                </mxCell>
-                <mxCell id="JG6GWfMonSxa0IQA9C_M-5" style="edgeStyle=orthogonalEdgeStyle;shape=connector;curved=0;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.945;exitY=0.45;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=default;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=12;fontColor=default;labelBackgroundColor=default;startSize=8;endArrow=classic;endSize=8;" parent="1" source="oqdsjj5kim39hrGe59Us-3" target="JG6GWfMonSxa0IQA9C_M-1" edge="1">
-                    <mxGeometry relative="1" as="geometry">
-                        <Array as="points">
-                            <mxPoint x="-300" y="115"/>
-                            <mxPoint x="-300" y="300"/>
-                        </Array>
-                    </mxGeometry>
                 </mxCell>
                 <mxCell id="oqdsjj5kim39hrGe59Us-3" value="请帮我查询西安市&lt;div&gt;李晨的信息&lt;/div&gt;" style="whiteSpace=wrap;html=1;shape=mxgraph.basic.oval_callout" parent="1" vertex="1">
                     <mxGeometry x="-470" y="70" width="170" height="100" as="geometry"/>
@@ -140,20 +132,11 @@
                 <mxCell id="3c7AVVSDhpRcf4dZ6D5k-45" value="" style="shape=image;html=1;verticalAlign=top;verticalLabelPosition=bottom;labelBackgroundColor=#ffffff;imageAspect=0;aspect=fixed;image=https://icons.diagrams.net/icon-cache1/Computer_and_Web-2849/Download-1349.svg;fontFamily=Helvetica;fontSize=12;fontColor=default;" parent="1" vertex="1">
                     <mxGeometry x="810" y="304.31" width="82" height="82" as="geometry"/>
                 </mxCell>
-                <mxCell id="JG6GWfMonSxa0IQA9C_M-1" value="Graph RAG" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-                    <mxGeometry x="-232" y="270" width="120" height="60" as="geometry"/>
-                </mxCell>
-                <mxCell id="JG6GWfMonSxa0IQA9C_M-4" style="edgeStyle=orthogonalEdgeStyle;shape=connector;curved=0;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=0.949;entryDx=0;entryDy=0;entryPerimeter=0;strokeColor=default;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=12;fontColor=default;labelBackgroundColor=default;startSize=8;endArrow=classic;endSize=8;" parent="1" source="JG6GWfMonSxa0IQA9C_M-1" target="oqdsjj5kim39hrGe59Us-7" edge="1">
-                    <mxGeometry relative="1" as="geometry"/>
-                </mxCell>
-                <mxCell id="JG6GWfMonSxa0IQA9C_M-6" value="Agent" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=12;fontColor=default;labelBackgroundColor=default;" parent="1" vertex="1">
-                    <mxGeometry x="-400" y="210" width="120" height="60" as="geometry"/>
-                </mxCell>
             </root>
         </mxGraphModel>
     </diagram>
     <diagram id="JSjfXXboFm2Hw8VFvgbK" name="Agent">
-        <mxGraphModel dx="887" dy="657" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+        <mxGraphModel dx="828" dy="685" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -161,13 +144,25 @@
                     <mxGeometry x="50" y="230" width="120" height="60" as="geometry"/>
                 </mxCell>
                 <mxCell id="zGwMj4EWzTh3ey0g1gNc-2" value="个人信息查询" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
-                    <mxGeometry x="510" y="180" width="120" height="60" as="geometry"/>
+                    <mxGeometry x="350" y="170" width="120" height="60" as="geometry"/>
                 </mxCell>
                 <mxCell id="zGwMj4EWzTh3ey0g1gNc-3" value="企业信息查询" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
-                    <mxGeometry x="510" y="270" width="120" height="60" as="geometry"/>
+                    <mxGeometry x="350" y="260" width="120" height="60" as="geometry"/>
                 </mxCell>
                 <mxCell id="yApA5jOyqRIGsRfRBlIW-1" value="问题识别" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
                     <mxGeometry x="210" y="230" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="nkhkypjYm3p1h-AmAXj0-1" value="快速查询是否在当前知识图谱中存在" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="540" y="220" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="nkhkypjYm3p1h-AmAXj0-2" value="存在的为已经分析过的用户，或者已经在银行里面存在的用户" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="740" y="110" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="nkhkypjYm3p1h-AmAXj0-3" value="不存在的为未匹配用户，或者叫做新登陆用户" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="740" y="280" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="nkhkypjYm3p1h-AmAXj0-4" value="存在的为已经分析过的用户，或者已经在银行里面存在的用户" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="910" y="110" width="120" height="60" as="geometry"/>
                 </mxCell>
             </root>
         </mxGraphModel>
