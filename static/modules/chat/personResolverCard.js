@@ -188,8 +188,35 @@ export function renderPersonResolverCard(name, candidates, targetList) {
       }
 
       if (d.job_info) {
-        addField("职业", d.job_info.occupation);
-        addField("雇主", d.job_info.employer);
+        if (d.job_info.roles && d.job_info.roles.length) {
+          addField("职位", d.job_info.roles.join(", "));
+        }
+        if (d.job_info.employers && d.job_info.employers.length) {
+          addField("雇主", d.job_info.employers.join(", "));
+        }
+        // Fallback
+        if (d.job_info.occupation && !d.job_info.roles)
+          addField("职业", d.job_info.occupation);
+        if (d.job_info.employer && !d.job_info.employers)
+          addField("雇主", d.job_info.employer);
+      }
+
+      if (d.network_info) {
+        if (
+          d.network_info.known_associates &&
+          d.network_info.known_associates.length
+        ) {
+          addField("关联方", d.network_info.known_associates.join(", "));
+        }
+      }
+
+      if (d.risk_profile) {
+        if (d.risk_profile.risk_factors && d.risk_profile.risk_factors.length) {
+          const factors = d.risk_profile.risk_factors
+            .map((f) => f.replace(/\|/g, ", "))
+            .join("; ");
+          addField("风险因素", factors);
+        }
       }
 
       if (d.description) {

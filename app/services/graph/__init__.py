@@ -9,6 +9,7 @@ from .entities import (
     find_entities_by_name_exact,
     search_entities_fuzzy,
     resolve_entity_identifier,
+    get_entities_by_ids,
 )
 from .ownerships import create_ownership
 from .layers import get_layers
@@ -38,7 +39,7 @@ from .relationships import create_person_relationship
 
 __all__ = [
     # entities
-    'create_entity','get_entity','find_entities_by_name_exact','search_entities_fuzzy','resolve_entity_identifier',
+    'create_entity','get_entity','find_entities_by_name_exact','search_entities_fuzzy','resolve_entity_identifier','get_entities_by_ids',
     # ownership
     'create_ownership',
     # layers
