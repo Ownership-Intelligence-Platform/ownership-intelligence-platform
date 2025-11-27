@@ -150,8 +150,94 @@ export function renderPersonResolverCard(name, candidates, targetList) {
       infoCol.appendChild(diagRow);
     }
 
-    // Evidence
-    if (c.evidence) {
+    // Details Section (New)
+    if (c.details) {
+      const d = c.details;
+      const detailsGrid = document.createElement("div");
+      detailsGrid.className =
+        "mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-xs text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-800/50 p-3 rounded border border-gray-100 dark:border-gray-700";
+
+      // Helper to add field
+      const addField = (label, value) => {
+        if (!value) return;
+        const row = document.createElement("div");
+        row.className = "flex items-start gap-2";
+        row.innerHTML = `<span class="shrink-0 font-medium text-gray-500 dark:text-gray-400 w-16 text-right">${label}:</span> <span class="break-all font-medium text-gray-800 dark:text-gray-200">${value}</span>`;
+        detailsGrid.appendChild(row);
+      };
+
+      if (d.basic_info) {
+        addField("性别", d.basic_info.gender);
+        addField("出生日期", d.basic_info.birth_date);
+        addField("国籍", d.basic_info.nationality);
+        addField("居住地", d.basic_info.residential_address);
+      }
+
+      if (d.id_info) {
+        // Mask ID numbers
+        Object.entries(d.id_info).forEach(([k, v]) => {
+          if (typeof v === "string") {
+            // simple mask
+            const masked =
+              v.length > 8
+                ? v.substring(0, 4) + "****" + v.substring(v.length - 4)
+                : v;
+            addField(k, masked);
+          }
+        });
+      }
+
+      if (d.job_info) {
+        if (d.job_info.roles && d.job_info.roles.length) {
+          addField("职位", d.job_info.roles.join(", "));
+        }
+        if (d.job_info.employers && d.job_info.employers.length) {
+          addField("雇主", d.job_info.employers.join(", "));
+        }
+        // Fallback
+        if (d.job_info.occupation && !d.job_info.roles)
+          addField("职业", d.job_info.occupation);
+        if (d.job_info.employer && !d.job_info.employers)
+          addField("雇主", d.job_info.employer);
+      }
+
+      if (d.network_info) {
+        if (
+          d.network_info.known_associates &&
+          d.network_info.known_associates.length
+        ) {
+          addField("关联方", d.network_info.known_associates.join(", "));
+        }
+      }
+
+      if (d.risk_profile) {
+        if (d.risk_profile.risk_factors && d.risk_profile.risk_factors.length) {
+          const factors = d.risk_profile.risk_factors
+            .map((f) => f.replace(/\|/g, ", "))
+            .join("; ");
+          addField("风险因素", factors);
+        }
+      }
+
+      if (d.description) {
+        const descRow = document.createElement("div");
+        descRow.className =
+          "col-span-1 sm:col-span-2 mt-1 pt-1 border-t border-gray-200 dark:border-gray-700 flex gap-2";
+        descRow.innerHTML = `<span class="shrink-0 font-medium text-gray-500 dark:text-gray-400 w-16 text-right">描述:</span> <span class="italic text-gray-600 dark:text-gray-400">${d.description}</span>`;
+        detailsGrid.appendChild(descRow);
+      }
+
+      if (detailsGrid.children.length > 0) {
+        infoCol.appendChild(detailsGrid);
+      } else if (c.evidence) {
+        // Fallback to evidence if details are empty
+        const evRow = document.createElement("div");
+        evRow.className =
+          "mt-2 text-xs text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-800/50 p-2 rounded border border-gray-100 dark:border-gray-700 leading-relaxed";
+        evRow.innerHTML = `<span class="font-semibold text-gray-700 dark:text-gray-200">Evidence:</span> ${c.evidence}`;
+        infoCol.appendChild(evRow);
+      }
+    } else if (c.evidence) {
       const evRow = document.createElement("div");
       evRow.className =
         "mt-2 text-xs text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-800/50 p-2 rounded border border-gray-100 dark:border-gray-700 leading-relaxed";

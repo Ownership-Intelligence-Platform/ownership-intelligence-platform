@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Optional
 import logging
 import math
 
-from app.services.graph_service import search_entities_fuzzy, get_entity, get_layers
+from app.services.graph_service import search_entities_fuzzy, get_entity, get_layers, get_entities_by_ids
 from app.services.llm_client import get_llm_client
 
 logger = logging.getLogger(__name__)
@@ -192,6 +192,18 @@ def resolve_graphrag(
                 "normalized_score": float(normalized_score),
                 "matched_fields": matched_fields,
                 "evidence": _build_node_text(c),
+                "details": {
+                    "basic_info": c.get("basic_info"),
+                    "id_info": c.get("id_info"),
+                    "job_info": c.get("job_info"),
+                    "kyc_info": c.get("kyc_info"),
+                    "risk_profile": c.get("risk_profile"),
+                    "network_info": c.get("network_info"),
+                    "geo_profile": c.get("geo_profile"),
+                    "compliance_info": c.get("compliance_info"),
+                    "provenance": c.get("provenance"),
+                    "description": c.get("description"),
+                },
                 "_raw": c,
             }
         )
@@ -208,6 +220,66 @@ def resolve_graphrag(
         ),
         reverse=True,
     )[:top_k]
+
+    # Enrich with resolved names for related entities (employers, associates)
+    ids_to_resolve = set()
+    for r in results:
+        d = r.get("details") or {}
+        # Job info employers
+        ji = d.get("job_info")
+        if isinstance(ji, dict) and ji.get("employers"):
+            for emp in ji["employers"]:
+                if isinstance(emp, str):
+                    ids_to_resolve.add(emp)
+        # Network info associates
+        ni = d.get("network_info")
+        if isinstance(ni, dict) and ni.get("known_associates"):
+            for assoc in ni["known_associates"]:
+                if isinstance(assoc, str):
+                    # Handle pipe-separated IDs if any
+                    for part in assoc.split("|"):
+                        if part.strip():
+                            ids_to_resolve.add(part.strip())
+
+    if ids_to_resolve:
+        try:
+            resolved_map = get_entities_by_ids(list(ids_to_resolve))
+            # Apply back to results
+            for r in results:
+                d = r.get("details")
+                if not d:
+                    continue
+
+                # Update employers
+                ji = d.get("job_info")
+                if isinstance(ji, dict) and ji.get("employers"):
+                    new_emps = []
+                    for emp in ji["employers"]:
+                        if isinstance(emp, str) and emp in resolved_map:
+                            new_emps.append(f"{resolved_map[emp]}")
+                        else:
+                            new_emps.append(emp)
+                    ji["employers"] = new_emps
+
+                # Update associates
+                ni = d.get("network_info")
+                if isinstance(ni, dict) and ni.get("known_associates"):
+                    new_assocs = []
+                    for assoc in ni["known_associates"]:
+                        if isinstance(assoc, str):
+                            parts = [p.strip() for p in assoc.split("|") if p.strip()]
+                            resolved_parts = []
+                            for p in parts:
+                                if p in resolved_map:
+                                    resolved_parts.append(f"{resolved_map[p]}")
+                                else:
+                                    resolved_parts.append(p)
+                            new_assocs.append(" | ".join(resolved_parts))
+                        else:
+                            new_assocs.append(assoc)
+                    ni["known_associates"] = new_assocs
+        except Exception as exc:
+            logger.warning("Failed to resolve entity names: %s", exc)
 
     # attach small subgraph for top candidate(s)
     subgraphs: Dict[str, Any] = {}

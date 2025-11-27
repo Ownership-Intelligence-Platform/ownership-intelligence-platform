@@ -175,3 +175,12 @@ def resolve_entity_identifier(identifier: str) -> Dict[str, Any]:
     if len(fuzzy) > 1:
         return {"resolved": None, "by": "fuzzy", "ambiguous": True, "matches": fuzzy}
     return {}
+
+
+def get_entities_by_ids(ids: List[str]) -> Dict[str, str]:
+    """Fetch names for a list of entity IDs. Returns a dict {id: name}."""
+    if not ids:
+        return {}
+    q = "MATCH (e:Entity) WHERE e.id IN $ids RETURN e.id AS id, e.name AS name"
+    res = run_cypher(q, {"ids": list(set(ids))})
+    return {r["id"]: r["name"] for r in res if r.get("id")}
