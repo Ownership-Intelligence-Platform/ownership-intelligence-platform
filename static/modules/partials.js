@@ -30,7 +30,7 @@ async function loadDashboardCards() {
   const container = document.getElementById("dashboardSection");
   if (!container) return;
   const cardPartials = [
-    "/static/partials/cards/personOpeningCard.html",
+    // personOpeningCard moved into `entityInfoSection.html` so it appears alongside entity info
     "/static/partials/cards/personNetworkCard.html",
     "/static/partials/cards/layersTreeCard.html",
     "/static/partials/cards/representativesCard.html",
