@@ -98,17 +98,28 @@ export function renderPersonResolverCard(name, candidates, targetList) {
     detailsRow.className =
       "mt-2 flex flex-wrap items-center gap-y-2 gap-x-4 text-xs text-gray-600 dark:text-gray-400";
 
-    // Score
-    const scoreVal = typeof c.score === "number" ? c.score.toFixed(3) : "?";
+    // Score - use normalized_score (or composite_score fallback) so similar raw scores like 1.0 show meaningful differences
+    const displayBase =
+      typeof c.normalized_score === "number"
+        ? c.normalized_score
+        : typeof c.composite_score === "number"
+        ? c.composite_score
+        : c.score;
+    const scoreVal =
+      typeof displayBase === "number" ? displayBase.toFixed(3) : "?";
+    const barPct = Math.min(
+      ((c.normalized_score ?? c.composite_score ?? c.score) || 0) * 100,
+      100
+    );
     const scoreEl = document.createElement("div");
     scoreEl.className = "flex items-center gap-1.5";
     scoreEl.innerHTML = `
-      <div class="w-16 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+      <div class="w-20 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
         <div class="h-full ${
           isTop ? "bg-blue-500" : "bg-emerald-500"
-        }" style="width: ${Math.min((c.score || 0) * 100, 100)}%"></div>
+        }" style="width: ${barPct}%"></div>
       </div>
-      <span class="font-medium">Score: ${scoreVal}</span>
+      <span class="font-medium">分数: ${scoreVal}</span>
     `;
     detailsRow.appendChild(scoreEl);
 
@@ -129,25 +140,28 @@ export function renderPersonResolverCard(name, candidates, targetList) {
     infoCol.appendChild(detailsRow);
 
     // Diagnostic Scores (Subtle)
-    const diag = [
-      typeof c.fuzzy_score === "number"
-        ? `F=${c.fuzzy_score.toFixed(2)}`
-        : null,
-      typeof c.semantic_score === "number"
-        ? `S=${c.semantic_score.toFixed(2)}`
-        : null,
-      typeof c.normalized_score === "number"
-        ? `N=${c.normalized_score.toFixed(2)}`
-        : null,
-    ]
-      .filter(Boolean)
-      .join(" · ");
+    // Diagnostic scores with Chinese meanings
+    const diagParts = [];
+    if (typeof c.fuzzy_score === "number")
+      diagParts.push(`F(模糊分)=${c.fuzzy_score.toFixed(2)}`);
+    if (typeof c.semantic_score === "number")
+      diagParts.push(`S(语义相似度)=${c.semantic_score.toFixed(2)}`);
+    if (typeof c.normalized_score === "number")
+      diagParts.push(`N(归一化合成分数)=${c.normalized_score.toFixed(3)}`);
+    const diag = diagParts.join(" · ");
 
     if (diag) {
       const diagRow = document.createElement("div");
       diagRow.className = "mt-1 text-[10px] text-gray-400 font-mono opacity-75";
       diagRow.textContent = diag;
       infoCol.appendChild(diagRow);
+      // small legend (中文解释) to make meanings clear
+      const legendRow = document.createElement("div");
+      legendRow.className =
+        "mt-0.5 text-[10px] text-gray-400 font-sans opacity-70";
+      legendRow.textContent =
+        "说明: F=模糊分, S=语义相似度, N=归一化合成分数 (0..1)";
+      infoCol.appendChild(legendRow);
     }
 
     // Details Section (New)
