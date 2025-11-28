@@ -48,22 +48,63 @@ export function renderMcpResults(query, results, targetList) {
 
     const info = document.createElement("div");
     info.className = "flex-1 min-w-0";
+
+    // provider logo + name row
+    const headerRow = document.createElement("div");
+    headerRow.className = "flex items-center gap-2";
+    if (r.provider_logo) {
+      const img = document.createElement("img");
+      img.src = r.provider_logo;
+      img.alt = r.provider_display || r.source || "source";
+      img.className = "w-8 h-8 rounded-md flex-shrink-0";
+      headerRow.appendChild(img);
+    }
+    const nameWrap = document.createElement("div");
+    nameWrap.className = "min-w-0 flex-1";
     const name = document.createElement("div");
     name.className = "font-medium truncate";
     name.textContent = r.name || r.title || "(无名)";
-    info.appendChild(name);
+    nameWrap.appendChild(name);
     const meta = document.createElement("div");
-    meta.className = "text-[12px] text-slate-600 dark:text-slate-300";
-    meta.textContent = `${r.source || "外部"} · score=${
-      r.match_score || r.match_score === 0 ? String(r.match_score) : "?"
+    meta.className =
+      "text-[12px] text-slate-600 dark:text-slate-300 flex items-center gap-2";
+    const providerLabel = document.createElement("span");
+    providerLabel.className = "italic text-[12px] text-slate-500";
+    providerLabel.textContent = r.provider_display || r.source || "外部";
+    const scoreLabel = document.createElement("span");
+    scoreLabel.textContent = `score=${
+      r.match_score || r.score || r.match_score === 0
+        ? String(r.match_score || r.score)
+        : "?"
     }`;
-    info.appendChild(meta);
+    meta.appendChild(providerLabel);
+    meta.appendChild(document.createTextNode("·"));
+    meta.appendChild(scoreLabel);
+    nameWrap.appendChild(meta);
+    headerRow.appendChild(nameWrap);
+    info.appendChild(headerRow);
+
+    if (r.pub_date) {
+      const pd = document.createElement("div");
+      pd.className = "text-[12px] text-slate-500 mt-1";
+      pd.textContent = `发布时间：${r.pub_date}`;
+      info.appendChild(pd);
+    }
+
     if (r.snippet) {
       const sn = document.createElement("div");
       sn.className =
-        "text-[12px] text-slate-700 dark:text-slate-200 line-clamp-2 mt-1";
+        "text-[12px] text-slate-700 dark:text-slate-200 line-clamp-3 mt-1";
       sn.textContent = r.snippet;
       info.appendChild(sn);
+    }
+
+    // companies list (if any)
+    if (r.companies && Array.isArray(r.companies) && r.companies.length) {
+      const comp = document.createElement("div");
+      comp.className = "text-[12px] text-slate-600 mt-1";
+      comp.textContent = `关联企业：${r.companies.slice(0, 3).join("；")}`;
+      info.appendChild(comp);
     }
 
     cbWrap.appendChild(info);

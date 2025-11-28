@@ -1,5 +1,6 @@
 from typing import List, Dict, Optional
 import random
+from datetime import datetime, timedelta
 
 
 def _score_from_name(query_name: str, candidate_name: str) -> float:
@@ -62,6 +63,22 @@ def mcp_search(
     if not base_candidates:
         base_candidates = [q or "结果1", "结果2"]
 
+    # provider display names and logo hints (served from static/images/providers)
+    provider_display = {
+        "qichacha": "企查查",
+        "tianyancha": "天眼查",
+        "gsxt": "国家企业信用公示",
+        "wangpan": "网盘/归档",
+        "news": "新闻",
+    }
+    provider_logo = {
+        "qichacha": "/static/images/providers/qichacha.svg",
+        "tianyancha": "/static/images/providers/tianyancha.svg",
+        "gsxt": "/static/images/providers/gsxt.svg",
+        "wangpan": "/static/images/providers/wangpan.svg",
+        "news": "/static/images/providers/news.svg",
+    }
+
     # build mock results
     for i, cand in enumerate(base_candidates):
         provider = providers[i % len(providers)]
@@ -73,14 +90,27 @@ def mcp_search(
             for k in addr_kw:
                 if k and k in snippet:
                     score = min(1.0, score + 0.08)
+        # add additional contextual fields: provider display name, logo, pub_date and mock companies
+        pub_date = (datetime.utcnow() - timedelta(days=random.randint(0, 365))).strftime("%Y-%m-%d")
+        companies = []
+        if provider in ("qichacha", "tianyancha", "gsxt"):
+            # mock associated companies for registry providers
+            companies = [f"{name} 的关联企业 {j+1}" for j in range(random.randint(0, 3))]
+
         results.append(
             {
                 "source": provider,
+                "provider_display": provider_display.get(provider, provider),
+                "provider_logo": provider_logo.get(provider, "/static/images/providers/default.svg"),
                 "id": f"{provider}-{i+1}",
                 "name": name,
+                "title": name,
                 "snippet": snippet,
                 "url": f"https://mock.{provider}.example/{i+1}",
                 "match_score": round(score, 3),
+                "score": round(score, 3),
+                "pub_date": pub_date,
+                "companies": companies,
             }
         )
 
@@ -89,14 +119,22 @@ def mcp_search(
         i = len(results) + 1
         p = random.choice(providers)
         name = f"候选 {i} ({p})"
+        # add same richer shape for additional seeds
+        pub_date = (datetime.utcnow() - timedelta(days=random.randint(0, 365))).strftime("%Y-%m-%d")
         results.append(
             {
                 "source": p,
+                "provider_display": provider_display.get(p, p),
+                "provider_logo": provider_logo.get(p, "/static/images/providers/default.svg"),
                 "id": f"{p}-{i}",
                 "name": name,
+                "title": name,
                 "snippet": f"来自 {p} 的示例结果 {i}",
                 "url": f"https://mock.{p}.example/{i}",
                 "match_score": round(random.uniform(0.25, 0.6), 3),
+                "score": round(random.uniform(0.25, 0.6), 3),
+                "pub_date": pub_date,
+                "companies": [],
             }
         )
 

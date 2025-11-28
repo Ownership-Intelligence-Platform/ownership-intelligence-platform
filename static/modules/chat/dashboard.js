@@ -122,17 +122,30 @@ export async function loadFullDashboardAndSnapshot(
       analyzeRisks(rootId, newsLimit),
     ]);
 
+    // Prefer using a canonical person ID when available for person-specific loaders.
+    // Some call-sites pass a human-readable name as `rawInput` (e.g. "李辉").
+    // If `rootId` is a person id (P...), prefer it; otherwise fall back to rawInput only
+    // if it also looks like a person id.
+    const personCandidate = /^P\w+/i.test(rootId)
+      ? rootId
+      : /^P\w+/i.test(rawInput || "")
+      ? rawInput
+      : null;
+
     await Promise.allSettled([
       loadPenetration(),
-      rawInput ? loadPersonOpening(rawInput) : Promise.resolve(),
-      /^P\w+/i.test(rawInput || "")
+      personCandidate ? loadPersonOpening(personCandidate) : Promise.resolve(),
+      personCandidate
         ? (async () => {
             const graphEl = document.getElementById("personNetworkHomeGraph");
             const relationsEl = document.getElementById(
               "personRelationsHomeCard"
             );
             if (graphEl || relationsEl)
-              await loadPersonNetworkEmbed(rawInput, { graphEl, relationsEl });
+              await loadPersonNetworkEmbed(personCandidate, {
+                graphEl,
+                relationsEl,
+              });
           })()
         : Promise.resolve(),
     ]);
