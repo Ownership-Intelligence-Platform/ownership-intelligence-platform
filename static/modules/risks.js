@@ -31,33 +31,47 @@ export async function analyzeRisks(entityId, newsLimit = 5) {
   el.textContent = "Analyzing risks...";
   try {
     const res = await fetch(
-      `/entities/${encodeURIComponent(entityId)}/risks?news_limit=${newsLimit}`
+      `/entities/${encodeURIComponent(
+        entityId
+      )}/risk-summary?news_limit=${newsLimit}`
     );
     if (!res.ok) {
       el.textContent = `Risk analysis failed: ${res.status}`;
       return;
     }
     const data = await res.json();
+    // Prefer LLM summary text if present
+    if (data.summary_text) {
+      let meta = ``;
+      if (data.model)
+        meta += `<div class="text-xs text-gray-400">模型: ${data.model}</div>`;
+      if (data.source)
+        meta += `<div class="text-xs text-gray-400">来源: ${data.source}</div>`;
+      el.innerHTML = `<div class="mb-2">${meta}</div><div class="whitespace-pre-wrap">${data.summary_text}</div>`;
+      return;
+    }
+    // If no summary_text, fall back to previous full analysis rendering if provided
     const parts = [];
     parts.push(
       `<div class="mb-4"><strong>Entity:</strong> ${data.entity?.id} ${
         data.entity?.name || ""
       }</div>`
     );
-    parts.push(
-      `<div class="mb-4"><strong>Summary:</strong> Total Items: ${
-        data.summary.total_items
-      }, Total Risky: ${
-        data.summary.total_risky_items
-      }, Overall Score: ${data.summary.overall_risk_score.toFixed(2)}</div>`
-    );
-
+    if (data.summary) {
+      parts.push(
+        `<div class="mb-4"><strong>Summary:</strong> Total Items: ${
+          data.summary.total_items
+        }, Total Risky: ${
+          data.summary.total_risky_items
+        }, Overall Score: ${data.summary.overall_risk_score.toFixed(2)}</div>`
+      );
+    }
     parts.push(
       renderSection(
         "Accounts",
-        data.accounts,
+        data.accounts || {},
         (a) =>
-          `${a.account_number} (${a.bank_name || "?"}) bal=${
+          `${a.account_number || "?"} (${a.bank_name || "?"}) bal=${
             a.balance ?? "n/a"
           }`
       )
@@ -65,25 +79,38 @@ export async function analyzeRisks(entityId, newsLimit = 5) {
     parts.push(
       renderSection(
         "Transactions",
-        data.transactions,
-        (t) => `${t.from_id} → ${t.to_id} amt=${t.amount} ${t.type || ""}`
+        data.transactions || {},
+        (t) =>
+          `${t.from_id || "?"} → ${t.to_id || "?"} amt=${t.amount || "n/a"}`
       )
     );
     parts.push(
       renderSection(
         "Guarantees",
-        data.guarantees,
-        (g) => `${g.guarantor_id} ⇄ ${g.guaranteed_id} amt=${g.amount}`
+        data.guarantees || {},
+        (g) =>
+          `${g.guarantor_id || "?"} ⇄ ${g.guaranteed_id || "?"} amt=${
+            g.amount || "n/a"
+          }`
       )
     );
     parts.push(
       renderSection(
         "Supply Chain",
-        data.supply_chain,
-        (s) => `${s.supplier_id} → ${s.customer_id} freq=${s.frequency ?? ""}`
+        data.supply_chain || {},
+        (s) =>
+          `${s.supplier_id || "?"} → ${s.customer_id || "?"} freq=${
+            s.frequency ?? ""
+          }`
       )
     );
-    parts.push(renderSection("News", data.news, (n) => `${n.title}`));
+    parts.push(
+      renderSection(
+        "News",
+        data.news || {},
+        (n) => `${n.title || n.url || "n/a"}`
+      )
+    );
 
     el.innerHTML = parts.join("");
   } catch (err) {

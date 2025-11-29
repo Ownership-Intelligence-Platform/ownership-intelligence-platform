@@ -29,6 +29,7 @@ from app.services.graph_service import (
     get_stored_news,
 )
 from app.services.news_service import get_company_news
+from app.services.llm_client import get_llm_client
 
 # --- Tunable thresholds (can be externalized later) ---
 ACCOUNT_HIGH_BALANCE = 1_000_000.0  # High balance threshold
@@ -449,3 +450,84 @@ def analyze_entity_risks(
             "NEGATIVE_NEWS_KEYWORDS": NEGATIVE_NEWS_KEYWORDS,
         },
     }
+
+
+def generate_risk_summary(entity_id: str, *, news_limit: int = 10, llm_temperature: float = 0.0) -> Dict[str, Any]:
+    """Generate a concise risk summary for an entity using the LLM.
+
+    Behavior:
+      - Build a compact context using `analyze_entity_risks` output.
+      - Try to call the configured LLM via `get_llm_client()`.
+      - If LLM is unavailable (no API key or client error), fall back to a
+        deterministic textual summary constructed from the analysis results.
+
+    Returns a dict: {"summary_text": str, "model": opt, "usage": opt, "source": "llm"|"fallback"}
+    """
+    # Get structured analysis (local, deterministic)
+    analysis = analyze_entity_risks(entity_id, news_limit=news_limit)
+    if not analysis:
+        return {"summary_text": "未找到实体或无可用数据。", "source": "fallback"}
+
+    # Build compact context for LLM: entity, top labels, counts and first news titles
+    ent = analysis.get("entity") or {}
+    name = ent.get("name") or ent.get("id") or entity_id
+    labels = analysis.get("summary", {})
+    overall_score = analysis.get("summary", {}).get("overall_risk_score", 0)
+    total_items = analysis.get("summary", {}).get("total_items", 0)
+    total_risky = analysis.get("summary", {}).get("total_risky_items", 0)
+
+    # collate news headlines (up to 3)
+    news_items = analysis.get("news", {}).get("items", []) or []
+    headlines = [n.get("title") or n.get("url") for n in news_items[:3]]
+
+    # Create a succinct system + user prompt in Chinese asking for a short risk summary
+    system_prompt = (
+        "你是企业尽职调查助理。根据下列事实，生成一段中文风险分析总结（3-5句），要点化、可读且面向合规审查：不要引用原始数据，只给出结论和要点。"
+    )
+    facts = [
+        f"实体: {name}",
+        f"总体风险评分: {overall_score}",
+        f"总项数: {total_items}, 其中可疑项: {total_risky}",
+    ]
+    # show top labels if any
+    labels_list = analysis.get("labels") or []
+    if labels_list:
+        facts.append("风险标签: " + ", ".join(labels_list[:5]))
+    if headlines:
+        facts.append("近期新闻: " + " | ".join(headlines))
+
+    user_prompt = "\n".join(["事实:", *facts, "\n请基于以上事实给出中文风险总结：\n- 概要\n- 关键风险要点（最多3条）\n- 建议的下一步（1条）"]) 
+
+    # Try to call LLM; if unavailable, fall back to deterministic summary
+    try:
+        client = get_llm_client()
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ]
+        text, usage, model = client.generate(messages, temperature=llm_temperature, max_tokens=400)
+        if not text:
+            raise RuntimeError("Empty LLM response")
+        return {"summary_text": text, "model": model, "usage": usage or {}, "source": "llm"}
+    except Exception as exc:  # fall back to deterministic summary
+        # Build a readable fallback summary in Chinese
+        parts: list[str] = []
+        parts.append(f"摘要: 对于“{name}”，自动规则检测得到总体风险评分 {overall_score}（基于 {total_items} 个数据项，{total_risky} 个可疑项）。")
+        top_labels = ", ".join(labels_list[:3]) if labels_list else "无显著标签"
+        parts.append(f"主要发现: {top_labels}。")
+        # extract simple counts from sections for suggested highlights
+        highlights: list[str] = []
+        if analysis.get("accounts", {}).get("risky_count", 0) > 0:
+            highlights.append("账户异常")
+        if analysis.get("transactions", {}).get("risky_count", 0) > 0:
+            highlights.append("交易存在大额/高风险通道")
+        if analysis.get("news", {}).get("risky_count", 0) > 0:
+            highlights.append("负面新闻")
+        if highlights:
+            parts.append("可疑要点: " + ", ".join(highlights) + "。")
+        else:
+            parts.append("可疑要点: 未发现明显规则匹配的高风险要素。")
+        if headlines:
+            parts.append("相关新闻: " + (" | ".join(headlines)))
+        parts.append("建议: 对可疑项进行人工复核，优先核查账户与大额交易，并检索更多新闻证据。")
+        return {"summary_text": "\n".join(parts), "source": "fallback", "error": str(exc)}
