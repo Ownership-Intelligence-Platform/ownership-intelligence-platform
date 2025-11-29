@@ -41,7 +41,18 @@ def parse_person_query(user_text: str) -> Dict[str, Any]:
             "content": f"用户输入：{user_text}\n请按照约定的 JSON 结构返回。不要输出解释文字。",
         },
     ]
-    text, usage, model = client.generate(messages, temperature=0.1, max_tokens=400)
+    try:
+        text, usage, model = client.generate(messages, temperature=0.1, max_tokens=400)
+    except Exception as exc:
+        # If the LLM call fails (timeout, network, key issue), fall back to a safe minimal parse
+        return {
+            "name": user_text.strip() or None,
+            "birth_date": None,
+            "gender": None,
+            "address_keywords": [],
+            "id_number_tail": None,
+            "_raw": f"<llm-error>: {exc}",
+        }
     # Best-effort JSON parsing; if it fails, fall back to minimal structure.
     try:
         parsed = json.loads(text)

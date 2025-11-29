@@ -81,7 +81,12 @@ class LLMClient:
         if extra_body:
             payload.update({"extra_body": extra_body})
 
-        resp = self._client.chat.completions.create(**payload)
+        try:
+            # Pass explicit request timeout to the underlying client when supported.
+            resp = self._client.chat.completions.create(**payload, request_timeout=self.timeout)
+        except TypeError:
+            # Some client versions may not accept request_timeout on this call; fall back without it.
+            resp = self._client.chat.completions.create(**payload)
         text = (resp.choices[0].message.content or "").strip() if resp.choices else ""
         usage = getattr(resp, "usage", None)
         usage_dict = usage.model_dump() if hasattr(usage, "model_dump") else (usage or {})
@@ -98,7 +103,11 @@ class LLMClient:
         embed_model = model or os.getenv("LLM_EMBED_MODEL") or "text-embedding-3-small"
         # Some OpenAI-compatible clients expose embeddings on `.embeddings.create`
         try:
-            resp = self._client.embeddings.create(model=embed_model, input=texts)
+            # Prefer to pass an explicit request timeout when available on the client.
+            try:
+                resp = self._client.embeddings.create(model=embed_model, input=texts, request_timeout=self.timeout)
+            except TypeError:
+                resp = self._client.embeddings.create(model=embed_model, input=texts)
         except Exception as exc:  # pragma: no cover - runtime dependent
             raise RuntimeError(f"Embedding request failed: {exc}")
         # Response shape: data: [{embedding: [...]}, ...]
