@@ -34,7 +34,61 @@ export async function loadHomePartials() {
 
   // After the main sections are injected, load dashboard cards into the grid container
   await loadDashboardCards();
+  // Equalize heights of the person-opening and entity info cards so they match (person opening as source)
+  try {
+    equalizeEntityPersonHeights();
+  } catch (e) {
+    // ignore in environments where DOM not fully ready
+  }
 }
+
+// Ensure cards keep equal height (match to personOpeningBox height). Safe to call repeatedly.
+function equalizeEntityPersonHeights() {
+  const personBox = document.getElementById("personOpeningBox");
+  const entityBox = document.getElementById("entityInfo");
+  if (!personBox || !entityBox) return;
+  const personCard = personBox.closest(".rounded-lg");
+  const entityCard = entityBox.closest(".rounded-lg");
+  if (!personCard || !entityCard) return;
+  // Reset heights first
+  personCard.style.minHeight = "";
+  entityCard.style.minHeight = "";
+  // Try to align to the bottom of the tip text inside the person box (if present)
+  const tipEl = personBox.querySelector(".text-[11px], .text-xs, .text-[11px]");
+  try {
+    const personRect = personCard.getBoundingClientRect();
+    if (tipEl) {
+      const tipRect = tipEl.getBoundingClientRect();
+      const target = Math.ceil(tipRect.bottom - personRect.top + 8); // small padding
+      if (target > 0) {
+        personCard.style.minHeight = target + "px";
+        entityCard.style.minHeight = target + "px";
+        return;
+      }
+    }
+  } catch (e) {
+    // fallback to full card height below
+  }
+  // Fallback: Use the computed full height of the person card as the source of truth
+  const h = Math.ceil(personCard.getBoundingClientRect().height);
+  if (h > 0) {
+    personCard.style.minHeight = h + "px";
+    entityCard.style.minHeight = h + "px";
+  }
+}
+
+// Run equalization on window resize (debounced)
+let __eqResizeTimer = null;
+window.addEventListener("resize", () => {
+  if (__eqResizeTimer) clearTimeout(__eqResizeTimer);
+  __eqResizeTimer = setTimeout(() => {
+    try {
+      equalizeEntityPersonHeights();
+    } catch (e) {
+      /* noop */
+    }
+  }, 150);
+});
 
 async function loadDashboardCards() {
   const container = document.getElementById("dashboardSection");
