@@ -15,6 +15,7 @@ import { analyzeRisks } from "../risks.js";
 import { loadPenetration } from "../penetration.js";
 import { loadPersonOpening } from "../personOpening.js";
 import { loadPersonNetwork as loadPersonNetworkEmbed } from "../personNetworkEmbed.js";
+import { loadDashboardCards } from "../partials.js";
 
 function ensureStreamContainer() {
   let stream = document.getElementById("chatTurnStream");
@@ -308,10 +309,16 @@ export async function loadFullDashboardAndSnapshot(
   });
   try {
     const dashboardEl = document.getElementById("dashboardSection");
+    // Ensure the card partials are present for this rootId/rawInput.
+    // This will inject person- or entity-specific partials as needed.
+    await loadDashboardCards(rootId, rawInput);
+
+    // Consider the dashboard already loaded if the container has been populated
+    // for this id; `loadDashboardCards` sets dataset.loadedId when it injects.
     const dashboardAlreadyLoaded = !!(
       dashboardEl &&
       dashboardEl.dataset &&
-      dashboardEl.dataset.loaded === "1"
+      dashboardEl.dataset.loadedId === String(rootId || rawInput)
     );
     if (dashboardAlreadyLoaded) {
       console.log(

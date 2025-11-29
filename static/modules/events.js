@@ -2,6 +2,7 @@
 // Keeps DOM listeners and orchestration separate from the entry file.
 
 import { loadLayers } from "./layers.js";
+import { loadDashboardCards } from "./partials.js";
 import { loadNews } from "./news.js";
 import { loadPenetration } from "./penetration.js";
 import { populateMock, clearDb, importPersons } from "./db.js";
@@ -164,9 +165,22 @@ export function wireCoreEvents() {
       loadEntityInfo(id);
       // Load core ownership layers
       loadLayers();
-      // Then auto-load the dashboard cards
+      // Then load the dashboard cards appropriate to the query (person vs entity)
+      await loadDashboardCards(id, rawInput);
+      // Then auto-load the dashboard data within those cards
       await autoLoadDashboardCards(id, rawInput);
     } else {
+      // If the raw input looks like a Person id (e.g., P...), treat it as a person query
+      if (/^P\w+/i.test(rawInput)) {
+        // Use rawInput as the id for person-specific loaders
+        const personId = rawInput;
+        document.getElementById("rootId").value = personId;
+        revealUI();
+        // Load person-specific card partials and then populate them
+        await loadDashboardCards(personId, personId);
+        await autoLoadDashboardCards(personId, personId);
+        return;
+      }
       // Fallback to external lookup (ask for birthdate)
       const bd = prompt(
         "未找到内部实体。可从公开来源检索。请输入出生日期 (YYYY-MM-DD，可留空)：",

@@ -32,8 +32,8 @@ export async function loadHomePartials() {
     }
   }
 
-  // After the main sections are injected, load dashboard cards into the grid container
-  await loadDashboardCards();
+  // After the main sections are injected: defer loading specific dashboard cards
+  // until a user performs a query so we can load only the relevant cards.
   // Equalize heights of the person-opening and entity info cards so they match (person opening as source)
   try {
     equalizeEntityPersonHeights();
@@ -90,27 +90,66 @@ window.addEventListener("resize", () => {
   }, 150);
 });
 
-async function loadDashboardCards() {
+export async function loadDashboardCards(id, rawInput) {
+  // id: resolved internal id (e.g., P1 or E123)
+  // rawInput: the original user input (useful to detect person ids like P...)
   const container = document.getElementById("dashboardSection");
   if (!container) return;
-  // guard: only load once
-  if (container.dataset && container.dataset.loaded === "1") return;
-  const cardPartials = [
-    // personOpeningCard moved into `entityInfoSection.html` so it appears alongside entity info
+
+  // If no id/rawInput provided, don't eagerly load cards on page load.
+  if (!id && !rawInput) return;
+
+  // Determine if this looks like a person id
+  let isPerson = false;
+  try {
+    if (rawInput && /^P\w+/i.test(rawInput)) isPerson = true;
+    else if (id && /^P\w+/i.test(id)) isPerson = true;
+  } catch (e) {
+    // ignore regex errors
+  }
+
+  // If the container already contains cards for the same id, no-op
+  try {
+    if (
+      container.dataset &&
+      container.dataset.loadedId === String(id || rawInput)
+    )
+      return;
+  } catch (e) {
+    // ignore
+  }
+
+  // Clear any previously loaded cards so we can load a fresh set for the new id
+  container.innerHTML = "";
+
+  // Choose card partials according to requested view
+  const personCardPartials = [
+    // For person queries we keep only: person network, accounts, transactions, employment, news, risk analysis
     "/static/partials/cards/personNetworkCard.html",
+    "/static/partials/cards/accountsCard.html",
+    "/static/partials/cards/transactionsCard.html",
+    "/static/partials/cards/employmentCard.html",
+    "/static/partials/cards/newsCard.html",
+    "/static/partials/cards/riskAnalysisCard.html",
+  ];
+
+  const entityCardPartials = [
+    // For enterprise/company queries keep the requested set
     "/static/partials/cards/layersTreeCard.html",
     "/static/partials/cards/representativesCard.html",
     "/static/partials/cards/accountsCard.html",
     "/static/partials/cards/transactionsCard.html",
     "/static/partials/cards/guaranteesCard.html",
     "/static/partials/cards/supplyChainCard.html",
-    "/static/partials/cards/employmentCard.html",
     "/static/partials/cards/locationsCard.html",
     "/static/partials/cards/newsCard.html",
     "/static/partials/cards/penetrationCard.html",
     "/static/partials/cards/riskAnalysisCard.html",
     "/static/partials/cards/kbRiskCard.html",
   ];
+
+  const cardPartials = isPerson ? personCardPartials : entityCardPartials;
+
   for (const url of cardPartials) {
     try {
       const res = await fetch(url, { cache: "no-cache" });
@@ -122,9 +161,10 @@ async function loadDashboardCards() {
       console.error("Failed to load card partial:", url, e);
     }
   }
-  // mark container as loaded so future calls are no-ops
+
+  // remember which id we loaded for so repeated queries don't re-load unnecessarily
   try {
-    container.dataset.loaded = "1";
+    container.dataset.loadedId = String(id || rawInput);
   } catch (e) {
     // ignore if dataset not available
   }
