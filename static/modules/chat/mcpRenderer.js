@@ -6,7 +6,7 @@ export function renderMcpResults(query, results, targetList) {
     targetList || document.getElementById("chatMessages") || document.body;
   const card = document.createElement("div");
   card.className =
-    "mt-2 mb-2 border border-slate-200 rounded-lg bg-white dark:bg-gray-900 px-3 py-2 max-w-2xl shadow-sm text-sm";
+    "mt-2 mb-2 border border-slate-200 rounded-lg bg-white dark:bg-gray-900 px-3 py-2 shadow-sm text-sm";
   const title = document.createElement("div");
   title.className = "font-semibold mb-1 flex items-center justify-between";
   title.textContent = `公开来源检索结果（${query || "查询"}）`;
