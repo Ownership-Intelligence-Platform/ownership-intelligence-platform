@@ -452,7 +452,13 @@ def analyze_entity_risks(
     }
 
 
-def generate_risk_summary(entity_id: str, *, news_limit: int = 10, llm_temperature: float = 0.0) -> Dict[str, Any]:
+def generate_risk_summary(
+    entity_id: str,
+    *,
+    news_limit: int = 10,
+    llm_temperature: float = 0.0,
+    get_external_news_fn: Optional[Callable[[str, int], List[Dict[str, Any]]]] = None,
+) -> Dict[str, Any]:
     """Generate a concise risk summary for an entity using the LLM.
 
     Behavior:
@@ -464,7 +470,11 @@ def generate_risk_summary(entity_id: str, *, news_limit: int = 10, llm_temperatu
     Returns a dict: {"summary_text": str, "model": opt, "usage": opt, "source": "llm"|"fallback"}
     """
     # Get structured analysis (local, deterministic)
-    analysis = analyze_entity_risks(entity_id, news_limit=news_limit)
+    # Allow injecting an external news fetcher (useful for mocking in tests or API)
+    if get_external_news_fn is not None:
+        analysis = analyze_entity_risks(entity_id, news_limit=news_limit, get_external_news_fn=get_external_news_fn)
+    else:
+        analysis = analyze_entity_risks(entity_id, news_limit=news_limit)
     if not analysis:
         return {"summary_text": "未找到实体或无可用数据。", "source": "fallback"}
 
