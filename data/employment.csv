@@ -1,7 +1,7 @@
 company_id,person_id,role
-C1,P1,Chairman
-C1,P2,CFO
+C101,P1,Chairman
+C101,P2,CFO
 C2,P3,CEO
 C2,P1,Director
-C1,P2006,Employee
-C1,P2002,Employee
+C101,P2006,Employee
+C101,P2002,Employee

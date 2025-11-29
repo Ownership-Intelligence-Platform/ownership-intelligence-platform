@@ -154,6 +154,23 @@ function renderGraph(container, data) {
     }
   };
 
+  // Human-friendly labels for link types (falls back to raw type)
+  function linkLabelText(type) {
+    if (!type) return "";
+    const t = String(type || "").toUpperCase();
+    const map = {
+      LEGAL_REP: "法定代表",
+      SERVES_AS: "任职",
+      SHARE_COMPANY: "同公司",
+      FRIEND_OF: "朋友",
+      SPOUSE_OF: "配偶",
+      PARENT_OF: "父母/子女",
+      CHILD_OF: "父母/子女",
+      CLASSMATE_OF: "同学",
+    };
+    return map[t] || type.replace(/_/g, " ");
+  }
+
   let links = (data.links || []).map((l) => ({ ...l }));
   // Deduplicate nodes by id (server should do this, but guard here)
   const nodesRaw = (data.nodes || []).map((n) => ({ ...n }));
@@ -226,6 +243,24 @@ function renderGraph(container, data) {
     .join("line")
     .attr("stroke", linkColor)
     .attr("stroke-opacity", 0.8);
+
+  // Labels for links: show relationship type above the link line
+  const linkLabel = svg
+    .append("g")
+    .attr("class", "link-labels")
+    .selectAll("text")
+    .data(links)
+    .join("text")
+    .attr("font-size", 10)
+    .attr("fill", "#374151")
+    .attr("text-anchor", "middle")
+    .attr("pointer-events", "none")
+    .style("font-family", "sans-serif")
+    // increase readability by painting a white stroke behind the glyphs
+    .style("paint-order", "stroke")
+    .style("stroke", "white")
+    .style("stroke-width", 3)
+    .text((d) => linkLabelText(d.type || d.label || ""));
 
   const dragBehavior = d3
     .drag()
@@ -347,6 +382,42 @@ function renderGraph(container, data) {
       .attr("y2", (d) => d.target.y);
 
     node.attr("transform", (d) => `translate(${d.x},${d.y})`);
+
+    // Position link labels at the midpoint of the link with a small
+    // perpendicular offset so they appear above the line.
+    try {
+      linkLabel
+        .attr("x", (d) => {
+          const sx = d.source.x;
+          const sy = d.source.y;
+          const tx = d.target.x;
+          const ty = d.target.y;
+          const mx = (sx + tx) / 2;
+          const my = (sy + ty) / 2;
+          const dx = tx - sx;
+          const dy = ty - sy;
+          const len = Math.hypot(dx, dy) || 1;
+          const nx = -dy / len; // perpendicular normal
+          const offset = Math.min(18, Math.max(8, Math.hypot(dx, dy) * 0.06));
+          return mx + nx * offset;
+        })
+        .attr("y", (d) => {
+          const sx = d.source.x;
+          const sy = d.source.y;
+          const tx = d.target.x;
+          const ty = d.target.y;
+          const mx = (sx + tx) / 2;
+          const my = (sy + ty) / 2;
+          const dx = tx - sx;
+          const dy = ty - sy;
+          const len = Math.hypot(dx, dy) || 1;
+          const ny = dx / len; // perpendicular normal y
+          const offset = Math.min(18, Math.max(8, Math.hypot(dx, dy) * 0.06));
+          return my + ny * offset;
+        });
+    } catch (e) {
+      // ignore any tick-time errors when nodes are not yet initialized
+    }
   });
 
   // Notify callers when the simulation has settled so snapshots can be taken
