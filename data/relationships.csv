@@ -3,4 +3,13 @@ P1,P2,father,张伟,王刚
 P1,P3,spouse,张伟,张敏
 P1,P4,friend,张伟,李雷
 P1,P5,classmate,张伟,韩梅梅
-P2006,P2003,friend,李辉,李辉
+P2006,P2003,friend,李辉,陈刚
+P2006,P2001,classmate,李辉,王强
+P2006,P2012,spouse,李辉,刘婷婷
+P2006,P2025,child_of,李辉,王芳
+P2006,P2017,business_partner,李辉,张敏
+P2006,C101,board_member,李辉,成都宏远贸易有限公司
+P2006,C102,client_of,李辉,四川天翔进出口贸易有限公司
+P2006,P2016,legal_advisor,李辉,赵磊
+P2006,P2003,co_founder,李辉,陈刚
+P2006,P2001,investor_in,李辉,王强
