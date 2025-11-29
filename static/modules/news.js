@@ -97,6 +97,7 @@ function sanitizeSummary(html) {
 export async function loadNews(entityId) {
   const el = document.getElementById("newsList");
   const limit = Number(document.getElementById("newsLimit").value || 5);
+  console.log("[news] loadNews start", { entityId, limit });
   el.textContent = "Loading news…";
   try {
     const res = await fetch(

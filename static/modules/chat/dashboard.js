@@ -94,6 +94,10 @@ export async function loadFullDashboardAndSnapshot(
   const rootInput = document.getElementById("rootId");
   if (rootInput) rootInput.value = rootId;
   hideCanonicalPanels();
+  console.log("[dashboard] loadFullDashboardAndSnapshot start", {
+    rootId,
+    rawInput,
+  });
   try {
     const txDir =
       document.getElementById("txDirection")?.value?.trim() || "out";
@@ -108,10 +112,11 @@ export async function loadFullDashboardAndSnapshot(
       10
     );
 
+    console.log("[dashboard] loading entity info and layers...");
     await loadEntityInfo(rootId);
     await loadLayers();
 
-    await Promise.allSettled([
+    const p1 = await Promise.allSettled([
       loadAccounts(rootId),
       loadTransactions(rootId, txDir),
       loadGuarantees(rootId, gDir),
@@ -121,6 +126,13 @@ export async function loadFullDashboardAndSnapshot(
       loadNews(rootId),
       analyzeRisks(rootId, newsLimit),
     ]);
+    console.log(
+      "[dashboard] primary loaders settled",
+      p1.map((r) => ({
+        status: r.status,
+        reason: r.reason ? String(r.reason) : undefined,
+      }))
+    );
 
     // Prefer using a canonical person ID when available for person-specific loaders.
     // Some call-sites pass a human-readable name as `rawInput` (e.g. "李辉").
@@ -132,7 +144,7 @@ export async function loadFullDashboardAndSnapshot(
       ? rawInput
       : null;
 
-    await Promise.allSettled([
+    const p2 = await Promise.allSettled([
       loadPenetration(),
       personCandidate ? loadPersonOpening(personCandidate) : Promise.resolve(),
       personCandidate
@@ -149,6 +161,13 @@ export async function loadFullDashboardAndSnapshot(
           })()
         : Promise.resolve(),
     ]);
+    console.log(
+      "[dashboard] secondary loaders settled",
+      p2.map((r) => ({
+        status: r.status,
+        reason: r.reason ? String(r.reason) : undefined,
+      }))
+    );
   } catch (_) {
     // Swallow partial failures; snapshot whatever is available.
   }
