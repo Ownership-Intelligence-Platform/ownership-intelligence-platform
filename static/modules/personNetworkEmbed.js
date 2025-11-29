@@ -27,12 +27,13 @@ function renderRelationsCard(container, data) {
       const count = ids.length;
       const chips = ids
         .slice(0, 6)
-        .map(
-          (pid) =>
-            `<span class="inline-flex items-center px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-xs">${escapeHtml(
-              id2name.get(pid) || pid
-            )}</span>`
-        )
+        .map((pid) => {
+          const name = id2name.get(pid) || pid;
+          const title = `${name} (${pid})`;
+          return `<span class="inline-flex items-center px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-xs" title="${escapeHtml(
+            title
+          )}">${escapeHtml(name)}</span>`;
+        })
         .join(" ");
       return `
       <div class="rounded border border-gray-200 dark:border-gray-800 p-3">
@@ -140,8 +141,43 @@ function renderGraph(container, data) {
     }
   };
 
-  const links = (data.links || []).map((l) => ({ ...l }));
-  const nodes = (data.nodes || []).map((n) => ({ ...n }));
+  let links = (data.links || []).map((l) => ({ ...l }));
+  // Deduplicate nodes by id (server should do this, but guard here)
+  const nodesRaw = (data.nodes || []).map((n) => ({ ...n }));
+  const nodeMapLocal = new Map();
+  for (const n of nodesRaw) {
+    if (!n || !n.id) continue;
+    if (!nodeMapLocal.has(n.id)) nodeMapLocal.set(n.id, n);
+    else {
+      // Merge missing fields if any
+      const ex = nodeMapLocal.get(n.id);
+      nodeMapLocal.set(n.id, { ...n, ...ex });
+    }
+  }
+  let nodes = Array.from(nodeMapLocal.values());
+
+  // Filter links to existing nodes and normalize keys to 'source'/'target'
+  links = links.filter(
+    (l) =>
+      l &&
+      l.source &&
+      l.target &&
+      nodeMapLocal.has(l.source) &&
+      nodeMapLocal.has(l.target)
+  );
+
+  // Ensure nodes have initial positions so they don't all collapse to (0,0)
+  const cx = width / 2;
+  const cy = height / 2;
+  for (const n of nodes) {
+    if (typeof n.x !== "number") n.x = cx + (Math.random() - 0.5) * 40;
+    if (typeof n.y !== "number") n.y = cy + (Math.random() - 0.5) * 40;
+  }
+
+  console.log("[personNetwork] renderGraph nodes/links", {
+    nodes: nodes.length,
+    links: links.length,
+  });
 
   const simulation = d3
     .forceSimulation(nodes)
@@ -150,11 +186,14 @@ function renderGraph(container, data) {
       d3
         .forceLink(links)
         .id((d) => d.id)
-        .distance((d) => 110)
+        .distance((d) => 160)
     )
-    .force("charge", d3.forceManyBody().strength(-220))
+    .force("charge", d3.forceManyBody().strength(-300))
     .force("center", d3.forceCenter(width / 2, height / 2))
-    .force("collide", d3.forceCollide().radius(36));
+    .force("collide", d3.forceCollide().radius(44));
+
+  // Kickstart the simulation to ensure nodes spread out immediately
+  simulation.alpha(1).restart();
 
   const link = svg
     .append("g")
@@ -211,7 +250,7 @@ function renderGraph(container, data) {
 
   node
     .append("text")
-    .text((d) => `${d.name || d.id}`)
+    .text((d) => d.name || d.id)
     .attr("x", 20)
     .attr("y", 3)
     .attr("font-size", 10)
@@ -220,6 +259,9 @@ function renderGraph(container, data) {
     .attr("stroke", "white")
     .attr("stroke-width", 3)
     .attr("stroke-linejoin", "round");
+
+  // Add native tooltip for disambiguation (shows Name (ID) on hover)
+  node.append("title").text((d) => `${d.name || d.id} (${d.id})`);
 
   simulation.on("tick", () => {
     link
@@ -230,6 +272,30 @@ function renderGraph(container, data) {
 
     node.attr("transform", (d) => `translate(${d.x},${d.y})`);
   });
+
+  // Notify callers when the simulation has settled so snapshots can be taken
+  // after final positions are applied. Use both the 'end' event and a
+  // small timeout fallback to avoid hanging if the simulation doesn't emit.
+  let dispatched = false;
+  const dispatchReady = () => {
+    if (dispatched) return;
+    dispatched = true;
+    try {
+      container.dispatchEvent(
+        new CustomEvent("personNetworkReady", { bubbles: true })
+      );
+    } catch (e) {
+      // ignore
+    }
+  };
+
+  simulation.on("end", () => {
+    // ensure final tick applied
+    dispatchReady();
+  });
+
+  // Fallback: dispatch after ~700ms in case 'end' is not reached quickly
+  setTimeout(() => dispatchReady(), 700);
 }
 
 export async function loadPersonNetwork(personId, { graphEl, relationsEl }) {

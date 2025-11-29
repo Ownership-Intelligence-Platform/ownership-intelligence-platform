@@ -99,6 +99,17 @@ export async function loadFullDashboardAndSnapshot(
     rawInput,
   });
   try {
+    const dashboardEl = document.getElementById("dashboardSection");
+    const dashboardAlreadyLoaded = !!(
+      dashboardEl &&
+      dashboardEl.dataset &&
+      dashboardEl.dataset.loaded === "1"
+    );
+    if (dashboardAlreadyLoaded) {
+      console.log(
+        "[dashboard] dashboard already loaded — skipping card loaders and will clone existing DOM for snapshot"
+      );
+    }
     const txDir =
       document.getElementById("txDirection")?.value?.trim() || "out";
     const gDir =
@@ -112,27 +123,45 @@ export async function loadFullDashboardAndSnapshot(
       10
     );
 
-    console.log("[dashboard] loading entity info and layers...");
-    await loadEntityInfo(rootId);
-    await loadLayers();
+    // If the dashboard has already been injected and its cards loaded earlier
+    // (e.g. by a prior user action), prefer cloning the existing DOM for the
+    // snapshot rather than re-running the card loaders which may trigger
+    // duplicate network requests or duplicate DOM injection.
+    if (!dashboardAlreadyLoaded) {
+      console.log("[dashboard] loading entity info and layers...");
+      await loadEntityInfo(rootId);
+      await loadLayers();
 
-    const p1 = await Promise.allSettled([
-      loadAccounts(rootId),
-      loadTransactions(rootId, txDir),
-      loadGuarantees(rootId, gDir),
-      loadSupplyChain(rootId, sDir),
-      loadEmployment(rootId, role),
-      loadLocations(rootId),
-      loadNews(rootId),
-      analyzeRisks(rootId, newsLimit),
-    ]);
-    console.log(
-      "[dashboard] primary loaders settled",
-      p1.map((r) => ({
-        status: r.status,
-        reason: r.reason ? String(r.reason) : undefined,
-      }))
-    );
+      const p1 = await Promise.allSettled([
+        loadAccounts(rootId),
+        loadTransactions(rootId, txDir),
+        loadGuarantees(rootId, gDir),
+        loadSupplyChain(rootId, sDir),
+        loadEmployment(rootId, role),
+        loadLocations(rootId),
+        loadNews(rootId),
+        analyzeRisks(rootId, newsLimit),
+      ]);
+      console.log(
+        "[dashboard] primary loaders settled",
+        p1.map((r) => ({
+          status: r.status,
+          reason: r.reason ? String(r.reason) : undefined,
+        }))
+      );
+    } else {
+      // still update entity info/layers if caller provided a new rootId value
+      // but avoid reloading all card data
+      try {
+        await loadEntityInfo(rootId);
+        await loadLayers();
+      } catch (e) {
+        console.warn(
+          "[dashboard] non-blocking: failed to refresh entity info/layers",
+          e
+        );
+      }
+    }
 
     // Prefer using a canonical person ID when available for person-specific loaders.
     // Some call-sites pass a human-readable name as `rawInput` (e.g. "李辉").
@@ -171,6 +200,44 @@ export async function loadFullDashboardAndSnapshot(
   } catch (_) {
     // Swallow partial failures; snapshot whatever is available.
   }
+  // Wait briefly for person network rendering to settle so cloned snapshots
+  // include final SVG transforms/coordinates. We listen for a custom
+  // 'personNetworkReady' event dispatched by the renderer, with a timeout
+  // fallback to avoid blocking.
+  function waitForEvent(el, name, timeout = 1000) {
+    return new Promise((resolve) => {
+      if (!el) return resolve();
+      let done = false;
+      const on = () => {
+        if (done) return;
+        done = true;
+        clearTimeout(tm);
+        el.removeEventListener(name, on);
+        resolve();
+      };
+      const tm = setTimeout(() => {
+        if (done) return;
+        done = true;
+        try {
+          el.removeEventListener(name, on);
+        } catch (_) {}
+        resolve();
+      }, timeout);
+      el.addEventListener(name, on);
+    });
+  }
+
+  try {
+    const graphEl = document.getElementById("personNetworkHomeGraph");
+    if (graphEl) {
+      // wait up to 1s for network ready event; this helps ensure transforms
+      // are present on the canonical SVG before we clone it into the snapshot.
+      await waitForEvent(graphEl, "personNetworkReady", 1000);
+    }
+  } catch (e) {
+    /* swallow */
+  }
+
   return createDashboardSnapshotCard(snapshotTitle, rootId);
 }
 
