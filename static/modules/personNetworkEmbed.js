@@ -111,6 +111,9 @@ function renderGraph(container, data) {
   container.innerHTML = "";
   // When rendering into hidden panels (display:none), clientWidth/Height can be 0.
   // Use bounding rect with sensible fallbacks to ensure a visible chart in snapshots.
+  // Compute width/height with sensible minimums. Prefer the actual
+  // bounding rect so the SVG can fill its parent. We'll also attach a
+  // ResizeObserver to keep the simulation centered on size changes.
   const rect = container.getBoundingClientRect();
   const width = Math.max(480, rect.width || container.clientWidth || 640);
   const height = Math.max(280, rect.height || container.clientHeight || 420);
@@ -120,7 +123,17 @@ function renderGraph(container, data) {
     .append("svg")
     .attr("viewBox", [0, 0, width, height])
     .attr("width", width)
-    .attr("height", height);
+    .attr("height", height)
+    // Make the SVG scale to fill its parent container while preserving
+    // aspect and keeping the visual centered.
+    .attr("preserveAspectRatio", "xMidYMid meet")
+    .style("width", "100%")
+    .style("height", "100%");
+
+  // Prevent default touch-action to allow pointer/touch dragging inside the SVG
+  try {
+    svg.style("touch-action", "none");
+  } catch (_) {}
 
   const color = (d) => {
     if (d.id === data.person.id) return "#1d4ed8"; // focal
@@ -170,8 +183,9 @@ function renderGraph(container, data) {
   const cx = width / 2;
   const cy = height / 2;
   for (const n of nodes) {
-    if (typeof n.x !== "number") n.x = cx + (Math.random() - 0.5) * 40;
-    if (typeof n.y !== "number") n.y = cy + (Math.random() - 0.5) * 40;
+    // Spread nodes across the available area to avoid left/top clustering.
+    if (typeof n.x !== "number") n.x = Math.random() * width;
+    if (typeof n.y !== "number") n.y = Math.random() * height;
   }
 
   console.log("[personNetwork] renderGraph nodes/links", {
@@ -179,6 +193,9 @@ function renderGraph(container, data) {
     links: links.length,
   });
 
+  // Create forces with parameters that scale with the container size so
+  // the layout adapts to different viewport sizes.
+  const baseDist = Math.max(120, Math.min(width, height) * 0.22);
   const simulation = d3
     .forceSimulation(nodes)
     .force(
@@ -186,11 +203,17 @@ function renderGraph(container, data) {
       d3
         .forceLink(links)
         .id((d) => d.id)
-        .distance((d) => 160)
+        .distance(() => baseDist)
     )
-    .force("charge", d3.forceManyBody().strength(-300))
+    .force(
+      "charge",
+      d3.forceManyBody().strength(-Math.max(200, Math.min(width, height) * 0.6))
+    )
     .force("center", d3.forceCenter(width / 2, height / 2))
-    .force("collide", d3.forceCollide().radius(44));
+    .force(
+      "collide",
+      d3.forceCollide().radius(Math.max(28, Math.min(width, height) * 0.065))
+    );
 
   // Kickstart the simulation to ensure nodes spread out immediately
   simulation.alpha(1).restart();
@@ -204,29 +227,39 @@ function renderGraph(container, data) {
     .attr("stroke", linkColor)
     .attr("stroke-opacity", 0.8);
 
+  const dragBehavior = d3
+    .drag()
+    // Ensure the drag library interprets coordinates relative to the SVG element
+    .container(function () {
+      return svg.node();
+    })
+    .on("start", (event) => {
+      if (!event.active) simulation.alphaTarget(0.3).restart();
+      event.subject.fx = event.subject.x;
+      event.subject.fy = event.subject.y;
+    })
+    .on("drag", (event) => {
+      event.subject.fx = event.x;
+      event.subject.fy = event.y;
+    })
+    .on("end", (event) => {
+      if (!event.active) simulation.alphaTarget(0);
+      event.subject.fx = null;
+      event.subject.fy = null;
+    });
+
   const node = svg
     .append("g")
     .selectAll("g")
     .data(nodes)
     .join("g")
-    .call(
-      d3
-        .drag()
-        .on("start", (event) => {
-          if (!event.active) simulation.alphaTarget(0.3).restart();
-          event.subject.fx = event.subject.x;
-          event.subject.fy = event.subject.y;
-        })
-        .on("drag", (event) => {
-          event.subject.fx = event.x;
-          event.subject.fy = event.y;
-        })
-        .on("end", (event) => {
-          if (!event.active) simulation.alphaTarget(0);
-          event.subject.fx = null;
-          event.subject.fy = null;
-        })
-    );
+    .call(dragBehavior);
+
+  // Ensure groups accept pointer events and text doesn't block pointer capture
+  try {
+    node.style("pointer-events", "all");
+    node.selectAll("text").style("pointer-events", "none");
+  } catch (_) {}
 
   node
     .filter((d) => (d.type || "").toLowerCase() === "company")
@@ -263,6 +296,49 @@ function renderGraph(container, data) {
   // Add native tooltip for disambiguation (shows Name (ID) on hover)
   node.append("title").text((d) => `${d.name || d.id} (${d.id})`);
 
+  // Improve drag cursor / UX
+  node.style("cursor", "grab");
+
+  // Keep a reference so resize handler can update forces and svg size
+  let resizeObserver = null;
+  const setupResize = () => {
+    if (typeof ResizeObserver === "undefined") return;
+    if (resizeObserver) return; // already attached
+    resizeObserver = new ResizeObserver((entries) => {
+      for (const ent of entries) {
+        try {
+          const r = ent.contentRect || ent.target.getBoundingClientRect();
+          const w = Math.max(320, Math.floor(r.width || width));
+          const h = Math.max(200, Math.floor(r.height || height));
+          // update svg viewBox/size
+          svg.attr("viewBox", [0, 0, w, h]);
+          svg.attr("width", w).attr("height", h);
+          // update center and collision/link distances
+          const center = d3.forceCenter(w / 2, h / 2);
+          simulation.force("center", center);
+          simulation
+            .force("link")
+            .distance(Math.max(100, Math.min(w, h) * 0.2));
+          simulation.force(
+            "collide",
+            d3.forceCollide().radius(Math.max(24, Math.min(w, h) * 0.06))
+          );
+          // nudge the simulation to re-heat and re-layout
+          simulation.alpha(0.4).restart();
+        } catch (e) {
+          // ignore
+        }
+      }
+    });
+    try {
+      resizeObserver.observe(container);
+    } catch (e) {
+      // ignore attach errors
+    }
+  };
+
+  setupResize();
+
   simulation.on("tick", () => {
     link
       .attr("x1", (d) => d.source.x)
@@ -296,6 +372,23 @@ function renderGraph(container, data) {
 
   // Fallback: dispatch after ~700ms in case 'end' is not reached quickly
   setTimeout(() => dispatchReady(), 700);
+
+  // Ensure drag cursor style changes while dragging (support pointer and mouse)
+  node
+    .selectAll("circle, rect, text")
+    .on("pointerdown mousedown touchstart", function () {
+      try {
+        this.style.cursor = "grabbing";
+      } catch (_) {}
+    });
+  // Restore cursor on pointerup/mouseup globally
+  const restoreCursor = () => {
+    try {
+      node.style("cursor", "grab");
+    } catch (_) {}
+  };
+  window.addEventListener("mouseup", restoreCursor);
+  window.addEventListener("pointerup", restoreCursor);
 }
 
 export async function loadPersonNetwork(personId, { graphEl, relationsEl }) {
