@@ -30,6 +30,7 @@ from app.services.graph_service import (
 )
 from app.services.news_service import get_company_news
 from app.services.llm_client import get_llm_client
+import markdown as md
 
 # --- Tunable thresholds (can be externalized later) ---
 ACCOUNT_HIGH_BALANCE = 1_000_000.0  # High balance threshold
@@ -476,7 +477,10 @@ def generate_risk_summary(
     else:
         analysis = analyze_entity_risks(entity_id, news_limit=news_limit)
     if not analysis:
-        return {"summary_text": "未找到实体或无可用数据。", "source": "fallback"}
+        text = "未找到实体或无可用数据。"
+        # provide both text and simple html
+        summary_html = md.markdown(text)
+        return {"summary_text": text, "summary_html": summary_html, "analysis": {}, "source": "fallback"}
 
     # Build compact context for LLM: entity, top labels, counts and first news titles
     ent = analysis.get("entity") or {}
@@ -509,6 +513,17 @@ def generate_risk_summary(
     user_prompt = "\n".join(["事实:", *facts, "\n请基于以上事实给出中文风险总结：\n- 概要\n- 关键风险要点（最多3条）\n- 建议的下一步（1条）"]) 
 
     # Try to call LLM; if unavailable, fall back to deterministic summary
+    def _sanitize_html(html: str) -> str:
+        # Basic sanitization: strip script tags, remove on* attributes, neutralize javascript: URLs
+        html = re.sub(r"(?is)<script.*?>.*?</script>", "", html)
+        # remove event handler attributes like onclick="..."
+        html = re.sub(r'(?i)\son\w+\s*=\s*"[^"]*"', "", html)
+        html = re.sub(r"(?i)\son\w+\s*=\s*'[^']*'", "", html)
+        # neutralize javascript: links in href/src
+        html = re.sub(r'(?i)(href|src)\s*=\s*"javascript:[^\"]*"', r'\1="#"', html)
+        html = re.sub(r"(?i)(href|src)\s*=\s*'javascript:[^']*'", r"\1='#'", html)
+        return html
+
     try:
         client = get_llm_client()
         messages = [
@@ -518,7 +533,13 @@ def generate_risk_summary(
         text, usage, model = client.generate(messages, temperature=llm_temperature, max_tokens=400)
         if not text:
             raise RuntimeError("Empty LLM response")
-        return {"summary_text": text, "model": model, "usage": usage or {}, "source": "llm"}
+        # Convert markdown (LLM may emit markdown) to HTML and sanitize
+        try:
+            summary_html = md.markdown(text, extensions=["extra", "sane_lists"]) if text else ""
+        except Exception:
+            summary_html = text
+        summary_html = _sanitize_html(summary_html)
+        return {"summary_text": text, "summary_html": summary_html, "model": model, "usage": usage or {}, "source": "llm", "analysis": analysis}
     except Exception as exc:  # fall back to deterministic summary
         # Build a readable fallback summary in Chinese
         parts: list[str] = []
@@ -540,4 +561,10 @@ def generate_risk_summary(
         if headlines:
             parts.append("相关新闻: " + (" | ".join(headlines)))
         parts.append("建议: 对可疑项进行人工复核，优先核查账户与大额交易，并检索更多新闻证据。")
-        return {"summary_text": "\n".join(parts), "source": "fallback", "error": str(exc)}
+        text = "\n".join(parts)
+        try:
+            summary_html = md.markdown(text, extensions=["extra", "sane_lists"]) if text else ""
+        except Exception:
+            summary_html = text
+        summary_html = _sanitize_html(summary_html)
+        return {"summary_text": text, "summary_html": summary_html, "source": "fallback", "error": str(exc), "analysis": analysis}

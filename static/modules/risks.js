@@ -6,6 +6,16 @@ function formatFlags(item) {
   return ` ⚠️ ${flags.join("; ")} (score=${item.risk_score?.toFixed(2)})`;
 }
 
+function escapeHtml(str) {
+  if (!str && str !== 0) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function renderSection(title, section, itemFormatter) {
   if (!section)
     return `<div class="mb-4"><h4 class="font-semibold">${title}</h4><div class="text-gray-400">No data</div></div>`;
@@ -40,14 +50,90 @@ export async function analyzeRisks(entityId, newsLimit = 5) {
       return;
     }
     const data = await res.json();
-    // Prefer LLM summary text if present
+    // Prefer LLM summary if present; server may also return sanitized HTML + analysis for evidence links
     if (data.summary_text) {
       let meta = ``;
       if (data.model)
         meta += `<div class="text-xs text-gray-400">模型: ${data.model}</div>`;
       if (data.source)
         meta += `<div class="text-xs text-gray-400">来源: ${data.source}</div>`;
-      el.innerHTML = `<div class="mb-2">${meta}</div><div class="whitespace-pre-wrap">${data.summary_text}</div>`;
+
+      // Use server-rendered HTML when available (already sanitized server-side)
+      const summaryHtml =
+        data.summary_html ||
+        `<div class="whitespace-pre-wrap">${escapeHtml(
+          data.summary_text
+        )}</div>`;
+
+      // Build evidence links from analysis (accounts, transactions, guarantees, supply_chain, news)
+      let evidenceHtml = "";
+      const ana = data.analysis || data; // fallback if analysis included at top-level
+      const entId = (ana && ana.entity && ana.entity.id) || entityId;
+      if (ana) {
+        const sections = [
+          {
+            key: "accounts",
+            label: "Accounts",
+            url: `/entities/${encodeURIComponent(entId)}/accounts`,
+          },
+          {
+            key: "transactions",
+            label: "Transactions",
+            url: `/entities/${encodeURIComponent(entId)}/transactions`,
+          },
+          {
+            key: "guarantees",
+            label: "Guarantees",
+            url: `/entities/${encodeURIComponent(entId)}/guarantees`,
+          },
+          {
+            key: "supply_chain",
+            label: "Supply Chain",
+            url: `/entities/${encodeURIComponent(entId)}/supply-chain`,
+          },
+          { key: "news", label: "News", url: null },
+        ];
+        const itemsList = [];
+        sections.forEach((s) => {
+          const sec = ana[s.key];
+          const risky = sec && sec.risky ? sec.risky.slice(0, 3) : [];
+          if (risky && risky.length) {
+            const inner = risky
+              .map((it) => {
+                if (s.key === "news") {
+                  const href = it.url || it.source || "#";
+                  return `<a class="text-rose-600 underline" href="${href}" target="_blank" rel="noopener noreferrer">${escapeHtml(
+                    it.title || it.url || href
+                  )}</a>`;
+                }
+                // internal resources link to the subresource list for the entity
+                const label =
+                  (it.account_number && `${it.account_number}`) ||
+                  (it.from_id && `${it.from_id} → ${it.to_id}`) ||
+                  (it.guarantor_id &&
+                    `${it.guarantor_id} ⇄ ${it.guaranteed_id}`) ||
+                  (it.supplier_id && `${it.supplier_id} → ${it.customer_id}`) ||
+                  JSON.stringify(it);
+                return `<a class="text-sky-600 underline" href="${
+                  s.url
+                }" target="_self">${escapeHtml(s.label + ": " + label)}</a>`;
+              })
+              .join("<br>");
+            itemsList.push(
+              `<li class="py-1"><strong>${escapeHtml(
+                s.label
+              )}:</strong> ${inner}</li>`
+            );
+          }
+        });
+        if (itemsList.length) {
+          evidenceHtml = `<div class="mb-4"><h4 class="font-semibold">关键风险要点与证据</h4><ul class="mt-1">${itemsList.join(
+            ""
+          )}</ul></div>`;
+        }
+      }
+
+      el.innerHTML = `<div class="mb-2">${meta}</div>${summaryHtml}${evidenceHtml}`;
       return;
     }
     // If no summary_text, fall back to previous full analysis rendering if provided
