@@ -309,17 +309,20 @@ export async function loadFullDashboardAndSnapshot(
   });
   try {
     const dashboardEl = document.getElementById("dashboardSection");
-    // Ensure the card partials are present for this rootId/rawInput.
-    // This will inject person- or entity-specific partials as needed.
-    await loadDashboardCards(rootId, rawInput);
-
-    // Consider the dashboard already loaded if the container has been populated
-    // for this id; `loadDashboardCards` sets dataset.loadedId when it injects.
+    // Determine if the dashboard was already loaded for this id BEFORE
+    // attempting to inject card partials. If we check after injecting we
+    // will always observe the dataset just set by loadDashboardCards and
+    // incorrectly skip the data loaders.
     const dashboardAlreadyLoaded = !!(
       dashboardEl &&
       dashboardEl.dataset &&
       dashboardEl.dataset.loadedId === String(rootId || rawInput)
     );
+
+    // Ensure the card partials are present for this rootId/rawInput.
+    // This will inject person- or entity-specific partials as needed.
+    await loadDashboardCards(rootId, rawInput);
+
     if (dashboardAlreadyLoaded) {
       console.log(
         "[dashboard] dashboard already loaded — skipping card loaders and will clone existing DOM for snapshot"

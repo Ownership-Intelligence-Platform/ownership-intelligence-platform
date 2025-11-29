@@ -6,6 +6,10 @@
 // - SHARE_COMPANY link color: #6b7280 (others vary by relation)
 
 import { showLoading, hideLoading } from "./utils.js";
+import { loadAccounts } from "./accounts.js";
+import { loadTransactions } from "./transactions.js";
+import { loadEmployment } from "./employment.js";
+import { loadNews } from "./news.js";
 
 function getParam(name) {
   const params = new URLSearchParams(window.location.search);
@@ -250,6 +254,32 @@ async function load() {
           </table>
         </div>`;
       aoBox.innerHTML = html;
+    }
+
+    // Also load auxiliary cards (accounts, transactions, employment, news)
+    try {
+      loadAccounts(pid);
+    } catch (e) {
+      console.debug("loadAccounts failed", e);
+    }
+    try {
+      const txDirEl = document.getElementById("txDirection");
+      const txDir = txDirEl ? txDirEl.value.trim() : "out";
+      loadTransactions(pid, txDir);
+    } catch (e) {
+      console.debug("loadTransactions failed", e);
+    }
+    try {
+      const roleEl = document.getElementById("employmentRole");
+      const role = roleEl ? roleEl.value.trim() : "both";
+      loadEmployment(pid, role);
+    } catch (e) {
+      console.debug("loadEmployment failed", e);
+    }
+    try {
+      loadNews(pid);
+    } catch (e) {
+      console.debug("loadNews failed", e);
     }
   } catch (e) {
     document.getElementById("raw").textContent = String(e);

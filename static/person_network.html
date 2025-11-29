@@ -213,6 +213,110 @@
           提示：账号与身份证号仅展示尾号，避免暴露敏感信息。
         </div>
       </section>
+      <!-- Additional person-related cards: accounts, transactions, employment, news -->
+      <section
+        class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4"
+      >
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-base font-semibold">账户</h2>
+          <button
+            id="loadAccounts"
+            class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white"
+          >
+            刷新
+          </button>
+        </div>
+        <div id="accountsList" class="text-sm text-gray-700 dark:text-gray-200">
+          <em>账户信息加载中…</em>
+        </div>
+      </section>
+
+      <section
+        class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4"
+      >
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-base font-semibold">交易</h2>
+          <div class="flex items-center gap-2">
+            <select
+              id="txDirection"
+              class="rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm px-2 py-1"
+            >
+              <option value="out" selected>出</option>
+              <option value="in">入</option>
+              <option value="both">双向</option>
+            </select>
+            <button
+              id="loadTransactions"
+              class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white"
+            >
+              刷新
+            </button>
+          </div>
+        </div>
+        <div
+          id="transactionsList"
+          class="text-sm text-gray-700 dark:text-gray-200"
+        >
+          <em>交易信息加载中…</em>
+        </div>
+      </section>
+
+      <section
+        class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4"
+      >
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-base font-semibold">任职信息</h2>
+          <div class="flex items-center gap-2">
+            <select
+              id="employmentRole"
+              class="rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm px-2 py-1"
+            >
+              <option value="both" selected>全部</option>
+              <option value="as_company">公司</option>
+              <option value="as_person">个人</option>
+            </select>
+            <button
+              id="loadEmployment"
+              class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white"
+            >
+              刷新
+            </button>
+          </div>
+        </div>
+        <div
+          id="employmentList"
+          class="text-sm text-gray-700 dark:text-gray-200"
+        >
+          <em>任职信息加载中…</em>
+        </div>
+      </section>
+
+      <section
+        class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4 lg:col-span-2"
+      >
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-base font-semibold">相关新闻</h2>
+          <div class="flex items-center gap-2">
+            <input
+              id="newsLimit"
+              type="number"
+              value="5"
+              min="1"
+              max="50"
+              class="w-20 rounded-md border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1 text-sm"
+            />
+            <button
+              id="loadNews"
+              class="inline-flex items-center rounded-md bg-slate-700 px-3 py-1.5 text-sm font-medium text-white"
+            >
+              刷新
+            </button>
+          </div>
+        </div>
+        <div id="newsList" class="text-sm text-gray-700 dark:text-gray-200">
+          <em>相关新闻加载中…</em>
+        </div>
+      </section>
       <section
         class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4"
       >
