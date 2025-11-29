@@ -16,6 +16,7 @@ export async function loadAccounts(entityId) {
   const container = document.getElementById("accountsList");
   if (!container) return;
   try {
+    console.log("[accounts] loadAccounts start", { entityId });
     setStatus("Loading accounts…", 0);
     container.innerHTML = "Loading…";
     const res = await fetch(

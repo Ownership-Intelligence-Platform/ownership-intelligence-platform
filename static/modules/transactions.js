@@ -16,6 +16,10 @@ export async function loadTransactions(entityId, direction = "out") {
   const container = document.getElementById("transactionsList");
   if (!container) return;
   try {
+    console.log("[transactions] loadTransactions start", {
+      entityId,
+      direction,
+    });
     setStatus("Loading transactions…", 0);
     container.innerHTML = "Loading…";
     const params = new URLSearchParams({ direction });

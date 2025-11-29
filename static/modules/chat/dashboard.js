@@ -86,6 +86,214 @@ export function createDashboardSnapshotCard(titleText, entityId) {
   return wrapper;
 }
 
+// Lightweight drag for cloned SVG snapshots. We don't need simulation
+// behavior here — just allow manual translate of node groups so the
+// snapshot feels interactive. Uses Pointer Events for cross-device support.
+function attachSimpleDragToSnapshot(rootEl) {
+  if (!rootEl) return;
+  const svgs = Array.from(rootEl.querySelectorAll("svg"));
+  if (!svgs.length) return;
+
+  svgs.forEach((svg) => {
+    try {
+      svg.style.touchAction = "none";
+    } catch (_) {}
+
+    // pick candidate node groups: g elements that contain a circle or rect
+    const groups = Array.from(svg.querySelectorAll("g")).filter((g) =>
+      g.querySelector("circle,rect,text,title")
+    );
+
+    // helper to parse existing translate() on group transform attribute
+    const parseTranslate = (t) => {
+      if (!t) return [0, 0];
+      const m = /translate\(([-0-9.]+)\s*,?\s*([-0-9.]+)\)/.exec(t);
+      if (m) return [parseFloat(m[1]), parseFloat(m[2])];
+      return [0, 0];
+    };
+
+    // Precompute group centers and map line endpoints to nearest groups so
+    // we can update line endpoints when a group is dragged. Also build a
+    // neighbor index so we can apply a lightweight spring to adjacent nodes
+    // for an elastic feel in snapshot mode.
+    const groupInfos = groups.map((g) => {
+      const t = g.getAttribute("transform");
+      const [gx, gy] = parseTranslate(t);
+      return {
+        g,
+        gx,
+        gy,
+        currentX: gx,
+        currentY: gy,
+        connections: [],
+        neighbors: new Set(),
+      };
+    });
+
+    const lines = Array.from(svg.querySelectorAll("line"));
+    // associate each line endpoint to the nearest group (if within threshold)
+    const threshold = 80; // px
+    lines.forEach((line) => {
+      const x1 = parseFloat(line.getAttribute("x1") || "0");
+      const y1 = parseFloat(line.getAttribute("y1") || "0");
+      const x2 = parseFloat(line.getAttribute("x2") || "0");
+      const y2 = parseFloat(line.getAttribute("y2") || "0");
+
+      const nearestIndex = (x, y) => {
+        let best = -1;
+        let bestDist = Infinity;
+        for (let i = 0; i < groupInfos.length; i++) {
+          const gi = groupInfos[i];
+          const dx = gi.gx - x;
+          const dy = gi.gy - y;
+          const d = Math.hypot(dx, dy);
+          if (d < bestDist) {
+            bestDist = d;
+            best = i;
+          }
+        }
+        return bestDist <= threshold ? best : -1;
+      };
+
+      const sIdx = nearestIndex(x1, y1);
+      const tIdx = nearestIndex(x2, y2);
+      if (sIdx !== -1) {
+        groupInfos[sIdx].connections.push({
+          line,
+          xAttr: "x1",
+          yAttr: "y1",
+          origX: x1,
+          origY: y1,
+        });
+      }
+      if (tIdx !== -1) {
+        groupInfos[tIdx].connections.push({
+          line,
+          xAttr: "x2",
+          yAttr: "y2",
+          origX: x2,
+          origY: y2,
+        });
+      }
+      // register neighbors when both endpoints mapped to groups
+      if (sIdx !== -1 && tIdx !== -1 && sIdx !== tIdx) {
+        groupInfos[sIdx].neighbors.add(tIdx);
+        groupInfos[tIdx].neighbors.add(sIdx);
+      }
+    });
+
+    groupInfos.forEach((info) => {
+      const g = info.g;
+      // ensure pointer events are enabled on the group
+      try {
+        g.style.pointerEvents = "all";
+        g.style.cursor = "grab";
+      } catch (_) {}
+
+      let dragging = false;
+      let startX = 0,
+        startY = 0;
+      let origX = info.gx,
+        origY = info.gy;
+
+      const onPointerDown = (ev) => {
+        ev.preventDefault();
+        try {
+          if (ev.target && ev.target.setPointerCapture)
+            ev.target.setPointerCapture(ev.pointerId);
+        } catch (_) {}
+        dragging = true;
+        startX = ev.clientX;
+        startY = ev.clientY;
+        // refresh original positions in case SVG was not static
+        const t = g.getAttribute("transform");
+        const [x, y] = parseTranslate(t);
+        origX = x;
+        origY = y;
+        // capture original endpoint positions for connected lines
+        info.connections.forEach((c) => {
+          c._startX = parseFloat(c.line.getAttribute(c.xAttr) || "0");
+          c._startY = parseFloat(c.line.getAttribute(c.yAttr) || "0");
+        });
+        g.style.cursor = "grabbing";
+      };
+
+      const onPointerMove = (ev) => {
+        if (!dragging) return;
+        const dx = ev.clientX - startX;
+        const dy = ev.clientY - startY;
+        const nx = origX + dx;
+        const ny = origY + dy;
+        try {
+          g.setAttribute("transform", `translate(${nx},${ny})`);
+        } catch (_) {}
+        // update connected line endpoints so links follow the group visually
+        info.connections.forEach((c) => {
+          try {
+            const newX = (c._startX || 0) + dx;
+            const newY = (c._startY || 0) + dy;
+            c.line.setAttribute(c.xAttr, String(newX));
+            c.line.setAttribute(c.yAttr, String(newY));
+          } catch (_) {}
+        });
+
+        // Simple elastic effect: nudge immediate neighbors a fraction of the drag
+        // so the graph looks springy. We move neighbor groups by a fraction
+        // of the delta away from their original positions.
+        const SPRING_FACTOR = 0.28; // how much neighbors follow (0..1)
+        info.neighbors &&
+          Array.from(info.neighbors).forEach((nIdx) => {
+            try {
+              const nb = groupInfos[nIdx];
+              // compute target displacement for neighbor relative to its original
+              const targetX = (nb.gx || 0) + (nx - origX) * SPRING_FACTOR;
+              const targetY = (nb.gy || 0) + (ny - origY) * SPRING_FACTOR;
+              nb.currentX = targetX;
+              nb.currentY = targetY;
+              nb.g.setAttribute(
+                "transform",
+                `translate(${targetX},${targetY})`
+              );
+              // update lines connected to neighbor
+              nb.connections.forEach((c) => {
+                try {
+                  const dxn = targetX - (nb.gx || 0);
+                  const dyn = targetY - (nb.gy || 0);
+                  const newX =
+                    (c._startX ||
+                      parseFloat(c.line.getAttribute(c.xAttr) || "0")) + dxn;
+                  const newY =
+                    (c._startY ||
+                      parseFloat(c.line.getAttribute(c.yAttr) || "0")) + dyn;
+                  c.line.setAttribute(c.xAttr, String(newX));
+                  c.line.setAttribute(c.yAttr, String(newY));
+                } catch (_) {}
+              });
+            } catch (_) {}
+          });
+      };
+
+      const endDrag = (ev) => {
+        if (!dragging) return;
+        dragging = false;
+        try {
+          if (ev && ev.target && ev.target.releasePointerCapture)
+            ev.target.releasePointerCapture(ev.pointerId);
+        } catch (_) {}
+        g.style.cursor = "grab";
+      };
+
+      g.addEventListener("pointerdown", onPointerDown);
+      window.addEventListener("pointermove", onPointerMove);
+      window.addEventListener("pointerup", endDrag);
+      // also support mouse events fallback
+      g.addEventListener("mousedown", onPointerDown);
+      window.addEventListener("mousemove", onPointerMove);
+      window.addEventListener("mouseup", endDrag);
+    });
+  });
+}
+
 export async function loadFullDashboardAndSnapshot(
   rootId,
   rawInput,
@@ -94,7 +302,22 @@ export async function loadFullDashboardAndSnapshot(
   const rootInput = document.getElementById("rootId");
   if (rootInput) rootInput.value = rootId;
   hideCanonicalPanels();
+  console.log("[dashboard] loadFullDashboardAndSnapshot start", {
+    rootId,
+    rawInput,
+  });
   try {
+    const dashboardEl = document.getElementById("dashboardSection");
+    const dashboardAlreadyLoaded = !!(
+      dashboardEl &&
+      dashboardEl.dataset &&
+      dashboardEl.dataset.loaded === "1"
+    );
+    if (dashboardAlreadyLoaded) {
+      console.log(
+        "[dashboard] dashboard already loaded — skipping card loaders and will clone existing DOM for snapshot"
+      );
+    }
     const txDir =
       document.getElementById("txDirection")?.value?.trim() || "out";
     const gDir =
@@ -108,19 +331,45 @@ export async function loadFullDashboardAndSnapshot(
       10
     );
 
-    await loadEntityInfo(rootId);
-    await loadLayers();
+    // If the dashboard has already been injected and its cards loaded earlier
+    // (e.g. by a prior user action), prefer cloning the existing DOM for the
+    // snapshot rather than re-running the card loaders which may trigger
+    // duplicate network requests or duplicate DOM injection.
+    if (!dashboardAlreadyLoaded) {
+      console.log("[dashboard] loading entity info and layers...");
+      await loadEntityInfo(rootId);
+      await loadLayers();
 
-    await Promise.allSettled([
-      loadAccounts(rootId),
-      loadTransactions(rootId, txDir),
-      loadGuarantees(rootId, gDir),
-      loadSupplyChain(rootId, sDir),
-      loadEmployment(rootId, role),
-      loadLocations(rootId),
-      loadNews(rootId),
-      analyzeRisks(rootId, newsLimit),
-    ]);
+      const p1 = await Promise.allSettled([
+        loadAccounts(rootId),
+        loadTransactions(rootId, txDir),
+        loadGuarantees(rootId, gDir),
+        loadSupplyChain(rootId, sDir),
+        loadEmployment(rootId, role),
+        loadLocations(rootId),
+        loadNews(rootId),
+        analyzeRisks(rootId, newsLimit),
+      ]);
+      console.log(
+        "[dashboard] primary loaders settled",
+        p1.map((r) => ({
+          status: r.status,
+          reason: r.reason ? String(r.reason) : undefined,
+        }))
+      );
+    } else {
+      // still update entity info/layers if caller provided a new rootId value
+      // but avoid reloading all card data
+      try {
+        await loadEntityInfo(rootId);
+        await loadLayers();
+      } catch (e) {
+        console.warn(
+          "[dashboard] non-blocking: failed to refresh entity info/layers",
+          e
+        );
+      }
+    }
 
     // Prefer using a canonical person ID when available for person-specific loaders.
     // Some call-sites pass a human-readable name as `rawInput` (e.g. "李辉").
@@ -132,7 +381,7 @@ export async function loadFullDashboardAndSnapshot(
       ? rawInput
       : null;
 
-    await Promise.allSettled([
+    const p2 = await Promise.allSettled([
       loadPenetration(),
       personCandidate ? loadPersonOpening(personCandidate) : Promise.resolve(),
       personCandidate
@@ -149,9 +398,54 @@ export async function loadFullDashboardAndSnapshot(
           })()
         : Promise.resolve(),
     ]);
+    console.log(
+      "[dashboard] secondary loaders settled",
+      p2.map((r) => ({
+        status: r.status,
+        reason: r.reason ? String(r.reason) : undefined,
+      }))
+    );
   } catch (_) {
     // Swallow partial failures; snapshot whatever is available.
   }
+  // Wait briefly for person network rendering to settle so cloned snapshots
+  // include final SVG transforms/coordinates. We listen for a custom
+  // 'personNetworkReady' event dispatched by the renderer, with a timeout
+  // fallback to avoid blocking.
+  function waitForEvent(el, name, timeout = 1000) {
+    return new Promise((resolve) => {
+      if (!el) return resolve();
+      let done = false;
+      const on = () => {
+        if (done) return;
+        done = true;
+        clearTimeout(tm);
+        el.removeEventListener(name, on);
+        resolve();
+      };
+      const tm = setTimeout(() => {
+        if (done) return;
+        done = true;
+        try {
+          el.removeEventListener(name, on);
+        } catch (_) {}
+        resolve();
+      }, timeout);
+      el.addEventListener(name, on);
+    });
+  }
+
+  try {
+    const graphEl = document.getElementById("personNetworkHomeGraph");
+    if (graphEl) {
+      // wait up to 1s for network ready event; this helps ensure transforms
+      // are present on the canonical SVG before we clone it into the snapshot.
+      await waitForEvent(graphEl, "personNetworkReady", 1000);
+    }
+  } catch (e) {
+    /* swallow */
+  }
+
   return createDashboardSnapshotCard(snapshotTitle, rootId);
 }
 

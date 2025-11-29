@@ -15,8 +15,18 @@ export async function loadHomePartials() {
       const html = await res.text();
       const div = document.createElement("div");
       div.innerHTML = html;
-      // Append children (avoid double wrapper)
-      while (div.firstChild) right.appendChild(div.firstChild);
+      // Append children (avoid double wrapper).
+      // If a top-level node has an id that already exists in the document, skip it
+      // to make this operation idempotent when called multiple times (e.g. snapshots).
+      while (div.firstChild) {
+        const node = div.firstChild;
+        if (node && node.id && document.getElementById(node.id)) {
+          // already injected earlier, drop this node
+          div.removeChild(node);
+          continue;
+        }
+        right.appendChild(node);
+      }
     } catch (e) {
       console.error("Failed to load partial:", url, e);
     }
@@ -29,6 +39,8 @@ export async function loadHomePartials() {
 async function loadDashboardCards() {
   const container = document.getElementById("dashboardSection");
   if (!container) return;
+  // guard: only load once
+  if (container.dataset && container.dataset.loaded === "1") return;
   const cardPartials = [
     // personOpeningCard moved into `entityInfoSection.html` so it appears alongside entity info
     "/static/partials/cards/personNetworkCard.html",
@@ -55,5 +67,11 @@ async function loadDashboardCards() {
     } catch (e) {
       console.error("Failed to load card partial:", url, e);
     }
+  }
+  // mark container as loaded so future calls are no-ops
+  try {
+    container.dataset.loaded = "1";
+  } catch (e) {
+    // ignore if dataset not available
   }
 }
