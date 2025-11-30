@@ -319,4 +319,56 @@ export function wireCoreEvents() {
       );
       analyzeRisks(id, newsLimit);
     });
+
+  // Export Risk Analysis as PDF (delegated listener so dynamically-inserted button works)
+  document.addEventListener("click", async (ev) => {
+    const btn = ev.target.closest && ev.target.closest("#exportRiskPdf");
+    if (!btn) return;
+    // avoid double-processing
+    if (btn.dataset.exporting === "1") return;
+    btn.dataset.exporting = "1";
+    let original = btn.innerHTML;
+    try {
+      const raw = document.getElementById("rootId").value.trim();
+      const id = await resolveEntityInput(raw);
+      if (!id) {
+        alert("未选择实体，请先输入并加载实体ID");
+        return;
+      }
+      document.getElementById("rootId").value = id;
+      loadEntityInfo(id);
+      const newsLimit = parseInt(
+        document.getElementById("riskNewsLimit").value || "5",
+        10
+      );
+      original = btn.innerHTML;
+      btn.innerHTML = '<span class="animate-spin">↻</span> 生成中...';
+      btn.disabled = true;
+      const payload = { entity_id: id, news_limit: newsLimit, depth: 3 };
+      const resp = await fetch("/reports/cdd-pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!resp.ok) throw new Error(`Export failed: ${resp.status}`);
+      const blob = await resp.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `cdd_${id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+    } catch (e) {
+      console.error(e);
+      alert("导出 PDF 失败");
+    } finally {
+      btn.dataset.exporting = "0";
+      try {
+        btn.innerHTML = original;
+        btn.disabled = false;
+      } catch (_) {}
+    }
+  });
 }

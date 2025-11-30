@@ -1,5 +1,9 @@
 from fastapi import APIRouter, HTTPException, Response
-from app.services.report_service import generate_cdd_report, generate_youtu_pdf
+from app.services.report_service import (
+    generate_cdd_report,
+    generate_youtu_pdf,
+    generate_cdd_pdf,
+)
 from app.models.export import YoutuReportRequest
 
 router = APIRouter(tags=["reports"])
@@ -42,3 +46,29 @@ def api_get_cdd_report(
     if not res:
         raise HTTPException(status_code=404, detail="Entity not found")
     return res
+
+
+
+@router.post("/reports/cdd-pdf")
+def api_generate_cdd_pdf(payload: dict):
+    """Request JSON: { "entity_id": "E1", "depth": 3, "news_limit": 10, "refresh": false, "bilingual": false }
+    Returns: application/pdf
+    """
+    entity_id = payload.get("entity_id")
+    if not entity_id:
+        raise HTTPException(status_code=400, detail="entity_id is required")
+    try:
+        pdf_bytes = generate_cdd_pdf(
+            entity_id,
+            depth=int(payload.get("depth", 3)),
+            news_limit=int(payload.get("news_limit", 10)),
+            refresh=bool(payload.get("refresh", False)),
+            bilingual=bool(payload.get("bilingual", False)),
+        )
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename=cdd_{entity_id}.pdf"},
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to generate PDF: {exc}")

@@ -317,6 +317,31 @@ def generate_cdd_report(
     return result
 
 
+def generate_cdd_pdf(
+    entity_id: str,
+    *,
+    refresh: bool = False,
+    depth: int = 3,
+    news_limit: int = 10,
+    bilingual: bool = False,
+) -> bytes:
+    """Generate a PDF for the CDD snapshot for an entity.
+
+    This helper builds the CDD report (uses cached markdown when possible),
+    converts it to PDF-ready HTML and renders a PDF using xhtml2pdf.
+    """
+    res = generate_cdd_report(
+        entity_id, refresh=refresh, depth=depth, news_limit=news_limit, bilingual=bilingual
+    )
+    if not res or not res.get("content"):
+        raise RuntimeError("Failed to build CDD report content")
+
+    title = f"CDD Snapshot — {res.get('entity_id') or entity_id}"
+    html = _markdown_to_pdf_ready_html(res.get("content"), title=title)
+    # Convert to PDF bytes
+    return _render_pdf_with_xhtml2pdf(html)
+
+
 def _markdown_to_html(markdown_text: str, *, title: str = "CDD Snapshot") -> str:
     """Convert Markdown to a standalone HTML document with minimal styling."""
 
