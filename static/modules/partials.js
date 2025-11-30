@@ -154,6 +154,27 @@ export async function loadDashboardCards(id, rawInput) {
     try {
       const res = await fetch(url, { cache: "no-cache" });
       const html = await res.text();
+      // Defensive: if the partial contains element IDs that already exist in
+      // the document, skip appending this partial to avoid duplicate UI
+      // when parts of the page are pre-rendered server-side or preserved
+      // in snapshots. We look for id="..." patterns and check existence.
+      try {
+        const idMatches = html.match(/id="([^"]+)"/g) || [];
+        let skip = false;
+        for (const m of idMatches) {
+          const id = m.replace(/^id="/, "").replace(/"$/, "");
+          if (id && document.getElementById(id)) {
+            console.log(
+              `partials: skipping ${url} because #${id} already exists`
+            );
+            skip = true;
+            break;
+          }
+        }
+        if (skip) continue;
+      } catch (e) {
+        // If anything goes wrong in the check, fall back to normal behaviour
+      }
       const div = document.createElement("div");
       div.innerHTML = html;
       while (div.firstChild) container.appendChild(div.firstChild);

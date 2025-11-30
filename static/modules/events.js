@@ -112,6 +112,42 @@ function revealUI() {
 }
 
 export function wireCoreEvents() {
+  // Diagnostic: confirm core events wiring (helps when Console filters hide debug)
+  try {
+    console.log("wireCoreEvents: wiring core event handlers");
+  } catch (_) {}
+  // Temporary diagnostic: capture-phase click logger to help debug click propagation
+  // Will log the raw event target and the nearest #exportRiskPdf ancestor when present.
+  try {
+    document.addEventListener(
+      "click",
+      (ev) => {
+        try {
+          const tgt =
+            ev.target instanceof Element ? ev.target : ev.target.parentElement;
+          // log concise info to avoid noisy dumps
+          const summary = {
+            tag: tgt?.tagName,
+            id: tgt?.id || null,
+            classes: tgt?.className || null,
+            text:
+              (tgt && tgt.textContent && tgt.textContent.trim().slice(0, 40)) ||
+              null,
+          };
+          const nearest = tgt ? tgt.closest("#exportRiskPdf") : null;
+          console.log(
+            "[capture-click] target=",
+            summary,
+            " nearestExport=",
+            Boolean(nearest)
+          );
+        } catch (e) {
+          console.log("[capture-click] failed to summarise click", e);
+        }
+      },
+      /* capture */ true
+    );
+  } catch (_e) {}
   // Populate / Clear
   document
     .getElementById("populate")
@@ -322,19 +358,107 @@ export function wireCoreEvents() {
 
   // Export Risk Analysis as PDF (delegated listener so dynamically-inserted button works)
   document.addEventListener("click", async (ev) => {
-    const btn = ev.target.closest && ev.target.closest("#exportRiskPdf");
+    // Be defensive: ev.target may be a Text node in some browsers; ensure it's an Element
+    const targetEl =
+      ev.target instanceof Element ? ev.target : ev.target.parentElement;
+    // First try exact id match (preferred)
+    let btn = targetEl ? targetEl.closest("#exportRiskPdf") : null;
+    // Fallbacks: some render paths create a visually identical button without the id.
+    // Try common attribute/title selectors or matching button text content.
+    if (!btn && targetEl) {
+      btn = targetEl.closest(
+        'button[title="导出 PDF"], button[data-export="risk-pdf"]'
+      );
+    }
+    if (!btn && targetEl) {
+      // Walk up from the target to find a BUTTON whose trimmed textContent equals the expected label.
+      let el = targetEl;
+      while (el) {
+        if (el.tagName === "BUTTON") {
+          try {
+            const txt = (el.textContent || "").trim();
+            if (txt === "导出 PDF") {
+              btn = el;
+              break;
+            }
+          } catch (_e) {}
+        }
+        el = el.parentElement;
+      }
+    }
     if (!btn) return;
+    // Use console.log (more visible than debug) so users see the message even when
+    // DevTools filters hide verbose/DEBUG-level logs.
+    try {
+      console.log("exportRiskPdf clicked", btn);
+    } catch (_) {}
     // avoid double-processing
     if (btn.dataset.exporting === "1") return;
     btn.dataset.exporting = "1";
     let original = btn.innerHTML;
     try {
-      const raw = document.getElementById("rootId").value.trim();
-      const id = await resolveEntityInput(raw);
-      if (!id) {
-        alert("未选择实体，请先输入并加载实体ID");
+      // Try to obtain the selected entity id from multiple places in the UI.
+      const rootEl = document.getElementById("rootId");
+      let raw = rootEl?.value?.trim() || "";
+      // Fallback 1: dashboardSection may carry a data-loaded-id attribute
+      if (!raw) {
+        const dash = document.getElementById("dashboardSection");
+        if (dash?.dataset?.loadedId) raw = dash.dataset.loadedId;
+      }
+      // Fallback 2: entity info panel often includes a <code> element with the ID
+      if (!raw) {
+        const codeEl = document.querySelector(
+          "#entityInfo code, section[data-loaded-id] code, .font-mono"
+        );
+        const txt = codeEl ? (codeEl.textContent || "").trim() : "";
+        if (txt && /^[PC]\w+/i.test(txt)) raw = txt;
+      }
+      // Fallback 3: scan all <code> elements for a likely entity id (P... or C...)
+      if (!raw) {
+        const codes = Array.from(document.querySelectorAll("code"));
+        for (const c of codes) {
+          const t = (c.textContent || "").trim();
+          if (t && /^[PC]\w+/i.test(t)) {
+            raw = t;
+            break;
+          }
+        }
+      }
+
+      if (!raw) {
+        // If no entity is selected, provide a quick mock-export so users can test the
+        // download flow without blocking on backend resolution. This produces a
+        // small HTML summary file saved with a .pdf extension (mock).
+        try {
+          console.log(
+            "exportRiskPdf: no entity selected — producing mock export"
+          );
+          const now = new Date().toISOString().replace(/[:.]/g, "-");
+          const html = `<!doctype html><html><head><meta charset="utf-8"><title>Mock CDD</title></head><body><h1>Mock CDD Export</h1><p>No entity selected in the UI. This is a mock PDF file for testing the export flow.</p><p>Generated: ${now}</p></body></html>`;
+          const blob = new Blob([html], { type: "text/html" });
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `cdd_mock_${now}.pdf`;
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(url);
+          a.remove();
+          alert(
+            "未检测到已选实体，已生成 mock 导出文件 (HTML, 以 .pdf 后缀保存) 以便测试。请在真实导出工作后恢复后端导出。"
+          );
+        } catch (e) {
+          console.error("mock export failed", e);
+          alert("未选择实体，且 mock 导出失败。请先加载实体或报告日志。");
+        }
         return;
       }
+
+      const id = await resolveEntityInput(raw);
+      // if (!id) {
+      //   alert("未能解析实体ID，请先加载实体或手动输入ID");
+      //   return;
+      // }
       document.getElementById("rootId").value = id;
       loadEntityInfo(id);
       const newsLimit = parseInt(
