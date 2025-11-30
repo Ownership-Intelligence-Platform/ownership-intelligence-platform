@@ -54,7 +54,7 @@ function clonedSection(id) {
   return clone;
 }
 
-export function createDashboardSnapshotCard(titleText, entityId) {
+export function createDashboardSnapshotCard(titleText, entityId, options = {}) {
   const stream = ensureStreamContainer();
   const wrapper = document.createElement("section");
   wrapper.className =
@@ -74,13 +74,26 @@ export function createDashboardSnapshotCard(titleText, entityId) {
   const body = document.createElement("div");
   body.className = "p-3";
   const controlsClone = clonedSection("controlsSection");
-  const infoClone = clonedSection("entityInfoSection");
+  // option: hideEntityInfo will skip cloning the entity info section
+  const infoClone = options.hideEntityInfo
+    ? null
+    : clonedSection("entityInfoSection");
   const grid = document.getElementById("dashboardSection");
   const gridClone = grid ? grid.cloneNode(true) : document.createElement("div");
   gridClone.classList.remove("hidden");
   stripIdsDeep(gridClone);
   if (controlsClone) body.appendChild(controlsClone);
   if (infoClone) body.appendChild(infoClone);
+
+  // option: allow excluding specific card element IDs from the cloned grid
+  if (Array.isArray(options.excludeCardIds) && options.excludeCardIds.length) {
+    options.excludeCardIds.forEach((id) => {
+      try {
+        const el = gridClone.querySelector(`#${id}`);
+        if (el && el.parentNode) el.parentNode.removeChild(el);
+      } catch (_) {}
+    });
+  }
   body.appendChild(gridClone);
   wrapper.appendChild(body);
   stream.appendChild(wrapper);
@@ -298,7 +311,8 @@ function attachSimpleDragToSnapshot(rootEl) {
 export async function loadFullDashboardAndSnapshot(
   rootId,
   rawInput,
-  snapshotTitle = "Dashboard"
+  snapshotTitle = "Dashboard",
+  options = {}
 ) {
   const rootInput = document.getElementById("rootId");
   if (rootInput) rootInput.value = rootId;
@@ -393,7 +407,10 @@ export async function loadFullDashboardAndSnapshot(
 
     const p2 = await Promise.allSettled([
       loadPenetration(),
-      personCandidate ? loadPersonOpening(personCandidate) : Promise.resolve(),
+      // optionally skip person opening loader when caller requests it
+      personCandidate && !options.hidePersonOpening
+        ? loadPersonOpening(personCandidate)
+        : Promise.resolve(),
       personCandidate
         ? (async () => {
             const graphEl = document.getElementById("personNetworkHomeGraph");
@@ -456,7 +473,7 @@ export async function loadFullDashboardAndSnapshot(
     /* swallow */
   }
 
-  return createDashboardSnapshotCard(snapshotTitle, rootId);
+  return createDashboardSnapshotCard(snapshotTitle, rootId, options);
 }
 
 export function revealDashboard() {

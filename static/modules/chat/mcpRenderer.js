@@ -143,7 +143,13 @@ export function renderMcpResults(query, results, targetList) {
             const snap = await loadFullDashboardAndSnapshot(
               ent.id,
               ent.name || r.name,
-              "Imported Dashboard"
+              "Imported Dashboard",
+              // options: hide entity info and person opening in the snapshot
+              {
+                hideEntityInfo: true,
+                hidePersonOpening: true,
+                excludeCardIds: ["personOpeningBox"],
+              }
             );
             if (snap && typeof snap.scrollIntoView === "function")
               snap.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -225,7 +231,13 @@ export function renderMcpResults(query, results, targetList) {
         const snap = await loadFullDashboardAndSnapshot(
           ent.id,
           ent.name || query,
-          "Imported Dashboard"
+          "Imported Dashboard",
+          // options: hide entity info and person opening in the snapshot
+          {
+            hideEntityInfo: true,
+            hidePersonOpening: true,
+            excludeCardIds: ["personOpeningBox"],
+          }
         );
         if (snap && typeof snap.scrollIntoView === "function") {
           snap.scrollIntoView({ behavior: "smooth", block: "center" });
