@@ -144,11 +144,12 @@ export function renderMcpResults(query, results, targetList) {
               ent.id,
               ent.name || r.name,
               "Imported Dashboard",
-              // options: hide entity info and person opening in the snapshot
+              // options: hide entity info and person opening in the snapshot; include mock data
               {
                 hideEntityInfo: true,
                 hidePersonOpening: true,
                 excludeCardIds: ["personOpeningBox"],
+                mockData: true,
               }
             );
             if (snap && typeof snap.scrollIntoView === "function")
@@ -232,11 +233,12 @@ export function renderMcpResults(query, results, targetList) {
           ent.id,
           ent.name || query,
           "Imported Dashboard",
-          // options: hide entity info and person opening in the snapshot
+          // options: hide entity info and person opening in the snapshot; include mock data
           {
             hideEntityInfo: true,
             hidePersonOpening: true,
             excludeCardIds: ["personOpeningBox"],
+            mockData: true,
           }
         );
         if (snap && typeof snap.scrollIntoView === "function") {

@@ -94,6 +94,85 @@ export function createDashboardSnapshotCard(titleText, entityId, options = {}) {
       } catch (_) {}
     });
   }
+  // If mock data requested, inject realistic-looking mock content into common card containers
+  if (options.mockData) {
+    try {
+      // Employment list mock
+      const emp = gridClone.querySelector('#employmentList');
+      if (emp) {
+        emp.innerHTML = `
+          <ul class="list-disc list-inside">
+            <li><strong>上海星辰云计算技术有限公司</strong> — 董事/总经理（2019-至今）</li>
+            <li><strong>成都昊宇科技有限公司</strong> — 董员（2015-2019）</li>
+            <li><strong>上海数据服务有限公司</strong> — 顾问（2012-2015）</li>
+          </ul>
+          <div class="mt-2 text-[12px] text-gray-500">来源：工商登记、企业年报汇总（示例数据）</div>
+        `;
+      }
+
+      // News list mock
+      const news = gridClone.querySelector('#newsList');
+      if (news) {
+        news.innerHTML = `
+          <ul class="space-y-2">
+            <li><a class="font-medium text-indigo-600" href="#">上海星辰云获千万元B轮融资，聚焦云计算服务</a><div class="text-[12px] text-gray-500">2024-08-12 · 来源：示例财经</div></li>
+            <li><a class="font-medium text-indigo-600" href="#">董事长李贵芳被评为优秀企业家</a><div class="text-[12px] text-gray-500">2023-11-03 · 来源：示例新闻</div></li>
+            <li><a class="font-medium text-indigo-600" href="#">公司参与的供应链合作引发关注</a><div class="text-[12px] text-gray-500">2022-06-18 · 来源：行业观察</div></li>
+          </ul>
+        `;
+      }
+
+      // Risk mock
+      const risk = gridClone.querySelector('#riskResults');
+      if (risk) {
+        risk.innerHTML = `
+          <div class="mb-2"><h4 class="font-semibold">负面新闻</h4><ul class="mt-1"><li>无显著负面报道</li></ul></div>
+          <div class="mb-2"><h4 class="font-semibold">敏感行为</h4><ul class="mt-1"><li>与高风险供应商存在交易（示例）</li></ul></div>
+          <div class="text-sm text-gray-600">综合风险评分（示例）： <span class="inline-block px-2 py-0.5 bg-amber-200 rounded">2.4 / 10</span></div>
+        `;
+      }
+
+      // Person relations mock (cards)
+      const rel = gridClone.querySelector('#personRelationsHomeCard');
+      if (rel) {
+        rel.innerHTML = '';
+        const items = [
+          { name: '张三', role: '同事', note: 'CTO' },
+          { name: '王五', role: '股东', note: '间接持股' },
+          { name: '赵六', role: '合伙人', note: '项目合伙' },
+        ];
+        items.forEach((it) => {
+          const d = document.createElement('div');
+          d.className = 'p-2 border rounded text-sm bg-white dark:bg-gray-900';
+          d.innerHTML = `<div class="font-medium">${it.name}</div><div class="text-[12px] text-gray-500">${it.role} · ${it.note}</div>`;
+          rel.appendChild(d);
+        });
+      }
+
+      // Person network simple SVG mock
+      const graph = gridClone.querySelector('#personNetworkHomeGraph');
+      if (graph) {
+        graph.innerHTML = '';
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('width', '100%');
+        svg.setAttribute('height', '420');
+        svg.setAttribute('viewBox', '0 0 600 300');
+        svg.innerHTML = `
+          <line x1="100" y1="150" x2="300" y2="80" stroke="#cbd5e1" stroke-width="2" />
+          <line x1="300" y1="80" x2="500" y2="150" stroke="#cbd5e1" stroke-width="2" />
+          <circle cx="100" cy="150" r="28" fill="#60a5fa" />
+          <circle cx="300" cy="80" r="28" fill="#34d399" />
+          <circle cx="500" cy="150" r="28" fill="#f59e0b" />
+          <text x="100" y="155" font-size="12" text-anchor="middle" fill="#fff">李贵芳</text>
+          <text x="300" y="85" font-size="12" text-anchor="middle" fill="#fff">张三</text>
+          <text x="500" y="155" font-size="12" text-anchor="middle" fill="#fff">王五</text>
+        `;
+        graph.appendChild(svg);
+      }
+    } catch (e) {
+      console.warn('mockData injection failed', e);
+    }
+  }
   body.appendChild(gridClone);
   wrapper.appendChild(body);
   stream.appendChild(wrapper);

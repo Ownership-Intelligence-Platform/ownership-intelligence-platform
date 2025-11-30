@@ -26,6 +26,8 @@ from app.services.graph_service import (
     search_entities_fuzzy,
     get_person_extended,
 )
+from app.services.graph_service import create_person_relationship
+from app.services.graph_service import create_employment, create_news_item
 from app.services.name_screening_service import basic_name_scan
 from app.services.name_variant_service import expand_name_variants, match_watchlist_with_variants
 from app.services.graph_rag import resolve_graphrag
@@ -285,13 +287,77 @@ def api_entities_import_mcp(payload: Dict[str, Any]):
         basic_info = {"name_variants": [name], "source_summaries": [r.get("snippet") for r in records]}
 
         # Create or update person with extended fields
+        # Also populate lightweight mock sub-resources so dashboard cards show content
+        mock_risk = {
+            "overall_risk_score": 2.4,
+            "risk_factors": ["交易对手关联高风险区域（示例）"],
+        }
+        mock_network = {"notes": "示例人际网络数据（由 MCP 导入生成）"}
+
         create_or_update_person_extended(
             person_id,
             name=name,
             type_="person",
             basic_info=basic_info,
             provenance=provenance,
+            risk_profile=mock_risk,
+            network_info=mock_network,
         )
+
+        # Create a couple of mock companies and employment relations so employment and
+        # person-network cards have visible content in the snapshot.
+        try:
+            ts = int(time.time() * 1000)
+            comp1 = f"C{ts}"
+            comp2 = f"C{ts + 1}"
+            # Template company names based on imported person name to feel more relevant
+            comp1_name = f"上海{name}云计算技术有限公司" if name else "上海星辰云计算技术有限公司"
+            comp2_name = f"{name}（成都）科技有限公司" if name else "成都昊宇科技有限公司"
+            create_company(comp1, name=comp1_name)
+            create_company(comp2, name=comp2_name)
+            # add employment relations with simple time ranges/roles to look realistic
+            create_employment(comp1, person_id, "董事长/总经理（2019-至今）")
+            create_employment(comp2, person_id, "监事（2015-2019）")
+
+            # Add a few stored news items linked to the person and company so news card shows stored items
+            create_news_item(person_id,
+                             title=f"{comp1_name} 完成新一轮融资，{name} 参与布局（示例）",
+                             source="示例财经",
+                             published_at="2024-08-12",
+                             summary=f"示例：{comp1_name} 宣布完成战略融资，用于扩展云计算及数据服务，由{ name }领衔管理。")
+            create_news_item(person_id,
+                             title=f"{name} 荣获优秀企业家称号（示例）",
+                             source="示例新闻",
+                             published_at="2023-11-03",
+                             summary=f"示例个人荣誉报道：{name} 因在云计算领域的成果被评为优秀企业家。")
+            # Also attach a company-level news item to comp1 so company queries show results
+            create_news_item(comp1,
+                             title=f"{comp1_name} 与大型客户签署合作协议（示例）",
+                             source="行业观察",
+                             published_at="2022-06-18",
+                             summary="示例：双方将在供应链与云服务上展开合作。")
+            # Create a small interpersonal network: spouse + two friends with varied names
+            try:
+                spouse_id = f"P{ts + 2}"
+                friend1_id = f"P{ts + 3}"
+                friend2_id = f"P{ts + 4}"
+                spouse_name = f"{name} 的配偶"
+                friend1_name = f"张三（{name} 的朋友）"
+                friend2_name = f"王五（{name} 的朋友）"
+                # Ensure person nodes exist
+                create_person(spouse_id, spouse_name, "person")
+                create_person(friend1_id, friend1_name, "person")
+                create_person(friend2_id, friend2_name, "person")
+                # Create relationships
+                create_person_relationship(person_id, spouse_id, "SPOUSE", subject_name=name, related_name=spouse_name)
+                create_person_relationship(person_id, friend1_id, "FRIEND", subject_name=name, related_name=friend1_name)
+                create_person_relationship(person_id, friend2_id, "FRIEND", subject_name=name, related_name=friend2_name)
+            except Exception:
+                pass
+        except Exception:
+            # Non-fatal; continue even if mock subresources fail to create
+            pass
+
         ent = get_person_extended(person_id)
         return {"ok": True, "entity": ent}
     except Exception as exc:
