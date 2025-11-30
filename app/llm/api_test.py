@@ -5,7 +5,7 @@ from openai import OpenAI
 client = OpenAI(
     # 若没有配置环境变量，请用百炼API Key将下行替换为：api_key="sk-xxx",
     # 新加坡和北京地域的API Key不同。获取API Key：https://www.alibabacloud.com/help/zh/model-studio/get-api-key
-    api_key=os.getenv("DASHSCOPE_API_KEY"),
+    api_key="sk-7bf6241349e14f0f9f65ea2b29dce472",
     # 以下为新加坡地域base_url，若使用北京地域的模型，需将base_url替换为：https://dashscope.aliyuncs.com/compatible-mode/v1
     base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",  
 )
